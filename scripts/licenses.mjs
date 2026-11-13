@@ -1,0 +1,89 @@
+#!/usr/bin/env node
+/**
+ * Collects the licence texts of every production dependency (including
+ * transitive ones) into one notice file.  Used by the Vite build, which ships
+ * the result as THIRD-PARTY-LICENSES.txt; run directly to print it.
+ *
+ * Works with pnpm, npm and Yarn layouts: dependencies are found by walking up
+ * from each package's real directory, the way Node itself resolves them.
+ */
+import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const LICENSE_FILE = /^(?:licen[cs]e|copying|notice)(?:[.-].*)?$/i;
+
+function findPackage(name, fromDir) {
+  let dir = fromDir;
+  for (;;) {
+    const candidate = join(dir, 'node_modules', name, 'package.json');
+    if (existsSync(candidate)) return dirname(realpathSync(candidate));
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+function readJson(path) {
+  return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+function licenseOf(pkg) {
+  if (typeof pkg.license === 'string') return pkg.license;
+  if (pkg.license && typeof pkg.license.type === 'string') return pkg.license.type;
+  if (Array.isArray(pkg.licenses)) return pkg.licenses.map((entry) => entry.type ?? entry).join(' OR ');
+  return 'UNKNOWN';
+}
+
+function repositoryOf(pkg) {
+  const repo = typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url;
+  return repo ? repo.replace(/^git\+/, '').replace(/\.git$/, '') : (pkg.homepage ?? '');
+}
+
+export function collectLicenses(root = ROOT) {
+  const manifest = readJson(join(root, 'package.json'));
+  const seen = new Map();
+  const queue = Object.keys(manifest.dependencies ?? {}).map((name) => ({ name, from: root }));
+  while (queue.length > 0) {
+    const { name, from } = queue.shift();
+    const dir = findPackage(name, from);
+    if (!dir) continue; // An optional dependency that is not installed on this platform.
+    const pkg = readJson(join(dir, 'package.json'));
+    const key = `${pkg.name}@${pkg.version}`;
+    if (seen.has(key)) continue;
+    const files = readdirSync(dir)
+      .filter((file) => LICENSE_FILE.test(file))
+      .sort();
+    const texts = files.map((file) => readFileSync(join(dir, file), 'utf8').trim());
+    seen.set(key, { name: pkg.name, version: pkg.version, license: licenseOf(pkg), repository: repositoryOf(pkg), texts });
+    for (const dependency of Object.keys(pkg.dependencies ?? {})) queue.push({ name: dependency, from: dir });
+    for (const dependency of Object.keys(pkg.optionalDependencies ?? {})) queue.push({ name: dependency, from: dir });
+  }
+  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
+}
+
+export function renderNotice(packages) {
+  const header = ['Benchtop includes the following open-source software.', 'Each component is distributed under the licence shown with it.', '', `${packages.length} packages.`, ''].join('\n');
+  const body = packages
+    .map((pkg) => {
+      const title = `${pkg.name} ${pkg.version}`;
+      const lines = [title, '-'.repeat(title.length), `Licence: ${pkg.license}`];
+      if (pkg.repository) lines.push(`Source: ${pkg.repository}`);
+      lines.push('', pkg.texts.length > 0 ? pkg.texts.join('\n\n') : `(No licence file is included in the package; it declares the ${pkg.license} licence.)`);
+      return lines.join('\n');
+    })
+    .join('\n\n\n');
+  return `${header}\n${body}\n`;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const packages = collectLicenses();
+  if (process.argv.includes('--summary')) {
+    const counts = new Map();
+    for (const pkg of packages) counts.set(pkg.license, (counts.get(pkg.license) ?? 0) + 1);
+    for (const [license, count] of [...counts].sort((a, b) => b[1] - a[1])) console.log(`${String(count).padStart(4)}  ${license}`);
+  } else {
+    process.stdout.write(renderNotice(packages));
+  }
+}

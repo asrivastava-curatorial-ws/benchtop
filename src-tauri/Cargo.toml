@@ -1,0 +1,31 @@
+[package]
+name = "benchtop"
+version = "1.0.0"
+description = "Benchtop: a fully offline, open-source toolbox of developer utilities"
+license = "MIT"
+edition = "2021"
+rust-version = "1.80"
+publish = false
+
+[lib]
+# The _lib suffix avoids a name clash with the binary on Windows (cargo issue #8519).
+name = "benchtop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-window-state = "2"
+percent-encoding = "2"
+url = "2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
