@@ -1,5 +1,5 @@
 /** Keyboard-driven tool switcher (Ctrl/Cmd + K). */
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { CATEGORIES, findTool, searchTools } from '../tools/registry';
 import type { ToolEntry } from '../tools/types';
 import { Icon } from '../ui/icons';
@@ -23,7 +23,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     return [...new Map(quick.map((tool) => [tool.id, tool])).values(), ...searchTools('').filter((tool) => !seen.has(tool.id))].slice(0, 50);
   }, [query]);
 
-  useEffect(() => {
+  // Focus before the next keystroke arrives, so typing straight after Ctrl+K loses nothing.
+  useLayoutEffect(() => {
     input.current?.focus();
   }, []);
 

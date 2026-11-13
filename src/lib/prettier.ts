@@ -4,7 +4,7 @@
  */
 import { ToolError } from './errors';
 
-export type PrettierParser = 'babel' | 'typescript' | 'css' | 'scss' | 'less';
+export type PrettierParser = 'babel' | 'typescript' | 'css' | 'scss' | 'less' | 'graphql';
 
 export interface PrettierOptions {
   readonly tabWidth?: number;
@@ -21,6 +21,8 @@ async function pluginsFor(parser: PrettierParser): Promise<unknown[]> {
       return Promise.all([import('prettier/plugins/babel'), import('prettier/plugins/estree')]);
     case 'typescript':
       return Promise.all([import('prettier/plugins/typescript'), import('prettier/plugins/estree')]);
+    case 'graphql':
+      return Promise.all([import('prettier/plugins/graphql')]);
     default:
       return Promise.all([import('prettier/plugins/postcss')]);
   }

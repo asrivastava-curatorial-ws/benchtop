@@ -19,11 +19,12 @@ Every tool is loaded on demand: `tools/registry.ts` lists each one with a lazy `
 
 ## The worker
 
-`worker/client.ts` keeps one module worker. Jobs on the same channel replace queued ones, and a job that has run for more than 750 ms is cancelled by restarting the worker when newer input arrives, so typing never waits for stale work. If a worker cannot start, jobs run on the main thread instead. The worker also encodes WebP and AVIF (WebAssembly builds of libwebp and libavif) and compiles Bootstrap with Dart Sass.
+`worker/client.ts` keeps one module worker. Jobs on the same channel replace queued ones, and a job that has run for more than 750 ms is cancelled by restarting the worker when newer input arrives, so typing never waits for stale work. If a worker cannot start, jobs run on the main thread instead. The worker also encodes WebP and AVIF (WebAssembly builds of libwebp and libavif), runs jq (a WebAssembly build of jq 1.8, loaded from the app's own files) and compiles Bootstrap with Dart Sass.
 
 ## Safety boundaries
 
-- The production page carries a content security policy (injected by `vite.config.ts`) that allows no network origin at all.
+- The production page carries a content security policy (injected by `vite.config.ts`) that allows no network origin at all. It also forbids `eval` and `new Function`, so libraries are chosen to work without them (for example @cfworker/json-schema rather than Ajv, and jsonpath-plus in its safe evaluation mode).
+- Secrets are generated with `crypto.getRandomValues` and never stored: passwords, SSH keys and TOTP secrets live only in memory while the app is open.
 - HTML previews go through DOMPurify with links and remote sources removed (`ui/sanitize.ts`). SVG previews are shown as images, where scripts never run. Full documents (theme previews, the playground, media-query tests) are `srcdoc` frames with an empty `sandbox` attribute.
 - The Rust shell allows navigation only to the bundled app (`is_allowed` in `src-tauri/src/lib.rs`) and receives saved files as raw bytes, with the file name reduced to its last path component.
 - Settings are validated when they are read, so a damaged or hand-edited settings file cannot break the app.
@@ -36,7 +37,7 @@ Every tool is loaded on demand: `tools/registry.ts` lists each one with a lazy `
    - visual: `src/tools/css/<id>.tsx`;
    - image: `src/tools/image/<id>.ts`;
    - custom: `src/tools/custom/<id>.tsx`.
-3. Register it in `src/tools/registry.ts` with a name, category, description, search keywords and the web tools it replaces.
+3. Register it in `src/tools/registry.ts` with a name, category, description, search keywords and, when it has one, the web tool it replaces.
 4. Run `UPDATE_DOCS=1 pnpm test docs` to refresh `docs/TOOLS.md`.
 5. For a custom tool, add a check to `CUSTOM_CHECKS` in `tests/e2e/smoke.spec.ts`; the other kinds are covered automatically.
 

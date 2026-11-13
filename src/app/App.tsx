@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
 import { APP_NAME } from '../brand';
 import { findTool } from '../tools/registry';
 import { Icon } from '../ui/icons';
@@ -16,7 +16,8 @@ export function App() {
   const sidebarHidden = useSettings((settings) => settings.sidebarHidden);
   const [palette, setPalette] = useState(false);
 
-  useEffect(() => {
+  // Registered during the first render (not after paint) so a shortcut pressed as the window opens is not lost.
+  useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const modifier = event.ctrlKey || event.metaKey;
       if (modifier && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k') {

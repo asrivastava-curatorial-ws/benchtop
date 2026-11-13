@@ -64,7 +64,7 @@ for (const base of ROOTS) {
     if (!SUSPICIOUS.test(text)) continue;
     SUSPICIOUS.lastIndex = 0;
     if (fix) {
-      writeFileSync(file, text.replace(SUSPICIOUS, escape));
+      writeFileSync(file, text.replace(SUSPICIOUS, toEscape));
       console.log(`fixed  ${relative(root, file)}`);
       continue;
     }

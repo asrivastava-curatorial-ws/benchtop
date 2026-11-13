@@ -11,7 +11,7 @@
  * The binary defaults to src-tauri/target/release/benchtop; set BENCHTOP_BINARY to override.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,7 +81,7 @@ try {
   await check('the window opens on the home page with every tool listed', async () => {
     await driver.wait(async () => (await driver.getTitle()).includes('Benchtop'), 20_000);
     const links = await driver.findElements(By.css('a[href^="#/tool/"]'));
-    if (links.length < 90) throw new Error(`only ${links.length} tool links`);
+    if (links.length < 125) throw new Error(`only ${links.length} tool links`);
   });
 
   await check('the content security policy is in place and blocks the network', async () => {
@@ -127,6 +127,55 @@ try {
       const text = await driver.executeScript("return document.querySelector('[data-testid=export-size]').textContent");
       if (/cannot|failed|error/i.test(text)) throw new Error(`${format}: ${text}`);
     }
+  });
+
+  /** Drops a fixture file onto the open tool's drop zone, as a user dragging it from the file manager would. */
+  const dropFixture = async (fixture, type) => {
+    const base64 = readFileSync(resolve(ROOT, 'tests/e2e/fixtures', fixture)).toString('base64');
+    await driver.executeScript(
+      `const bytes = Uint8Array.from(atob(arguments[0]), (c) => c.charCodeAt(0));
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([bytes], arguments[1], { type: arguments[2] }));
+      document.querySelector('[data-testid=dropzone]').dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));`,
+      base64,
+      fixture,
+      type,
+    );
+  };
+  const outputText = () => driver.executeScript("return document.querySelector('[data-testid=output-editor] .cm-content')?.textContent ?? ''");
+
+  await check('jq runs from WebAssembly in the worker', async () => {
+    await open('json-query');
+    await driver.findElement(By.xpath("//button[normalize-space()='Sample']")).click();
+    await driver.findElement(By.xpath("//button[@role='radio' and normalize-space()='jq']")).click();
+    await waitForState(['done'], 60_000);
+    await driver.wait(async () => (await outputText()).includes('Engine Hall'), 30_000, 'jq produced no output');
+  });
+
+  await check('photo metadata is read and the GPS location is flagged', async () => {
+    await open('image-metadata');
+    await dropFixture('exif.jpg', 'image/jpeg');
+    await waitForState(['done']);
+    const warning = await driver.executeScript("return document.querySelector('[data-testid=metadata-gps]')?.textContent ?? ''");
+    if (!warning.includes('28.613889')) throw new Error(`no GPS warning: ${warning}`);
+    const removed = await driver.executeScript("return document.querySelector('[data-testid=metadata-clean]')?.textContent ?? ''");
+    if (!removed.includes('EXIF')) throw new Error(`nothing listed for removal: ${removed}`);
+  });
+
+  await check('QR codes are read from an image', async () => {
+    await open('qr-decoder');
+    await dropFixture('qr.png', 'image/png');
+    await waitForState(['done']);
+    await driver.wait(async () => (await driver.executeScript("return document.querySelector('[data-testid=qr-kind]')?.textContent ?? ''")).includes('Benchtop Lab'), 20_000, 'QR code not decoded');
+  });
+
+  await check('SSH keys are generated with the system random source', async () => {
+    await open('ssh-keygen');
+    await waitForState(['done'], 60_000);
+    const first = await outputText();
+    if (!first.startsWith('ssh-ed25519 AAAA')) throw new Error(`unexpected output: ${first.slice(0, 60)}`);
+    await driver.findElement(By.css('[data-testid=run]')).click();
+    await driver.wait(async () => (await outputText()) !== first, 20_000, 'a second key was not different');
   });
 
   await check('the clipboard round-trips through the native plugin', async () => {

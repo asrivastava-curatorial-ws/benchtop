@@ -1,6 +1,6 @@
 # Benchtop
 
-A desktop toolbox of 97 developer utilities that works entirely offline: formatters, converters, encoders, hashes, generators, CSS and colour tools, image tools and a Bootstrap theme builder, in one free and open-source app for Linux, Windows and macOS.
+A desktop toolbox of 130 developer utilities that works entirely offline: formatters, converters, query and validation tools, encoders, hashes and keys, network and DevOps helpers, generators, CSS and colour tools, image tools and a Bootstrap theme builder, in one free and open-source app for Linux, Windows and macOS.
 
 Nothing you paste, open or generate leaves your computer. The app contains no network code, ships every library and font it uses, and enforces a content security policy that stops the web view from contacting any server.
 
@@ -8,13 +8,16 @@ The full list, with the web tools each one replaces, is in [docs/TOOLS.md](docs/
 
 ## Highlights
 
-- **Format and minify:** JSON (lossless numbers, duplicate-key warnings), HTML, CSS/SCSS/Less, JavaScript/TypeScript (Prettier), Terser minification, XML, SVGO.
-- **Convert:** CSV ↔ JSON, JSON → TypeScript, YAML ↔ JSON, Markdown ↔ HTML, cURL → fetch, SVG → React, CSS → Tailwind, number bases, Unix time, px ↔ rem, number to words (international and Indian numbering).
-- **Encode, hash and encrypt:** Base64/32/58/62, hex, URL, HTML entities, JWT decode and sign, MD5 to SHA-3 and HMAC, AES (OpenSSL-compatible), htpasswd (bcrypt, apr1).
-- **Generate:** UUID v1/v4/v7, barcodes and QR codes, cron explanations, robots.txt, llms.txt, mailto links.
+- **Format and minify:** JSON (lossless numbers, duplicate-key warnings), HTML, CSS/SCSS/Less, JavaScript/TypeScript (Prettier), Terser minification, XML, SVGO, SQL (15 dialects), GraphQL.
+- **Convert:** CSV ↔ JSON, JSON → TypeScript, YAML ↔ JSON, TOML ↔ JSON, INI ↔ JSON, .env ↔ JSON, Markdown ↔ HTML, CSV → Markdown tables, cURL → fetch, SVG → React, CSS → Tailwind, number bases, Unix time, px ↔ rem, number to words (international and Indian numbering).
+- **Query and validate:** a regex tester with highlighted matches and replacement preview, JSONPath and real jq 1.8 (WebAssembly), JSON Schema validation (drafts 4, 7, 2019-09 and 2020-12).
+- **Encode, hash, keys and passwords:** Base64/32/58/62, hex, URL, HTML entities, string escaping for eleven languages, JWT decode and sign, MD5 to SHA-3 and HMAC, AES (OpenSSL-compatible), htpasswd (bcrypt, apr1), passwords and passphrases, TOTP two-factor codes with authenticator QR codes, X.509 certificate and CSR decoding, SSH key generation (Ed25519, ECDSA, RSA).
+- **Web and network:** URL parser and builder, IPv4/IPv6 subnet calculator, HTTP status codes, MIME types, User-Agent parser, security headers (CSP, HSTS and more) and nginx, Apache or Caddy configuration.
+- **DevOps:** chmod calculator, `docker run` → Compose, .gitignore templates, semver ranges and sorting.
+- **Generate and text:** UUID v1/v4/v7, barcodes and QR codes, cron explanations, robots.txt, llms.txt, mailto links, lorem ipsum, word counts, slugs, line sorting, a Unicode inspector that reveals invisible and look-alike characters, diffs and case conversion.
 - **CSS and colour:** gradients, mesh gradients, shadows, borders, clip-path, flexbox and grid, transforms, transitions and keyframes, cubic Bézier, media queries, blobs, waves, patterns, glassmorphism, OKLCH conversion, colour scales, contrast checks, the Tailwind palette, shadcn/ui themes.
 - **Bootstrap Theme Builder:** edit any of Bootstrap 5.3's 1,008 Sass variables with a live preview compiled by Dart Sass inside the app, then export `_variables.scss`, a ready entry file, `bootstrap.css` or `bootstrap.min.css`.
-- **Images:** convert and compress (PNG, JPEG, WebP, AVIF), resize, crop, rotate, filters, colour replacement, fades, colour-blindness simulation, colour picking and palettes, favicons and multi-size `.ico` files, SVG to PNG.
+- **Images:** convert and compress (PNG, JPEG, WebP, AVIF), resize, crop, rotate, filters, colour replacement, fades, colour-blindness simulation, colour picking and palettes, favicons and multi-size `.ico` files, SVG to PNG, CSS sprite sheets, a QR code reader, and a photo metadata viewer that removes EXIF, GPS and XMP data without re-encoding.
 
 ## Install from source
 
@@ -42,7 +45,7 @@ pnpm desktop:build
 The installers appear in `src-tauri/target/release/bundle/` (`.deb`, `.rpm` and `.AppImage` on Linux, `.msi` and `.exe` on Windows, `.dmg` and `.app` on macOS). To install the Debian package:
 
 ```sh
-sudo apt install ./src-tauri/target/release/bundle/deb/Benchtop_1.0.0_amd64.deb
+sudo apt install ./src-tauri/target/release/bundle/deb/Benchtop_1.1.0_amd64.deb
 ```
 
 To work on the app with hot reloading:
@@ -89,7 +92,7 @@ pnpm tauri build --no-bundle
 xvfb-run -a pnpm test:desktop
 ```
 
-Some unit tests compare results with reference tools when they are installed: `openssl` for AES and apr1, Apache's `htpasswd` (package `apache2-utils`) for bcrypt, and Python's Pillow for `.ico` files. They are skipped when the tool is missing.
+Some unit tests compare results with reference tools when they are installed: `openssl` for AES, apr1, certificates and keys, Apache's `htpasswd` (package `apache2-utils`) for bcrypt, `ssh-keygen` for SSH keys, and Python's Pillow for `.ico` files and photo metadata. They are skipped when the tool is missing.
 
 ## Privacy and security
 

@@ -2,11 +2,29 @@
  * Opens every tool in the production build and checks that it works, that
  * nothing is logged as an error and that no request leaves the app.
  */
+import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { TOOLS } from '../../src/tools/registry';
 
 const SAMPLE_PNG = readFileSync(new URL('./fixtures/sample.png', import.meta.url));
+/** A 64 x 48 JPEG with camera details, GPS coordinates, XMP and a comment (made with Pillow). */
+const EXIF_JPEG = readFileSync(new URL('./fixtures/exif.jpg', import.meta.url));
+/** A QR code holding "WIFI:S:Benchtop Lab;T:WPA;P:correct horse;;". */
+const QR_PNG = readFileSync(new URL('./fixtures/qr.png', import.meta.url));
+
+/** RFC 6238 TOTP (SHA-1, 6 digits, 30 s) computed independently of the app. */
+function referenceTotp(secretBase32: string, timeMs: number): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = '';
+  for (const char of secretBase32) bits += alphabet.indexOf(char).toString(2).padStart(5, '0');
+  const key = Buffer.from(bits.match(/.{8}/g)?.map((byte) => Number.parseInt(byte, 2)) ?? []);
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(timeMs / 30_000)));
+  const digest = createHmac('sha1', key).update(counter).digest();
+  const offset = (digest[digest.length - 1] as number) & 0x0f;
+  return String((digest.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+}
 
 /** Collects console errors, uncaught exceptions and any request that is not local. */
 function watch(page: Page): string[] {
@@ -138,6 +156,77 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
     await page.getByTestId('commands-search').fill('tcp port');
     await expect(tool.locator('tbody th[scope="row"]')).toHaveText(['Test a TCP port']);
   },
+  totp: async (page, tool) => {
+    const secret = 'JBSWY3DPEHPK3PXP';
+    await page.getByTestId('totp-secret').fill(secret);
+    await expect(tool).toHaveAttribute('data-state', 'done');
+    const shown = ((await page.getByTestId('totp-code').textContent()) ?? '').replace(/\s/g, '');
+    const now = Date.now();
+    expect([-30_000, 0, 30_000].map((delta) => referenceTotp(secret, now + delta))).toContain(shown);
+    await expect(tool.getByRole('img', { name: 'QR code with the otpauth link' })).toBeVisible();
+    // A malformed secret is reported rather than producing codes.
+    await page.getByTestId('totp-secret').fill('not base32!');
+    await expect(tool).toHaveAttribute('data-state', 'error');
+    await page.getByTestId('totp-secret').fill(secret);
+  },
+  chmod: async (page, tool) => {
+    await expect(page.getByTestId('chmod-octal')).toHaveText('755');
+    await tool.getByRole('checkbox', { name: 'Group write' }).check();
+    await expect(page.getByTestId('chmod-octal')).toHaveText('775');
+    await page.getByTestId('chmod-input').fill('rw-r-----');
+    await expect(page.getByTestId('chmod-octal')).toHaveText('640');
+    await expect(page.getByTestId('code-output')).toContainText('chmod 640 script.sh');
+  },
+  'http-status': async (page) => {
+    await page.getByTestId('status-search').fill('418');
+    await expect(page.getByTestId('status-row')).toHaveCount(1);
+    await expect(page.getByTestId('status-row')).toContainText("I'm a teapot");
+    await page.getByTestId('status-search').fill('rate limit');
+    await expect(page.getByTestId('status-row').first()).toContainText('429');
+  },
+  'mime-types': async (page) => {
+    await page.getByTestId('mime-search').fill('holiday.WEBP');
+    await expect(page.getByTestId('mime-row').first()).toContainText('image/webp');
+  },
+  'image-metadata': async (page, tool) => {
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByTestId('dropzone').click();
+    await (await chooser).setFiles({ name: 'photo.jpg', mimeType: 'image/jpeg', buffer: EXIF_JPEG });
+    await expect(tool).toHaveAttribute('data-state', 'done', { timeout: 30_000 });
+    await expect(page.getByTestId('metadata-gps')).toContainText('28.613889, 77.208333');
+    await expect(page.getByTestId('metadata-groups')).toContainText('Canon EOS R6');
+    await expect(page.getByTestId('metadata-clean')).toContainText('EXIF');
+    const cleaned = await download(page, () => page.getByTestId('metadata-save').click());
+    expect([...cleaned.subarray(0, 2)]).toEqual([0xff, 0xd8]);
+    const text = cleaned.toString('latin1');
+    expect(text).not.toContain('Canon');
+    expect(text).not.toContain('Test Person');
+    expect(text).not.toContain('hello comment');
+    expect(cleaned.length).toBeLessThan(EXIF_JPEG.length);
+  },
+  'qr-decoder': async (page, tool) => {
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByTestId('dropzone').click();
+    await (await chooser).setFiles({ name: 'qr.png', mimeType: 'image/png', buffer: QR_PNG });
+    await expect(tool).toHaveAttribute('data-state', 'done', { timeout: 30_000 });
+    await expect(page.getByTestId('qr-kind')).toContainText('Wi-Fi network');
+    await expect(page.getByTestId('qr-kind')).toContainText('Benchtop Lab');
+    await expect(page.getByTestId('code-output')).toContainText('WIFI:S:Benchtop Lab');
+  },
+  'css-sprite': async (page, tool) => {
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByTestId('dropzone').click();
+    await (await chooser).setFiles([
+      { name: 'home.png', mimeType: 'image/png', buffer: SAMPLE_PNG },
+      { name: 'search icon.png', mimeType: 'image/png', buffer: SAMPLE_PNG },
+    ]);
+    await expect(tool).toHaveAttribute('data-state', 'done', { timeout: 30_000 });
+    await expect(page.getByTestId('sprite-list').locator('li')).toHaveCount(2);
+    await expect.poll(() => editorText(page.getByTestId('code-output'))).toContain('.icon-search-icon {');
+    expect(await editorText(page.getByTestId('code-output'))).toContain('background-position: 0 -402px;');
+    const bytes = await download(page, () => page.getByTestId('export-save').click());
+    expect([...bytes.subarray(0, 4)]).toEqual(PNG);
+  },
 };
 
 for (const entry of TOOLS) {
@@ -197,6 +286,18 @@ for (const entry of TOOLS) {
   });
 }
 
+test('jq runs in the worker without network access', async ({ page }) => {
+  const problems = watch(page);
+  const tool = await openTool(page, 'json-query');
+  await tool.getByRole('button', { name: 'Sample', exact: true }).click();
+  await tool.getByRole('radio', { name: 'jq' }).click();
+  await expect(tool).toHaveAttribute('data-state', 'done', { timeout: 30_000 });
+  await expect.poll(() => editorText(page.getByTestId('output-editor'))).toContain('"name": "Engine Hall"');
+  await page.locator('#json-query-jq').fill('.galleries | map(.floor) | add');
+  await expect.poll(() => editorText(page.getByTestId('output-editor'))).toBe('1');
+  expect(problems).toEqual([]);
+});
+
 test('every tool is listed on the home page and none is missing a check', async ({ page }) => {
   const problems = watch(page);
   await page.goto('./');
@@ -211,6 +312,7 @@ test('the command palette finds and opens tools', async ({ page }) => {
   const problems = watch(page);
   await page.goto('./');
   await page.keyboard.press('Control+k');
+  await expect(page.getByTestId('palette-input')).toBeFocused();
   await page.keyboard.type('json form');
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#\/tool\/json-formatter$/);

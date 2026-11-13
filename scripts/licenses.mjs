@@ -14,6 +14,14 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const LICENSE_FILE = /^(?:licen[cs]e|copying|notice)(?:[.-].*)?$/i;
 
+/** Components compiled into a dependency's WebAssembly, keyed by that dependency; texts live in licenses/. */
+const EMBEDDED = {
+  'jq-wasm': [
+    { name: 'jq (compiled into jq-wasm)', version: '1.8.2', license: 'MIT, with ICU (decNumber) and other notices', repository: 'https://github.com/jqlang/jq', file: 'jq-COPYING.txt' },
+    { name: 'Oniguruma (compiled into jq-wasm)', version: 'as bundled with jq 1.8.2', license: 'BSD-2-Clause', repository: 'https://github.com/kkos/oniguruma', file: 'oniguruma-COPYING.txt' },
+  ],
+};
+
 function findPackage(name, fromDir) {
   let dir = fromDir;
   for (;;) {
@@ -59,6 +67,13 @@ export function collectLicenses(root = ROOT) {
     seen.set(key, { name: pkg.name, version: pkg.version, license: licenseOf(pkg), repository: repositoryOf(pkg), texts });
     for (const dependency of Object.keys(pkg.dependencies ?? {})) queue.push({ name: dependency, from: dir });
     for (const dependency of Object.keys(pkg.optionalDependencies ?? {})) queue.push({ name: dependency, from: dir });
+  }
+  // Software compiled into a package's WebAssembly, whose licences the package itself does not ship.
+  for (const [parent, components] of Object.entries(EMBEDDED)) {
+    if (![...seen.values()].some((pkg) => pkg.name === parent)) continue;
+    for (const component of components) {
+      seen.set(`${component.name}@${component.version}`, { ...component, texts: [readFileSync(join(root, 'licenses', component.file), 'utf8').trim()] });
+    }
   }
   return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
 }

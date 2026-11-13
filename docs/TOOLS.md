@@ -2,7 +2,7 @@
 
 <!-- Generated from src/tools/registry.ts by tests/unit/docs.test.ts. Do not edit by hand. -->
 
-Benchtop has 97 tools. Every one of them works without a network connection.
+Benchtop has 130 tools. Every one of them works without a network connection.
 
 ## Format and minify
 
@@ -15,6 +15,8 @@ Benchtop has 97 tools. Every one of them works without a network connection.
 | JavaScript Minifier | Shrink JavaScript with Terser and compare sizes. | Minify JS, JavaScript encode and decode |
 | XML Formatter | Format, minify and check XML, keeping comments and CDATA. | XML Formatter |
 | SVG Minifier | Optimise SVG files with SVGO. | SVG Minifier |
+| SQL Formatter | Format SQL for PostgreSQL, MySQL, SQLite, SQL Server, Oracle, BigQuery and nine more dialects, or minify it. |  |
+| GraphQL Formatter | Format GraphQL queries, mutations and schemas with Prettier, or minify them. |  |
 
 ## Convert
 
@@ -35,6 +37,18 @@ Benchtop has 97 tools. Every one of them works without a network connection.
 | Binary Calculator | Arithmetic and bitwise operations on binary, decimal or hex numbers. | Binary Calculator |
 | PX ↔ REM | Convert between pixels and rem, with a reference table. | PX to REM Converter |
 | Android Pixel Calculator | Convert between dp, px, sp, in, mm and pt for any screen density. | Android Pixel Calculator |
+| TOML ↔ JSON | Convert TOML (Cargo.toml, pyproject.toml) to JSON and back, keeping dates and big integers. |  |
+| INI ↔ JSON | Convert INI and .cfg files to JSON and back, with sections and optional typed values. |  |
+| .env ↔ JSON | Convert dotenv files to JSON and back, handling quotes, escapes, export and multi-line values. |  |
+| Markdown Table | Turn CSV, TSV or cells pasted from a spreadsheet into an aligned Markdown table. |  |
+
+## Query and validate
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Regex Tester | Test JavaScript regular expressions with highlighted matches, capture groups and replacement preview. |  |
+| JSONPath and jq | Query JSON with JSONPath expressions or real jq 1.8 filters and see the result instantly. |  |
+| JSON Schema Validator | Validate JSON against a JSON Schema (drafts 4, 7, 2019-09 and 2020-12) and list every error with its location. |  |
 
 ## Encode and decode
 
@@ -55,14 +69,19 @@ Benchtop has 97 tools. Every one of them works without a network connection.
 | JWT Decoder | Read a JSON Web Token: header, claims, expiry and HMAC signature check. | JWT Decoder |
 | JWT Encoder | Sign JSON Web Tokens with HS256, HS384 or HS512. | JWT Encoder |
 | Image to Base64 | Embed an image as a data URI for CSS, HTML or Markdown. | Image Base64 |
+| String Escape | Escape and unescape text for JSON, JavaScript, Java, C#, C, Python, shell, PowerShell, SQL, regex and CSV. |  |
 
-## Hash and encrypt
+## Hash, keys and passwords
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
 | Hash and HMAC | MD5, SHA-1, SHA-2, SHA-3 and CRC-32 of text or files, with HMAC and checksum comparison. | SHA-1 Hash Generator, SHA-512 Hash Generator, MD5 hash generator |
 | AES Encryption | Encrypt and decrypt with a password (AES-256-GCM, or OpenSSL-compatible CBC). | AES encryption and decryption |
 | Htpasswd Generator | Create and check password entries for Apache and nginx basic auth. | Htpasswd Generator |
+| Password Generator | Generate strong passwords or word passphrases from the system random source, with their entropy. |  |
+| TOTP Codes (2FA) | Show and check two-factor codes for a secret, and set up authenticator apps with a QR code. |  |
+| Certificate Decoder | Read X.509 certificates, signing requests and key files: names, validity, SANs, extensions and fingerprints. |  |
+| SSH Key Generator | Generate Ed25519, ECDSA and RSA key pairs in OpenSSH and PEM formats, with fingerprints. |  |
 
 ## Generate
 
@@ -75,6 +94,7 @@ Benchtop has 97 tools. Every one of them works without a network connection.
 | robots.txt Generator | Write crawler rules, including a block list for AI crawlers. | robots.txt Generator |
 | llms.txt Generator | Build or validate an llms.txt file from links or a pasted sitemap. | llms.txt Generator |
 | Email Link Builder | Build mailto links with subject and body, optionally hidden from scrapers. | Code for Email |
+| Lorem Ipsum | Generate placeholder paragraphs, sentences or words, as plain text or HTML. |  |
 
 ## Text
 
@@ -85,6 +105,31 @@ Benchtop has 97 tools. Every one of them works without a network connection.
 | Duplicate Line Remover | Remove repeated lines, with control over case and which copy to keep. | Duplicate Line Remover |
 | Remove Line Breaks | Join lines into paragraphs or a single line. | Remove Line Breaks |
 | Text Reverser | Reverse characters, word order or line order. | Text Reverser |
+| Word Counter | Count words, characters, sentences and paragraphs, with reading time and the most frequent words. |  |
+| Sort Lines | Sort lines alphabetically, naturally, by number or length, shuffle them and remove duplicates. |  |
+| Slug Generator | Turn titles into URL slugs, with or without accents and non-Latin scripts. |  |
+| Unicode Inspector | Reveal invisible, look-alike and direction-changing characters, and clean them out of text. |  |
+
+## Web and network
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| URL Parser | Split a URL into its parts and query parameters, or build one from JSON. |  |
+| Subnet Calculator | Work out IPv4 and IPv6 network ranges, masks, host counts and smaller subnets from CIDR notation. |  |
+| HTTP Status Codes | Look up what every HTTP status code means and which specification defines it. |  |
+| MIME Types | Find the media type for a file extension, or the extensions for a media type. |  |
+| User-Agent Parser | Identify the browser, engine, operating system and device type in a User-Agent string. |  |
+| Security Headers | Build a Content-Security-Policy, HSTS and other security headers for nginx, Apache, Caddy, Express or Netlify. |  |
+| Web Server Config | Generate nginx, Apache or Caddy configuration for a static site, a single-page app or a reverse proxy. |  |
+
+## DevOps and config
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Chmod Calculator | Convert Unix permissions between checkboxes, octal (755) and rwx, with ready chmod commands. |  |
+| docker run to Compose | Convert docker run commands into a compose.yaml file, with named volumes and networks. |  |
+| .gitignore Generator | Build a .gitignore from templates for languages, frameworks, editors and operating systems. |  |
+| Semver Checker | Sort version numbers and test them against npm-style ranges such as ^1.2 or &gt;=2 &lt;3. |  |
 
 ## CSS generators
 
@@ -140,6 +185,9 @@ Benchtop has 97 tools. Every one of them works without a network connection.
 | SVG to PNG | Rasterise SVG at any scale, with or without a background. | SVG to PNG Converter |
 | SVG Viewer | Preview SVG safely and see its size, viewBox and tidy source. | SVG Viewer |
 | SVG Background Remover | Remove the backdrop of an SVG without rasterising it. | SVG Background Remover |
+| Photo Metadata (EXIF) | See the camera, date and GPS location hidden in photos, and save a copy without them. |  |
+| QR Code Reader | Read QR codes from screenshots and photos, and see what Wi-Fi, contact or link details they hold. |  |
+| CSS Sprite Generator | Combine icons into one sprite sheet and get the CSS class for each, at 1× or 2×. |  |
 
 ## Reference and extras
 

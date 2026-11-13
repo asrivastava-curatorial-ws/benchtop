@@ -22,7 +22,7 @@
     "targets": "all",
     "category": "DeveloperTool",
     "shortDescription": "Offline developer tools",
-    "longDescription": "Benchtop gathers nearly a hundred developer utilities (formatters, converters, encoders, generators, CSS and image tools, and a Bootstrap theme builder) in one desktop app that never connects to the internet.",
+    "longDescription": "Benchtop gathers 130 developer utilities (formatters, converters, query and validation tools, encoders, hashes and keys, network and DevOps helpers, generators, CSS and image tools, and a Bootstrap theme builder) in one desktop app that never connects to the internet.",
     "copyright": "Copyright (c) 2026 Abhisht Srivastava. MIT licence.",
     "licenseFile": "../LICENSE",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],

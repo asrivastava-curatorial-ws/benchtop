@@ -16,10 +16,13 @@ export interface Category {
 export const CATEGORIES: readonly Category[] = [
   { id: 'format', name: 'Format and minify', blurb: 'Tidy up or shrink code and markup' },
   { id: 'convert', name: 'Convert', blurb: 'Turn one format into another' },
+  { id: 'data', name: 'Query and validate', blurb: 'Regular expressions, JSONPath, jq and JSON Schema' },
   { id: 'encode', name: 'Encode and decode', blurb: 'Base64, hex, entities, tokens' },
-  { id: 'crypto', name: 'Hash and encrypt', blurb: 'Checksums, HMAC, AES, password files' },
+  { id: 'crypto', name: 'Hash, keys and passwords', blurb: 'Checksums, AES, passwords, 2FA codes, certificates, SSH keys' },
   { id: 'generate', name: 'Generate', blurb: 'IDs, barcodes, schedules, config files' },
   { id: 'text', name: 'Text', blurb: 'Compare, clean and reshape plain text' },
+  { id: 'network', name: 'Web and network', blurb: 'URLs, subnets, headers, servers, status codes' },
+  { id: 'devops', name: 'DevOps and config', blurb: 'Permissions, Docker, .env, TOML, INI, versions' },
   { id: 'css', name: 'CSS generators', blurb: 'Build styles visually and copy the code' },
   { id: 'color', name: 'Colour', blurb: 'Convert, scale and check colours' },
   { id: 'image', name: 'Images and SVG', blurb: 'Convert, edit and inspect pictures' },
@@ -91,6 +94,18 @@ export const TOOLS: readonly ToolEntry[] = [
   }),
   text('format', { id: 'svg-minifier', name: 'SVG Minifier', description: 'Optimise SVG files with SVGO.', keywords: ['optimize', 'svgo', 'compress'], covers: ['SVG Minifier'] }),
 
+  text('format', {
+    id: 'sql-formatter',
+    name: 'SQL Formatter',
+    description: 'Format SQL for PostgreSQL, MySQL, SQLite, SQL Server, Oracle, BigQuery and nine more dialects, or minify it.',
+    keywords: ['postgres', 'mysql', 'sqlite', 'tsql', 'oracle', 'query', 'beautify', 'minify'],
+  }),
+  text('format', {
+    id: 'graphql-formatter',
+    name: 'GraphQL Formatter',
+    description: 'Format GraphQL queries, mutations and schemas with Prettier, or minify them.',
+    keywords: ['gql', 'schema', 'sdl', 'query', 'beautify', 'minify'],
+  }),
   /* ----------------------------------------------------- convert -- */
   text('convert', {
     id: 'csv-to-json',
@@ -186,6 +201,49 @@ export const TOOLS: readonly ToolEntry[] = [
     covers: ['Android Pixel Calculator'],
   }),
 
+  text('convert', {
+    id: 'toml-json',
+    name: 'TOML ↔ JSON',
+    description: 'Convert TOML (Cargo.toml, pyproject.toml) to JSON and back, keeping dates and big integers.',
+    keywords: ['cargo', 'pyproject', 'config'],
+  }),
+  text('convert', {
+    id: 'ini-json',
+    name: 'INI ↔ JSON',
+    description: 'Convert INI and .cfg files to JSON and back, with sections and optional typed values.',
+    keywords: ['config', 'cfg', 'conf', 'php.ini', 'desktop'],
+  }),
+  text('convert', {
+    id: 'env-json',
+    name: '.env ↔ JSON',
+    description: 'Convert dotenv files to JSON and back, handling quotes, escapes, export and multi-line values.',
+    keywords: ['dotenv', 'environment', 'variables', 'config', 'secrets'],
+  }),
+  text('convert', {
+    id: 'markdown-table',
+    name: 'Markdown Table',
+    description: 'Turn CSV, TSV or cells pasted from a spreadsheet into an aligned Markdown table.',
+    keywords: ['csv', 'tsv', 'excel', 'spreadsheet', 'gfm', 'github'],
+  }),
+  /* -------------------------------------------------------- data -- */
+  text('data', {
+    id: 'regex-tester',
+    name: 'Regex Tester',
+    description: 'Test JavaScript regular expressions with highlighted matches, capture groups and replacement preview.',
+    keywords: ['regexp', 'regular expression', 'match', 'replace', 'capture', 'pattern'],
+  }),
+  text('data', {
+    id: 'json-query',
+    name: 'JSONPath and jq',
+    description: 'Query JSON with JSONPath expressions or real jq 1.8 filters and see the result instantly.',
+    keywords: ['jsonpath', 'jq', 'filter', 'select', 'query', 'extract'],
+  }),
+  text('data', {
+    id: 'json-schema',
+    name: 'JSON Schema Validator',
+    description: 'Validate JSON against a JSON Schema (drafts 4, 7, 2019-09 and 2020-12) and list every error with its location.',
+    keywords: ['validate', 'schema', 'draft', 'openapi', 'contract'],
+  }),
   /* ------------------------------------------------------ encode -- */
   text('encode', {
     id: 'base64',
@@ -269,6 +327,12 @@ export const TOOLS: readonly ToolEntry[] = [
     covers: ['Image Base64'],
   }),
 
+  text('encode', {
+    id: 'string-escape',
+    name: 'String Escape',
+    description: 'Escape and unescape text for JSON, JavaScript, Java, C#, C, Python, shell, PowerShell, SQL, regex and CSV.',
+    keywords: ['escape', 'unescape', 'quote', 'backslash', 'string literal'],
+  }),
   /* ------------------------------------------------------ crypto -- */
   text('crypto', {
     id: 'hash',
@@ -292,6 +356,30 @@ export const TOOLS: readonly ToolEntry[] = [
     covers: ['Htpasswd Generator'],
   }),
 
+  text('crypto', {
+    id: 'password-generator',
+    name: 'Password Generator',
+    description: 'Generate strong passwords or word passphrases from the system random source, with their entropy.',
+    keywords: ['passphrase', 'random', 'secure', 'diceware', 'strength'],
+  }),
+  other('crypto', 'custom', () => import('./custom/totp'), {
+    id: 'totp',
+    name: 'TOTP Codes (2FA)',
+    description: 'Show and check two-factor codes for a secret, and set up authenticator apps with a QR code.',
+    keywords: ['2fa', 'mfa', 'otp', 'authenticator', 'two-factor', 'google authenticator', 'hotp'],
+  }),
+  text('crypto', {
+    id: 'certificate-decoder',
+    name: 'Certificate Decoder',
+    description: 'Read X.509 certificates, signing requests and key files: names, validity, SANs, extensions and fingerprints.',
+    keywords: ['x509', 'ssl', 'tls', 'pem', 'csr', 'crt', 'der', 'openssl'],
+  }),
+  text('crypto', {
+    id: 'ssh-keygen',
+    name: 'SSH Key Generator',
+    description: 'Generate Ed25519, ECDSA and RSA key pairs in OpenSSH and PEM formats, with fingerprints.',
+    keywords: ['ssh-keygen', 'ed25519', 'rsa', 'ecdsa', 'authorized_keys', 'openssh'],
+  }),
   /* ---------------------------------------------------- generate -- */
   text('generate', {
     id: 'uuid',
@@ -343,6 +431,12 @@ export const TOOLS: readonly ToolEntry[] = [
     covers: ['Code for Email'],
   }),
 
+  text('generate', {
+    id: 'lorem-ipsum',
+    name: 'Lorem Ipsum',
+    description: 'Generate placeholder paragraphs, sentences or words, as plain text or HTML.',
+    keywords: ['placeholder', 'dummy text', 'filler'],
+  }),
   /* -------------------------------------------------------- text -- */
   text('text', {
     id: 'diff',
@@ -374,6 +468,98 @@ export const TOOLS: readonly ToolEntry[] = [
   }),
   text('text', { id: 'text-reverser', name: 'Text Reverser', description: 'Reverse characters, word order or line order.', keywords: ['backwards', 'mirror'], covers: ['Text Reverser'] }),
 
+  text('text', {
+    id: 'word-counter',
+    name: 'Word Counter',
+    description: 'Count words, characters, sentences and paragraphs, with reading time and the most frequent words.',
+    keywords: ['count', 'characters', 'reading time', 'statistics'],
+  }),
+  text('text', {
+    id: 'sort-lines',
+    name: 'Sort Lines',
+    description: 'Sort lines alphabetically, naturally, by number or length, shuffle them and remove duplicates.',
+    keywords: ['order', 'alphabetical', 'natural sort', 'shuffle', 'unique'],
+  }),
+  text('text', {
+    id: 'slugify',
+    name: 'Slug Generator',
+    description: 'Turn titles into URL slugs, with or without accents and non-Latin scripts.',
+    keywords: ['url', 'permalink', 'seo', 'kebab'],
+  }),
+  text('text', {
+    id: 'unicode-inspector',
+    name: 'Unicode Inspector',
+    description: 'Reveal invisible, look-alike and direction-changing characters, and clean them out of text.',
+    keywords: ['zero width', 'homoglyph', 'bidi', 'trojan source', 'normalize', 'nfc', 'nfkc', 'code point'],
+  }),
+  /* ----------------------------------------------------- network -- */
+  text('network', {
+    id: 'url-parser',
+    name: 'URL Parser',
+    description: 'Split a URL into its parts and query parameters, or build one from JSON.',
+    keywords: ['query string', 'parameters', 'host', 'path', 'parse'],
+  }),
+  text('network', {
+    id: 'subnet-calculator',
+    name: 'Subnet Calculator',
+    description: 'Work out IPv4 and IPv6 network ranges, masks, host counts and smaller subnets from CIDR notation.',
+    keywords: ['cidr', 'ip', 'ipv4', 'ipv6', 'netmask', 'network', 'calculator'],
+  }),
+  other('network', 'custom', () => import('./custom/http-status'), {
+    id: 'http-status',
+    name: 'HTTP Status Codes',
+    description: 'Look up what every HTTP status code means and which specification defines it.',
+    keywords: ['404', '500', 'response', 'error', 'redirect', 'rest'],
+  }),
+  other('network', 'custom', () => import('./custom/mime-types'), {
+    id: 'mime-types',
+    name: 'MIME Types',
+    description: 'Find the media type for a file extension, or the extensions for a media type.',
+    keywords: ['content-type', 'media type', 'extension', 'mimetype'],
+  }),
+  text('network', {
+    id: 'user-agent',
+    name: 'User-Agent Parser',
+    description: 'Identify the browser, engine, operating system and device type in a User-Agent string.',
+    keywords: ['browser', 'ua', 'device', 'os'],
+  }),
+  text('network', {
+    id: 'security-headers',
+    name: 'Security Headers',
+    description: 'Build a Content-Security-Policy, HSTS and other security headers for nginx, Apache, Caddy, Express or Netlify.',
+    keywords: ['csp', 'hsts', 'content security policy', 'headers', 'x-frame-options', 'helmet'],
+  }),
+  text('network', {
+    id: 'server-config',
+    name: 'Web Server Config',
+    description: 'Generate nginx, Apache or Caddy configuration for a static site, a single-page app or a reverse proxy.',
+    keywords: ['nginx', 'apache', 'caddy', 'reverse proxy', 'virtual host', 'https', 'spa'],
+  }),
+  /* ------------------------------------------------------ devops -- */
+  other('devops', 'custom', () => import('./custom/chmod'), {
+    id: 'chmod',
+    name: 'Chmod Calculator',
+    description: 'Convert Unix permissions between checkboxes, octal (755) and rwx, with ready chmod commands.',
+    keywords: ['permissions', 'unix', 'linux', 'octal', 'rwx', 'umask'],
+  }),
+  text('devops', {
+    id: 'docker-compose',
+    name: 'docker run to Compose',
+    description: 'Convert docker run commands into a compose.yaml file, with named volumes and networks.',
+    keywords: ['docker', 'compose', 'container', 'yaml'],
+  }),
+  text('devops', {
+    id: 'gitignore',
+    name: '.gitignore Generator',
+    description: 'Build a .gitignore from templates for languages, frameworks, editors and operating systems.',
+    keywords: ['git', 'ignore', 'template'],
+  }),
+  text('devops', {
+    id: 'semver',
+    name: 'Semver Checker',
+    description: 'Sort version numbers and test them against npm-style ranges such as ^1.2 or >=2 <3.',
+    keywords: ['version', 'range', 'npm', 'caret', 'tilde', 'semantic versioning'],
+  }),
   /* --------------------------------------------------------- css -- */
   other('css', 'visual', () => import('./css/gradient'), {
     id: 'gradient',
@@ -654,6 +840,24 @@ export const TOOLS: readonly ToolEntry[] = [
     covers: ['SVG Background Remover'],
   }),
 
+  other('image', 'custom', () => import('./custom/image-metadata'), {
+    id: 'image-metadata',
+    name: 'Photo Metadata (EXIF)',
+    description: 'See the camera, date and GPS location hidden in photos, and save a copy without them.',
+    keywords: ['exif', 'gps', 'location', 'privacy', 'strip', 'remove', 'xmp', 'iptc'],
+  }),
+  other('image', 'custom', () => import('./custom/qr-decoder'), {
+    id: 'qr-decoder',
+    name: 'QR Code Reader',
+    description: 'Read QR codes from screenshots and photos, and see what Wi-Fi, contact or link details they hold.',
+    keywords: ['scan', 'qr', 'decode', 'wifi', 'vcard'],
+  }),
+  other('image', 'custom', () => import('./custom/css-sprite'), {
+    id: 'css-sprite',
+    name: 'CSS Sprite Generator',
+    description: 'Combine icons into one sprite sheet and get the CSS class for each, at 1× or 2×.',
+    keywords: ['sprite sheet', 'icons', 'atlas', 'background-position'],
+  }),
   /* -------------------------------------------------------- misc -- */
   other('misc', 'custom', () => import('./custom/html-playground'), {
     id: 'html-playground',

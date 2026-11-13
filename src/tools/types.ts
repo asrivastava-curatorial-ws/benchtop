@@ -300,7 +300,7 @@ export function defineCustomTool(component: ComponentType<{ toolId: string }>): 
 // biome-ignore lint/suspicious/noExplicitAny: the registry stores heterogeneous specs
 export type AnyToolSpec = TextToolSpec<any> | VisualToolSpec<any> | ImageToolSpec<any> | CustomToolSpec;
 
-export type CategoryId = 'format' | 'convert' | 'encode' | 'crypto' | 'generate' | 'text' | 'css' | 'color' | 'image' | 'misc';
+export type CategoryId = 'format' | 'convert' | 'data' | 'encode' | 'crypto' | 'generate' | 'text' | 'network' | 'devops' | 'css' | 'color' | 'image' | 'misc';
 
 export interface ToolEntry {
   readonly id: string;

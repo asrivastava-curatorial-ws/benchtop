@@ -73,6 +73,27 @@ export async function saveFile(name: string, data: string | Uint8Array | Blob, m
   return { saved: true, location: 'your downloads folder' };
 }
 
+/** Opens the system file picker for several files.  Resolves with an empty list when dismissed. */
+export function pickFiles(accept = ''): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.multiple = true;
+    if (accept !== '') input.accept = accept;
+    input.style.display = 'none';
+    input.addEventListener('change', () => {
+      resolve(Array.from(input.files ?? []));
+      input.remove();
+    });
+    input.addEventListener('cancel', () => {
+      resolve([]);
+      input.remove();
+    });
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
 /** Opens the system file picker.  Resolves with `null` when the dialog is dismissed. */
 export function pickFile(accept = ''): Promise<File | null> {
   return new Promise((resolve) => {
