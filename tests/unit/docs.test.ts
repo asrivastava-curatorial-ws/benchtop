@@ -17,7 +17,7 @@ function render(): string {
     '',
     '<!-- Generated from src/tools/registry.ts by tests/unit/docs.test.ts. Do not edit by hand. -->',
     '',
-    `Benchtop has ${TOOLS.length} tools. Every one of them works without a network connection.`,
+    `Benchtop has ${TOOLS.length} tools. All of them work without a network connection except the ${TOOLS.filter((tool) => tool.category === 'online').length} in Online checks, which contact only the hosts you enter, when you press Check, and only in the desktop app.`,
     '',
   ];
   for (const category of CATEGORIES) {

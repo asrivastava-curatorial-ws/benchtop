@@ -17,6 +17,9 @@ import { Icon, type IconName } from './icons';
 import { PreviewView } from './Preview';
 import { attempt, notify } from './toast';
 
+/** Files that panes with `documents` turn into text (see lib/documents.ts). */
+const DOCUMENT_EXTENSIONS = /\.(docx|docm|xlsx|xlsm|pptx|odt|ods|odp|pdf)$/i;
+
 type Outcome =
   | { readonly state: 'idle' }
   | { readonly state: 'done'; readonly result: TextResult }
@@ -49,7 +52,13 @@ function InputPane({ pane, fallbackLabel, value, onChange, file, onFile, wrap, e
 
   const accept = (chosen: File) =>
     attempt(async () => {
-      if (pane.binary) {
+      if (pane.documents && DOCUMENT_EXTENSIONS.test(chosen.name)) {
+        const { documentText } = await import('../lib/documents');
+        const { bytes } = await readBinaryFile(chosen);
+        onFile(null);
+        onChange(await documentText(chosen.name, bytes));
+        notify(`Opened the text of ${chosen.name}`);
+      } else if (pane.binary) {
         onFile(await readBinaryFile(chosen));
         onChange('');
       } else {
@@ -267,6 +276,21 @@ export function TextToolView({ entry, spec }: { entry: ToolEntry; spec: TextTool
           <button type="button" class="button button-primary" data-testid="run" onClick={runNow}>
             <Icon name={live ? 'refresh' : 'play'} size={14} />
             {spec.action ?? 'Run'}
+          </button>
+        )}
+        {spec.input2 && (
+          <button
+            type="button"
+            class="button button-quiet"
+            data-testid="swap-sides"
+            onClick={() => {
+              setInput(input2);
+              setInput2(input);
+            }}
+            title="Exchange the two texts"
+          >
+            <Icon name="swap" size={14} />
+            Swap sides
           </button>
         )}
         {hasOptions && (

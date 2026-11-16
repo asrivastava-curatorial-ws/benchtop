@@ -81,6 +81,31 @@ export function SettingsView() {
       </section>
 
       <section class="settings-group">
+        <h2>Network</h2>
+        <div class="settings-row">
+          <label for="setting-network">
+            Allow online checks
+            <small>
+              {isDesktop
+                ? 'Only the tools in the Online checks category use the network, and only for the hosts you enter, when you press Check. Every other tool works offline.'
+                : 'Online checks need the desktop app. In a browser every tool works offline.'}
+            </small>
+          </label>
+          <label class="toggle" for="setting-network">
+            <input
+              id="setting-network"
+              type="checkbox"
+              role="switch"
+              aria-checked={settings.allowNetwork}
+              checked={settings.allowNetwork}
+              onChange={(event) => updateSettings({ allowNetwork: event.currentTarget.checked })}
+            />
+            <span class="toggle-track" aria-hidden="true" />
+          </label>
+        </div>
+      </section>
+
+      <section class="settings-group">
         <h2>Memory</h2>
         <div class="settings-row">
           <label for="setting-remember">

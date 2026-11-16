@@ -79,9 +79,43 @@ const NEEDS_SECRET: Record<string, { field: string; value: string; run: boolean 
   aes: { field: 'password', value: 'correct horse battery staple', run: true },
   htpasswd: { field: 'password', value: 'hunter2', run: true },
   'jwt-encoder': { field: 'secret', value: 'a-long-enough-test-secret-for-hs256!', run: false },
+  'text-cipher': { field: 'passphrase', value: 'correct horse battery staple', run: false },
+};
+
+/** Online checks whose target is an option rather than the input pane: [option key, value]. */
+const ONLINE_TARGETS: Record<string, readonly [string, string]> = {
+  'dns-lookup': ['name', 'example.org'],
+  'dns-propagation': ['name', 'example.org'],
+  'ip-lookup': ['target', 'example.org'],
+  'email-security': ['domain', 'example.org'],
+  'port-checker': ['host', 'example.org'],
+  'link-checker': ['url', 'https://example.org/'],
+  'http-client': ['url', 'https://example.org/'],
 };
 
 const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>> = {
+  keycode: async (page, tool) => {
+    await page.keyboard.press('q');
+    await expect(tool).toHaveAttribute('data-state', 'done');
+    await expect(page.getByTestId('keycode-stage')).toContainText('q');
+    await expect(tool.locator('dd', { hasText: 'KeyQ' })).toHaveCount(1);
+  },
+  stopwatch: async (page) => {
+    const time = page.getByTestId('stopwatch-time');
+    const before = await time.textContent();
+    await page.getByTestId('stopwatch-start').click();
+    await expect.poll(() => time.textContent(), { timeout: 5_000 }).not.toBe(before);
+  },
+  'emoji-picker': async (page) => {
+    await page.getByTestId('emoji-search').fill('rocket');
+    await expect(page.getByTestId('emoji-grid').getByRole('button', { name: 'rocket', exact: true })).toBeVisible();
+  },
+  wysiwyg: async (page) => {
+    await page.getByTestId('wysiwyg-editor').click();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.type('Gallery notes');
+    await expect.poll(() => editorText(page.getByTestId('code-output'))).toContain('Gallery notes');
+  },
   'clip-path': async (page, tool) => {
     const output = page.getByTestId('output-editor');
     const before = await editorText(output);
@@ -234,7 +268,16 @@ for (const entry of TOOLS) {
     const problems = watch(page);
     const tool = await openTool(page, entry.id);
 
-    if (entry.kind === 'text') {
+    if (entry.kind === 'text' && entry.category === 'online') {
+      // In a browser the online checks must explain that they need the desktop app, without touching the network.
+      const sample = tool.getByRole('button', { name: 'Sample', exact: true });
+      if ((await sample.count()) > 0) await sample.first().click();
+      const target = ONLINE_TARGETS[entry.id];
+      if (target) await page.locator(`#${entry.id}-${target[0]}`).fill(target[1]);
+      await page.getByTestId('run').click();
+      await expect(tool).toHaveAttribute('data-state', 'error', { timeout: 30_000 });
+      await expect(tool).toContainText('desktop app');
+    } else if (entry.kind === 'text') {
       const secret = NEEDS_SECRET[entry.id];
       const sample = tool.getByRole('button', { name: 'Sample', exact: true });
       if ((await sample.count()) > 0) {

@@ -277,7 +277,7 @@ describe('JWT', () => {
       header: { alg: 'HS256', typ: 'JWT' },
       payload: { sub: '1234567890', name: 'John Doe', iat: 1516239022 },
     });
-    expect(field(result, 'Algorithm')).toBe('HS256');
+    expect(field(result, 'Algorithm')).toMatch(/^HS256: HMAC/);
     expect(field(result, 'Subject')).toBe('1234567890');
     expect(field(result, 'Issued at')).toContain('2018-01-18T01:30:22.000Z');
     expect(field(result, 'Signature')).toMatch(/Not verified/);

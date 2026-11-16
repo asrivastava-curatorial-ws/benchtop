@@ -198,6 +198,17 @@ try {
     if (!/raw bytes/.test(outcome)) throw new Error(outcome);
   });
 
+  await check('online checks reach the desktop shell (port probe of the local WebDriver)', async () => {
+    const outcome = await driver.executeAsyncScript(
+      `const done = arguments[0];
+       window.__TAURI_INTERNALS__.invoke('net_tcp_probe', { request: { host: '127.0.0.1', ports: [4444, 9], timeoutMs: 2000 } })
+         .then((response) => done(JSON.stringify(response)), (error) => done('error: ' + JSON.stringify(error)));`,
+    );
+    const response = JSON.parse(outcome.startsWith('error') ? '{}' : outcome);
+    const state = (port) => (response.results ?? []).find((result) => result.port === port)?.state;
+    if (state(4444) !== 'open' || state(9) !== 'closed') throw new Error(`unexpected probe result: ${outcome}`);
+  });
+
   await check('the window refuses to navigate away from the app', async () => {
     await driver.executeScript("location.href = 'https://example.org/'");
     await driver.sleep(1500);

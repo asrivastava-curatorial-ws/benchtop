@@ -1,8 +1,11 @@
 //! Benchtop's desktop shell.
 //!
 //! Every tool runs inside the web view; this side only provides a native
-//! window, the clipboard, a "Save as" dialog, and a guard that keeps the
-//! window on the app's own pages.  Nothing here touches the network.
+//! window, the clipboard, a "Save as" dialog, a guard that keeps the window on
+//! the app's own pages, and the network commands used by the "Online checks"
+//! tools (see `net.rs`).  The web view itself cannot reach the network.
+
+mod net;
 
 use std::path::{Path, PathBuf};
 
@@ -87,7 +90,14 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![save_file])
+        .invoke_handler(tauri::generate_handler![
+            save_file,
+            net::net_http,
+            net::net_tls,
+            net::net_dns,
+            net::net_whois,
+            net::net_tcp_probe
+        ])
         .setup(|app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("Benchtop")

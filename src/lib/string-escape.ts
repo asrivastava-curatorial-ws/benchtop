@@ -1,7 +1,7 @@
 /** Escaping and unescaping text for string literals in common languages. */
 import { ToolError } from './errors';
 
-export type EscapeTarget = 'json' | 'javascript' | 'java' | 'csharp' | 'c' | 'python' | 'shell' | 'powershell' | 'sql' | 'regex' | 'csv';
+export type EscapeTarget = 'json' | 'javascript' | 'java' | 'csharp' | 'c' | 'python' | 'shell' | 'powershell' | 'sql' | 'regex' | 'csv' | 'xml';
 
 export const ESCAPE_TARGETS: readonly { value: EscapeTarget; label: string }[] = [
   { value: 'json', label: 'JSON string' },
@@ -15,6 +15,7 @@ export const ESCAPE_TARGETS: readonly { value: EscapeTarget; label: string }[] =
   { value: 'sql', label: 'SQL string' },
   { value: 'regex', label: 'Regular expression (literal match)' },
   { value: 'csv', label: 'CSV field' },
+  { value: 'xml', label: 'XML or HTML (text and attributes)' },
 ];
 
 const hex4 = (code: number) => code.toString(16).toUpperCase().padStart(4, '0');
@@ -97,7 +98,22 @@ export function escapeString(text: string, target: EscapeTarget): string {
       return text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
     case 'csv':
       return /[",\r\n]|^\s|\s$/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    case 'xml':
+      return text.replace(/[&<>"']/g, (char) => XML_ENTITIES[char] as string);
   }
+}
+
+const XML_ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' };
+const XML_NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00A0' };
+
+function unescapeXml(text: string): string {
+  return text.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z]+);/g, (whole, body: string) => {
+    if (body.startsWith('#')) {
+      const code = body[1] === 'x' || body[1] === 'X' ? Number.parseInt(body.slice(2), 16) : Number.parseInt(body.slice(1), 10);
+      return code <= 0x10ffff ? String.fromCodePoint(code) : whole;
+    }
+    return XML_NAMED[body] ?? whole;
+  });
 }
 
 function unescapeCLike(text: string): string {
@@ -182,6 +198,8 @@ export function unescapeString(input: string, target: EscapeTarget): string {
       return text.replace(/\\(.)/g, '$1');
     case 'csv':
       return /^".*"$/s.test(text) ? text.slice(1, -1).replace(/""/g, '"') : text;
+    case 'xml':
+      return unescapeXml(input);
     default: {
       const body = /^(["'`]).*\1$/s.test(text) && text.length > 1 ? text.slice(1, -1) : text;
       return unescapeCLike(body);

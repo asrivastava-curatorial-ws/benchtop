@@ -22,6 +22,8 @@ export interface Settings {
   /** Ids of collapsed sidebar categories. */
   readonly collapsed: readonly string[];
   readonly sidebarHidden: boolean;
+  /** Let the tools in the "Online checks" category contact the hosts the user enters (desktop app only). */
+  readonly allowNetwork: boolean;
   readonly toolOptions: Readonly<Record<string, Values>>;
 }
 
@@ -34,6 +36,7 @@ export const DEFAULT_SETTINGS: Settings = {
   recents: [],
   collapsed: [],
   sidebarHidden: false,
+  allowNetwork: true,
   toolOptions: {},
 };
 
@@ -61,6 +64,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     recents: strings(source.recents, []).slice(0, MAX_RECENTS),
     collapsed: strings(source.collapsed, []),
     sidebarHidden: typeof source.sidebarHidden === 'boolean' ? source.sidebarHidden : false,
+    allowNetwork: typeof source.allowNetwork === 'boolean' ? source.allowNetwork : DEFAULT_SETTINGS.allowNetwork,
     toolOptions,
   };
 }

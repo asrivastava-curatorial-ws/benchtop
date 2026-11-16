@@ -67,3 +67,8 @@ declare module '*.scss?raw' {
   const source: string;
   export default source;
 }
+
+// The minified legacy build has the same API as the typed entry point.
+declare module 'pdfjs-dist/legacy/build/pdf.min.mjs' {
+  export * from 'pdfjs-dist/legacy/build/pdf.mjs';
+}

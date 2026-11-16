@@ -1,5 +1,5 @@
 /** Renders the visual result of a text tool: an image, sanitised HTML or a diff. */
-import { useMemo } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { readSvg, svgIntrinsicSize } from '../lib/xml-scan';
 import { saveFile } from '../platform';
 import type { DiffRow, Preview as PreviewData } from '../tools/types';
@@ -24,28 +24,179 @@ function highlight(text: string, spans: DiffRow['spans']) {
   return parts;
 }
 
-function DiffView({ rows }: { rows: readonly DiffRow[] }) {
-  const shown = rows.length > MAX_DIFF_ROWS ? rows.slice(0, MAX_DIFF_ROWS) : rows;
+interface ChangeBlock {
+  readonly kind: 'change';
+  readonly index: number;
+  readonly rows: readonly DiffRow[];
+}
+
+interface SameBlock {
+  readonly kind: 'same';
+  readonly rows: readonly DiffRow[];
+}
+
+interface GapBlock {
+  readonly kind: 'gap';
+  readonly id: number;
+  readonly rows: readonly DiffRow[];
+}
+
+type Block = ChangeBlock | SameBlock | GapBlock;
+
+/** Groups rows into changes and unchanged runs; long unchanged runs keep `context` lines each side. */
+function diffBlocks(rows: readonly DiffRow[], context: number | undefined): Block[] {
+  const blocks: Block[] = [];
+  let changes = 0;
+  let gaps = 0;
+  let index = 0;
+  while (index < rows.length) {
+    const start = index;
+    const same = (rows[index] as DiffRow).type === 'same';
+    while (index < rows.length && ((rows[index] as DiffRow).type === 'same') === same) index++;
+    const run = rows.slice(start, index);
+    if (!same) {
+      blocks.push({ kind: 'change', index: changes++, rows: run });
+      continue;
+    }
+    const keepBefore = start === 0 ? 0 : (context ?? run.length);
+    const keepAfter = index === rows.length ? 0 : (context ?? run.length);
+    if (context === undefined || run.length <= keepBefore + keepAfter + 2) {
+      blocks.push({ kind: 'same', rows: run });
+      continue;
+    }
+    if (keepBefore > 0) blocks.push({ kind: 'same', rows: run.slice(0, keepBefore) });
+    blocks.push({ kind: 'gap', id: gaps++, rows: run.slice(keepBefore, run.length - keepAfter) });
+    if (keepAfter > 0) blocks.push({ kind: 'same', rows: run.slice(run.length - keepAfter) });
+  }
+  return blocks;
+}
+
+const sign = (row: DiffRow) => (row.type === 'add' ? '+' : row.type === 'del' ? '\u2212' : '');
+
+function UnifiedRow({ row, current, anchor }: { row: DiffRow; current?: boolean; anchor?: number }) {
   return (
-    <div class="diff" data-testid="diff">
-      <table>
-        <tbody>
-          {shown.map((row, index) => (
-            <tr key={index} class={`diff-${row.type}`}>
-              <td class="diff-number">{row.left ?? ''}</td>
-              <td class="diff-number">{row.right ?? ''}</td>
-              <td class="diff-sign" aria-hidden="true">
-                {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ''}
-              </td>
-              <td class="diff-text">
-                <span class="visually-hidden">{row.type === 'add' ? 'Added: ' : row.type === 'del' ? 'Removed: ' : ''}</span>
-                {highlight(row.text, row.spans)}
-              </td>
+    <tr class={`diff-${row.type}${current ? ' is-current' : ''}`} data-change={anchor}>
+      <td class="diff-number">{row.left ?? ''}</td>
+      <td class="diff-number">{row.right ?? ''}</td>
+      <td class="diff-sign" aria-hidden="true">
+        {sign(row)}
+      </td>
+      <td class="diff-text">
+        <span class="visually-hidden">{row.type === 'add' ? 'Added: ' : row.type === 'del' ? 'Removed: ' : ''}</span>
+        {highlight(row.text, row.spans)}
+      </td>
+    </tr>
+  );
+}
+
+function SplitRow({ left, right, current, anchor }: { left?: DiffRow; right?: DiffRow; current?: boolean; anchor?: number }) {
+  const side = (row: DiffRow | undefined, which: 'left' | 'right') =>
+    row ? (
+      <>
+        <td class={`diff-number diff-${row.type}`}>{which === 'left' ? row.left : row.right}</td>
+        <td class={`diff-text diff-${row.type}`}>
+          <span class="visually-hidden">{row.type === 'add' ? 'Added: ' : row.type === 'del' ? 'Removed: ' : ''}</span>
+          {highlight(row.text, row.spans)}
+        </td>
+      </>
+    ) : (
+      <>
+        <td class="diff-number diff-empty" />
+        <td class="diff-text diff-empty" />
+      </>
+    );
+  return (
+    <tr class={current ? 'is-current' : undefined} data-change={anchor}>
+      {side(left, 'left')}
+      {side(right, 'right')}
+    </tr>
+  );
+}
+
+function DiffView({ rows, layout = 'split', context, titles }: { rows: readonly DiffRow[]; layout?: 'split' | 'unified'; context?: number; titles?: readonly [string, string] }) {
+  const limited = rows.length > MAX_DIFF_ROWS ? rows.slice(0, MAX_DIFF_ROWS) : rows;
+  const blocks = useMemo(() => diffBlocks(limited, context), [limited, context]);
+  const changeCount = blocks.filter((block) => block.kind === 'change').length;
+  const [opened, setOpened] = useState<ReadonlySet<number>>(new Set());
+  const [current, setCurrent] = useState(-1);
+  const table = useRef<HTMLTableElement>(null);
+  useEffect(() => {
+    setOpened(new Set());
+    setCurrent(-1);
+  }, [rows]);
+
+  const go = (step: number) => {
+    if (changeCount === 0) return;
+    const next = current < 0 ? (step > 0 ? 0 : changeCount - 1) : (current + step + changeCount) % changeCount;
+    setCurrent(next);
+    requestAnimationFrame(() => table.current?.querySelector(`[data-change="${next}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+  };
+
+  const body: preact.JSX.Element[] = [];
+  for (const [blockIndex, block] of blocks.entries()) {
+    if (block.kind === 'gap' && !opened.has(block.id)) {
+      body.push(
+        <tr key={`gap${block.id}`} class="diff-gap">
+          <td colSpan={4}>
+            <button type="button" class="diff-expand" onClick={() => setOpened(new Set([...opened, block.id]))}>
+              Show {block.rows.length} unchanged line{block.rows.length === 1 ? '' : 's'}
+            </button>
+          </td>
+        </tr>,
+      );
+      continue;
+    }
+    const isCurrent = block.kind === 'change' && block.index === current;
+    if (layout === 'unified') {
+      for (const [offset, row] of block.rows.entries()) {
+        body.push(<UnifiedRow key={`${blockIndex}:${offset}`} row={row} current={isCurrent} anchor={block.kind === 'change' && offset === 0 ? block.index : undefined} />);
+      }
+      continue;
+    }
+    if (block.kind !== 'change') {
+      for (const [offset, row] of block.rows.entries()) body.push(<SplitRow key={`${blockIndex}:${offset}`} left={row} right={row} />);
+      continue;
+    }
+    const removed = block.rows.filter((row) => row.type === 'del');
+    const added = block.rows.filter((row) => row.type === 'add');
+    for (let offset = 0; offset < Math.max(removed.length, added.length); offset++) {
+      body.push(<SplitRow key={`${blockIndex}:${offset}`} left={removed[offset]} right={added[offset]} current={isCurrent} anchor={offset === 0 ? block.index : undefined} />);
+    }
+  }
+
+  return (
+    <div class={`diff diff-${layout}`} data-testid="diff">
+      <div class="diff-toolbar">
+        <span class="diff-count" aria-live="polite">
+          {changeCount === 0 ? 'No differences' : current < 0 ? `${changeCount} change${changeCount === 1 ? '' : 's'}` : `Change ${current + 1} of ${changeCount}`}
+        </span>
+        <button type="button" class="icon-button" title="Previous change" aria-label="Previous change" disabled={changeCount === 0} onClick={() => go(-1)}>
+          <Icon name="up" size={15} />
+        </button>
+        <button type="button" class="icon-button" title="Next change" aria-label="Next change" disabled={changeCount === 0} onClick={() => go(1)}>
+          <Icon name="down" size={15} />
+        </button>
+      </div>
+      <table ref={table}>
+        {layout === 'split' && (
+          <colgroup>
+            <col class="diff-col-number" />
+            <col />
+            <col class="diff-col-number" />
+            <col />
+          </colgroup>
+        )}
+        {layout === 'split' && titles && (
+          <thead>
+            <tr>
+              <th colSpan={2}>{titles[0]}</th>
+              <th colSpan={2}>{titles[1]}</th>
             </tr>
-          ))}
-        </tbody>
+          </thead>
+        )}
+        <tbody>{body}</tbody>
       </table>
-      {rows.length > shown.length && <p class="diff-more">{rows.length - shown.length} more lines are not shown. The patch contains everything.</p>}
+      {rows.length > limited.length && <p class="diff-more">{rows.length - limited.length} more lines are not shown. The patch contains everything.</p>}
     </div>
   );
 }
@@ -100,6 +251,6 @@ export function PreviewView({ preview, name }: { preview: PreviewData; name: str
     case 'html':
       return <HtmlPreview html={preview.html} />;
     case 'diff':
-      return <DiffView rows={preview.rows} />;
+      return <DiffView rows={preview.rows} layout={preview.layout} context={preview.context} titles={preview.titles} />;
   }
 }

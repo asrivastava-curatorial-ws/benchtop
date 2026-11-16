@@ -22,6 +22,9 @@ export default defineTextTool({
         { value: 'and', label: 'A AND B' },
         { value: 'or', label: 'A OR B' },
         { value: 'xor', label: 'A XOR B' },
+        { value: 'nand', label: 'A NAND B' },
+        { value: 'nor', label: 'A NOR B' },
+        { value: 'xnor', label: 'A XNOR B' },
         { value: 'not', label: 'NOT A' },
         { value: 'shl', label: 'A << B' },
         { value: 'shr', label: 'A >> B' },
@@ -86,6 +89,15 @@ export default defineTextTool({
         break;
       case 'xor':
         result = a ^ b;
+        break;
+      case 'nand':
+        result = ~(a & b) & mask;
+        break;
+      case 'nor':
+        result = ~(a | b) & mask;
+        break;
+      case 'xnor':
+        result = ~(a ^ b) & mask;
         break;
       case 'not':
         result = ~a & mask;

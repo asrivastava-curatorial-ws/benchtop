@@ -1,7 +1,9 @@
+import { blake2b, blake2s } from '@noble/hashes/blake2.js';
+import { blake3 } from '@noble/hashes/blake3.js';
 import { hmac } from '@noble/hashes/hmac.js';
-import { md5, sha1 } from '@noble/hashes/legacy.js';
-import { sha224, sha256, sha384, sha512 } from '@noble/hashes/sha2.js';
-import { sha3_256, sha3_512 } from '@noble/hashes/sha3.js';
+import { md5, ripemd160, sha1 } from '@noble/hashes/legacy.js';
+import { sha224, sha256, sha384, sha512, sha512_256 } from '@noble/hashes/sha2.js';
+import { keccak_256, keccak_512, sha3_224, sha3_256, sha3_384, sha3_512 } from '@noble/hashes/sha3.js';
 import { formatBytes, fromBase64, fromHex, toBase64, toHex, utf8Encode } from '../../lib/bytes';
 import { ToolError } from '../../lib/errors';
 import { defineTextTool, type Field, type Values } from '../types';
@@ -13,9 +15,73 @@ const ALGORITHMS = {
   sha256: { label: 'SHA-256', hash: sha256 },
   sha384: { label: 'SHA-384', hash: sha384 },
   sha512: { label: 'SHA-512', hash: sha512 },
+  'sha512-256': { label: 'SHA-512/256', hash: sha512_256 },
+  'sha3-224': { label: 'SHA3-224', hash: sha3_224 },
   'sha3-256': { label: 'SHA3-256', hash: sha3_256 },
+  'sha3-384': { label: 'SHA3-384', hash: sha3_384 },
   'sha3-512': { label: 'SHA3-512', hash: sha3_512 },
+  'keccak-256': { label: 'Keccak-256 (Ethereum)', hash: keccak_256 },
+  'keccak-512': { label: 'Keccak-512', hash: keccak_512 },
+  blake2b: { label: 'BLAKE2b-512', hash: blake2b },
+  blake2s: { label: 'BLAKE2s-256', hash: blake2s },
+  blake3: { label: 'BLAKE3', hash: blake3 },
+  ripemd160: { label: 'RIPEMD-160', hash: ripemd160 },
 } as const;
+
+/** Algorithms computed with hash-wasm (WebAssembly); these have no HMAC form here. */
+const EXTRA = {
+  md4: 'MD4',
+  ntlm: 'NTLM (Windows password hash)',
+  whirlpool: 'Whirlpool',
+  sm3: 'SM3',
+  xxhash32: 'xxHash32',
+  xxhash64: 'xxHash64',
+  xxhash3: 'XXH3-64',
+  xxhash128: 'XXH3-128',
+  crc32c: 'CRC-32C (Castagnoli)',
+  crc64: 'CRC-64 (ECMA)',
+  adler32: 'Adler-32',
+} as const;
+
+type ExtraId = keyof typeof EXTRA;
+
+async function extraDigest(id: ExtraId, data: Uint8Array): Promise<Uint8Array> {
+  const wasm = await import('hash-wasm');
+  const hex = await (async () => {
+    switch (id) {
+      case 'md4':
+        return wasm.md4(data);
+      case 'ntlm': {
+        const text = new TextDecoder().decode(data);
+        const utf16 = new Uint8Array(text.length * 2);
+        for (let i = 0; i < text.length; i++) {
+          utf16[i * 2] = text.charCodeAt(i) & 255;
+          utf16[i * 2 + 1] = text.charCodeAt(i) >> 8;
+        }
+        return wasm.md4(utf16);
+      }
+      case 'whirlpool':
+        return wasm.whirlpool(data);
+      case 'sm3':
+        return wasm.sm3(data);
+      case 'xxhash32':
+        return wasm.xxhash32(data);
+      case 'xxhash64':
+        return wasm.xxhash64(data);
+      case 'xxhash3':
+        return wasm.xxhash3(data);
+      case 'xxhash128':
+        return wasm.xxhash128(data);
+      case 'crc32c':
+        return wasm.crc32(data, 0x82f63b78);
+      case 'crc64':
+        return wasm.crc64(data);
+      default:
+        return wasm.adler32(data);
+    }
+  })();
+  return fromHex(hex);
+}
 
 type AlgorithmId = keyof typeof ALGORITHMS;
 
@@ -56,7 +122,12 @@ export default defineTextTool({
       key: 'algorithm',
       label: 'Algorithm',
       type: 'select',
-      choices: [...Object.entries(ALGORITHMS).map(([value, { label }]) => ({ value, label })), { value: 'crc32', label: 'CRC-32 (checksum)' }, { value: 'all', label: 'All of the above' }],
+      choices: [
+        ...Object.entries(ALGORITHMS).map(([value, { label }]) => ({ value, label })),
+        { value: 'crc32', label: 'CRC-32 (checksum)' },
+        ...Object.entries(EXTRA).map(([value, label]) => ({ value, label })),
+        { value: 'all', label: 'All of the above' },
+      ],
       default: 'sha256',
     },
     {
@@ -86,7 +157,7 @@ export default defineTextTool({
     { key: 'expected', label: 'Compare with', type: 'text', default: '', mono: true, wide: true, placeholder: 'expected checksum' },
   ],
   runOnEmpty: true,
-  run(input, o, ctx) {
+  async run(input, o, ctx) {
     const data = ctx.file ? ctx.file.bytes : utf8Encode(input);
     const key = o.key === '' ? null : parseKey(o.key, o.keyEncoding);
     const encode = (bytes: Uint8Array): string => (o.encoding === 'base64' ? toBase64(bytes) : toHex(bytes, { upper: o.encoding === 'HEX' }));
@@ -105,17 +176,27 @@ export default defineTextTool({
       const rows = (Object.keys(ALGORITHMS) as AlgorithmId[]).map((id) => {
         const value = digest(id);
         digests.push(value);
-        return `${(key ? `HMAC-${ALGORITHMS[id].label}` : ALGORITHMS[id].label).padEnd(key ? 14 : 9)} ${value}`;
+        const label = ALGORITHMS[id].label.replace(/ \(.*/, '');
+        return `${(key ? `HMAC-${label}` : label).padEnd(key ? 14 : 9)} ${value}`;
       });
       if (!key) {
         const value = checksum();
         digests.push(value);
         rows.push(`${'CRC-32'.padEnd(9)} ${value}`);
+        for (const id of Object.keys(EXTRA) as ExtraId[]) {
+          const extra = encode(await extraDigest(id, data));
+          digests.push(extra);
+          rows.push(`${EXTRA[id].replace(/ \(.*/, '').padEnd(9)} ${extra}`);
+        }
       }
       output = rows.join('\n');
     } else if (o.algorithm === 'crc32') {
       if (key) throw new ToolError('CRC-32 is a checksum, not a hash function, and cannot be used for HMAC.');
       output = checksum();
+      digests.push(output);
+    } else if (o.algorithm in EXTRA) {
+      if (key) throw new ToolError(`${EXTRA[o.algorithm as ExtraId]} has no HMAC form here; clear the key or pick a SHA or BLAKE algorithm.`);
+      output = encode(await extraDigest(o.algorithm as ExtraId, data));
       digests.push(output);
     } else {
       output = digest(o.algorithm as AlgorithmId);
@@ -130,12 +211,12 @@ export default defineTextTool({
       fields.push(match ? { label: 'Comparison', value: 'Match — the checksum is identical', tone: 'ok' } : { label: 'Comparison', value: 'MISMATCH — the checksum differs', tone: 'bad' });
     }
     const subject = ctx.file ? `${ctx.file.name} (${formatBytes(data.length)})` : formatBytes(data.length);
-    const weak = !key && (o.algorithm === 'md5' || o.algorithm === 'sha1');
+    const weak = !key && ['md5', 'sha1', 'md4', 'ntlm'].includes(o.algorithm);
     return {
       output,
       fields,
       info: `${key ? 'HMAC of' : 'Digest of'} ${subject}`,
-      warnings: weak ? ['MD5 and SHA-1 are broken for security purposes. Use them only for checksums or legacy systems.'] : undefined,
+      warnings: weak ? ['MD4, MD5, SHA-1 and NTLM are broken for security purposes. Use them only for checksums or legacy systems.'] : undefined,
     };
   },
 });

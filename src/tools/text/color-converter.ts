@@ -27,6 +27,27 @@ export function nearestTailwind(color: string): { name: string; hex: string; dis
   return best;
 }
 
+const channels = (hex: string): [number, number, number] => [1, 3, 5].map((index) => Number.parseInt(hex.slice(index, index + 2), 16) / 255) as [number, number, number];
+
+/** HSV (also called HSB), as used by design tools' colour pickers. */
+export function hsvOf(hex: string): string {
+  const [r, g, b] = channels(hex);
+  const max = Math.max(r, g, b);
+  const delta = max - Math.min(r, g, b);
+  let hue = 0;
+  if (delta > 0) hue = max === r ? ((g - b) / delta) % 6 : max === g ? (b - r) / delta + 2 : (r - g) / delta + 4;
+  return `hsv(${Math.round((hue * 60 + 360) % 360)}, ${Math.round(max === 0 ? 0 : (delta / max) * 100)}%, ${Math.round(max * 100)}%)`;
+}
+
+/** Device-independent CMYK from RGB; real print colours depend on the press profile. */
+export function cmykOf(hex: string): string {
+  const [r, g, b] = channels(hex);
+  const k = 1 - Math.max(r, g, b);
+  if (k >= 1) return 'cmyk(0%, 0%, 0%, 100%)';
+  const part = (value: number) => Math.round(((1 - value - k) / (1 - k)) * 100);
+  return `cmyk(${part(r)}%, ${part(g)}%, ${part(b)}%, ${Math.round(k * 100)}%)`;
+}
+
 export default defineTextTool({
   input: false,
   output: false,
@@ -43,6 +64,8 @@ export default defineTextTool({
       { label: 'HEX', value: formats.hex, mono: true, swatch: formats.hex },
       { label: 'RGB', value: formats.rgb, mono: true },
       { label: 'HSL', value: formats.hsl, mono: true },
+      { label: 'HSV / HSB', value: hsvOf(solid), mono: true },
+      { label: 'CMYK (naive)', value: cmykOf(solid), mono: true },
       { label: 'HWB', value: formats.hwb, mono: true },
       { label: 'OKLCH', value: formats.oklch, mono: true },
       { label: 'OKLab', value: formats.oklab, mono: true },

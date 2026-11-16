@@ -139,7 +139,16 @@ export type Preview =
   /** Sanitised with DOMPurify on the main thread before it touches the DOM. */
   | { readonly kind: 'html'; readonly html: string }
   | { readonly kind: 'image'; readonly bytes: Uint8Array; readonly mime: string }
-  | { readonly kind: 'diff'; readonly rows: readonly DiffRow[] };
+  | {
+      readonly kind: 'diff';
+      readonly rows: readonly DiffRow[];
+      /** Side by side (default) or one column. */
+      readonly layout?: 'split' | 'unified';
+      /** Collapse unchanged runs, keeping this many lines around each change. */
+      readonly context?: number;
+      /** Column titles for the two sides. */
+      readonly titles?: readonly [string, string];
+    };
 
 export interface TextResult {
   readonly output?: string;
@@ -173,6 +182,8 @@ export interface PaneSpec {
   readonly accept?: string;
   /** Allow opening any file as raw bytes instead of text. */
   readonly binary?: boolean;
+  /** Word, Excel, PowerPoint, OpenDocument and PDF files are converted to plain text when opened. */
+  readonly documents?: boolean;
 }
 
 export interface TextToolInit<T extends readonly OptionDef[]> {
@@ -300,7 +311,27 @@ export function defineCustomTool(component: ComponentType<{ toolId: string }>): 
 // biome-ignore lint/suspicious/noExplicitAny: the registry stores heterogeneous specs
 export type AnyToolSpec = TextToolSpec<any> | VisualToolSpec<any> | ImageToolSpec<any> | CustomToolSpec;
 
-export type CategoryId = 'format' | 'convert' | 'data' | 'encode' | 'crypto' | 'generate' | 'text' | 'network' | 'devops' | 'css' | 'color' | 'image' | 'misc';
+export type CategoryId =
+  | 'format'
+  | 'convert'
+  | 'data'
+  | 'encode'
+  | 'crypto'
+  | 'generate'
+  | 'text'
+  | 'network'
+  | 'online'
+  | 'devops'
+  | 'css'
+  | 'color'
+  | 'image'
+  | 'math'
+  | 'av'
+  | 'electrical'
+  | 'energy'
+  | 'mechanical'
+  | 'hvac'
+  | 'misc';
 
 export interface ToolEntry {
   readonly id: string;

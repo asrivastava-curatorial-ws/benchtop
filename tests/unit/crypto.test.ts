@@ -64,7 +64,13 @@ describe('Hash and HMAC', () => {
 
   it('lists every digest and verifies checksums', async () => {
     const all = await run(hash, 'abc', { algorithm: 'all' });
-    expect(all.output?.split('\n')).toHaveLength(9);
+    expect(all.output?.split('\n')).toHaveLength(29);
+    expect(all.output).toContain('BLAKE3    6437b3ac38465133ffb63b75273a8db548c558465d79db03fd359c6cd5bd9d85');
+    expect(all.output).toContain('RIPEMD-160 8eb208f7e05d987a9b044a8e98c6b087f15a0bfc');
+    expect(all.output).toContain('Keccak-256 4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45');
+    expect(all.output).toContain('MD4       a448017aaf21d8525fc10ae87aa6729d');
+    expect(all.output).toContain('CRC-32C   364b3fb7');
+    expect(all.output).toContain('Adler-32  024d0127');
     expect(all.output).toContain('MD5       900150983cd24fb0d6963f7d28e17f72');
     expect(all.output).toContain('CRC-32    352441c2');
     expect(field(await run(hash, 'abc', { expected: ' BA7816BF 8F01CFEA 414140DE 5DAE2223 B00361A3 96177A9C B410FF61 F20015AD ' }), 'Comparison')).toMatch(/^Match/);
