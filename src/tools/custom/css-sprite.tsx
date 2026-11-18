@@ -4,6 +4,7 @@ import { formatBytes } from '../../lib/bytes';
 import { errorMessage } from '../../lib/errors';
 import { layoutSprite, type SpriteDirection, spriteCss, spriteHtml } from '../../lib/sprite';
 import { pickFiles } from '../../platform';
+import { scrollRegion } from '../../ui/a11y';
 import { CodeOutput } from '../../ui/CodeOutput';
 import { context2d, createCanvas, loadImage } from '../../ui/canvas';
 import { ExportBar } from '../../ui/ExportBar';
@@ -198,7 +199,7 @@ function CssSprite({ toolId }: { toolId: string }) {
                   {built.layout.width} × {built.layout.height} px
                 </span>
               </div>
-              <div class="sprite-stage">
+              <div class="sprite-stage" {...scrollRegion('Sprite sheet')}>
                 <CanvasView canvas={built.sheet} checker />
               </div>
             </div>

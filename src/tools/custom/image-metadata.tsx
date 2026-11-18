@@ -1,5 +1,7 @@
 /** Shows the metadata hidden in photos (camera, dates, GPS location) and saves a copy without it. */
+
 import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useIncomingFiles } from '../../app/handoff';
 import { formatBytes } from '../../lib/bytes';
 import { errorMessage } from '../../lib/errors';
 import { imageKind, readWebpMetadata, stripMetadata } from '../../lib/metadata';
@@ -176,6 +178,7 @@ function ImageMetadata({ toolId }: { toolId: string }) {
       setFile({ name, bytes, url: URL.createObjectURL(new Blob([bytes as BlobPart], { type: picked.type || 'application/octet-stream' })) });
     });
   };
+  useIncomingFiles((files) => take(files[0]));
 
   const save = () =>
     attempt(async () => {

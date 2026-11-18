@@ -29,6 +29,14 @@ const PATHS = {
       <path d="M9 11h6M9 15h4" />
     </>
   ),
+  // An arrow leaving a tray: hand a result to another tool.
+  share: (
+    <>
+      <path d="M12 14.5V4" />
+      <path d="m8 7.5 4-3.5 4 3.5" />
+      <path d="M6.5 11H5.5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-1" />
+    </>
+  ),
   open: <path d="M3.5 18V6.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2.5h8a1.5 1.5 0 0 1 1.5 1.5V18a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 18z" />,
   clear: (
     <>
@@ -133,6 +141,27 @@ const PATHS = {
       <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
       <circle cx="8.5" cy="9.5" r="1.5" />
       <path d="m4 17 5-4.5 3.5 3 3-2.5 4.5 4" />
+    </>
+  ),
+  'rotate-left': (
+    <>
+      <path d="M4.5 9.5A8 8 0 1 1 5 15" />
+      <path d="M4.5 4.5v5h5" />
+    </>
+  ),
+  'rotate-right': (
+    <>
+      <path d="M19.5 9.5A8 8 0 1 0 19 15" />
+      <path d="M19.5 4.5v5h-5" />
+    </>
+  ),
+  left: <path d="m14.5 6-6 6 6 6" />,
+  right: <path d="m9.5 6 6 6-6 6" />,
+  trash: (
+    <>
+      <path d="M4.5 7h15" />
+      <path d="M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2" />
+      <path d="m6.5 7 1 12.5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5l1-12.5" />
     </>
   ),
 } as const;

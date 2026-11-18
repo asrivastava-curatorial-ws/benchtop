@@ -1,5 +1,8 @@
 /** Keyboard-driven tool switcher (Ctrl/Cmd + K). */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { type CalculatorHit, openCalculator, searchCalculators } from '../calc/launch';
+import { CALC_CATEGORIES } from '../calc/types';
+import { type OperationHit, openRecipeOperation, searchOperations } from '../recipe/launch';
 import { CATEGORIES, findTool, searchTools } from '../tools/registry';
 import type { ToolEntry } from '../tools/types';
 import { Icon } from '../ui/icons';
@@ -7,6 +10,10 @@ import { navigate, toolHref } from './router';
 import { getSettings } from './store';
 
 const CATEGORY_NAMES = new Map(CATEGORIES.map((category) => [category.id, category.name]));
+const CALC_NAMES = new Map<string, string>(CALC_CATEGORIES.map((category) => [category.id, category.name]));
+
+const hitKey = (hit: { readonly id: string } & ({ readonly operation: true } | { readonly calculator: true } | object)) =>
+  'operation' in hit ? `op-${hit.id}` : 'calculator' in hit ? `calc-${hit.id}` : hit.id;
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('');
@@ -14,8 +21,12 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
 
-  const results = useMemo<ToolEntry[]>(() => {
-    if (query.trim() !== '') return searchTools(query).slice(0, 50);
+  type Hit = ToolEntry | (OperationHit & { readonly operation: true }) | (CalculatorHit & { readonly calculator: true });
+  const results = useMemo<Hit[]>(() => {
+    if (query.trim() !== '') {
+      const tools: Hit[] = searchTools(query).slice(0, 50);
+      return [...tools, ...searchCalculators(query, 8).map((calc) => ({ ...calc, calculator: true as const })), ...searchOperations(query, 8).map((op) => ({ ...op, operation: true as const }))];
+    }
     // With no query, offer what the user is most likely to want: favourites, then recent tools.
     const settings = getSettings();
     const quick = [...settings.favorites, ...settings.recents].map(findTool).filter((tool): tool is ToolEntry => tool !== undefined);
@@ -32,9 +43,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
   }, [index, results]);
 
-  const open = (tool: ToolEntry | undefined) => {
-    if (!tool) return;
-    navigate(toolHref(tool.id));
+  // A link copied from a tool (a calculator with its values) opens that tool.
+  const link = /#\/tool\/[a-z0-9-]+(?:\?[A-Za-z0-9\-_=&.~%+]*)?/.exec(query)?.[0] ?? null;
+
+  const open = (hit: Hit | undefined) => {
+    if (!hit) return;
+    if ('operation' in hit) openRecipeOperation(hit.id);
+    else if ('calculator' in hit) openCalculator(hit.id);
+    else navigate(toolHref(hit.id));
     onClose();
   };
 
@@ -49,7 +65,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             role="combobox"
             aria-expanded="true"
             aria-controls="palette-results"
-            aria-activedescendant={results[index] ? `palette-${results[index].id}` : undefined}
+            aria-activedescendant={results[index] ? `palette-${hitKey(results[index])}` : undefined}
             aria-autocomplete="list"
             placeholder="Type a tool name, format or task"
             value={query}
@@ -69,7 +85,10 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
                 setIndex((value) => Math.max(0, value - 1));
               } else if (event.key === 'Enter') {
                 event.preventDefault();
-                open(results[index]);
+                if (link) {
+                  navigate(link);
+                  onClose();
+                } else open(results[index]);
               } else if (event.key === 'Escape') {
                 event.preventDefault();
                 onClose();
@@ -79,21 +98,28 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           <kbd>Esc</kbd>
         </div>
         <ul ref={list} id="palette-results" class="palette-results" role="listbox" aria-label="Tools">
-          {results.length === 0 && <li class="palette-empty">No tool matches "{query}". Try a format name such as "json", "base64" or "png".</li>}
-          {results.map((tool, position) => (
+          {link && (
+            <li class="palette-empty" data-testid="palette-link">
+              Press Enter to open this link in its tool.
+            </li>
+          )}
+          {!link && results.length === 0 && <li class="palette-empty">No tool matches "{query}". Try a format name such as "json", "base64" or "png".</li>}
+          {results.map((hit, position) => (
             <li
-              key={tool.id}
-              id={`palette-${tool.id}`}
+              key={hitKey(hit)}
+              id={`palette-${hitKey(hit)}`}
               role="option"
               tabIndex={-1}
               aria-selected={position === index}
               class={position === index ? 'is-active' : ''}
               onMouseMove={() => setIndex(position)}
-              onClick={() => open(tool)}
+              onClick={() => open(hit)}
             >
-              <span class="palette-name">{tool.name}</span>
-              <span class="palette-description">{tool.description}</span>
-              <span class="palette-category">{CATEGORY_NAMES.get(tool.category)}</span>
+              <span class="palette-name">{hit.name}</span>
+              <span class="palette-description">
+                {'operation' in hit ? `Recipe operation in ${hit.category}` : 'calculator' in hit ? `Calculator in ${CALC_NAMES.get(hit.category) ?? hit.category}` : hit.description}
+              </span>
+              <span class="palette-category">{'operation' in hit ? 'Recipe' : 'calculator' in hit ? 'Calculator' : CATEGORY_NAMES.get(hit.category)}</span>
             </li>
           ))}
         </ul>

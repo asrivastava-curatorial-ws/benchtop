@@ -167,7 +167,7 @@ export default defineVisualTool({
           ))}
         </div>
       ),
-      css: `.pv-flex { width: 100%; min-height: ${vertical ? 420 : 260}px; padding: 12px; border: 2px dashed var(--line-strong); border-radius: 6px; background: var(--panel); } .pv-flex-item { min-width: 48px; min-height: 48px; padding: 8px 12px; display: grid; place-content: center; gap: 2px; text-align: center; border-radius: 4px; background: var(--accent); color: #fff; font: 600 15px/1.2 var(--font-ui); } .pv-flex-item:nth-child(3n+2) { background: var(--brass); padding-block: 20px; } .pv-flex-item:nth-child(3n) { background: #475569; } .pv-flex-item small { font: 400 10px/1.2 var(--font-mono); opacity: .9; }`,
+      css: `.pv-flex { width: 100%; min-height: ${vertical ? 420 : 260}px; padding: 12px; border: 2px dashed var(--line-strong); border-radius: 6px; background: var(--panel); } .pv-flex-item { min-width: 48px; min-height: 48px; padding: 8px 12px; display: grid; place-content: center; gap: 2px; text-align: center; border-radius: 4px; background: var(--accent); color: var(--on-accent); font: 600 15px/1.2 var(--font-ui); } .pv-flex-item:nth-child(3n+2) { background: var(--brass); color: #1d1400; padding-block: 20px; } .pv-flex-item:nth-child(3n) { background: #475569; color: #fff; } .pv-flex-item small { font: 400 10px/1.2 var(--font-mono); }`,
       outputs: [
         css(`${rule('.container', container)}${itemRules ? `\n${itemRules}` : ''}`),
         html(markup),

@@ -2,7 +2,7 @@
 
 <!-- Generated from src/tools/registry.ts by tests/unit/docs.test.ts. Do not edit by hand. -->
 
-Benchtop has 242 tools. All of them work without a network connection except the 10 in Online checks, which contact only the hosts you enter, when you press Check, and only in the desktop app.
+Benchtop has 299 tools. All of them work without a network connection except the 10 in Online checks, which contact only the hosts you enter, when you press Check, and only in the desktop app. The AI tools download their models once, when you first choose one (or import them from a folder), and then work offline too.
 
 ## Format and minify
 
@@ -101,6 +101,7 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | TOTP Codes (2FA) | Show and check two-factor codes for a secret, and set up authenticator apps with a QR code. |  |
 | Certificate Decoder | Read X.509 certificates, signing requests and key files: names, validity, SANs, extensions and fingerprints. |  |
 | SSH Key Generator | Generate Ed25519, ECDSA and RSA key pairs in OpenSSH and PEM formats, with fingerprints. |  |
+| Certificate Maker | Make self-signed TLS certificates and CAs with alternative names, signing requests (CSR), and convert between PEM, DER and PFX. | online CSR and certificate generators |
 | Password Strength | Estimate how long a password would survive online and offline attacks, and why (zxcvbn). | Password strength analyser |
 | Password Hashing | Hash and verify passwords with Argon2id, bcrypt, scrypt or PBKDF2. | Bcrypt, Argon2 hash |
 | Text Encryption (CryptoJS) | Encrypt and decrypt text with a passphrase using AES, Triple DES, Rabbit or RC4, compatible with CryptoJS and OpenSSL. | Encrypt / decrypt text |
@@ -162,6 +163,7 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | User-Agent Parser | Identify the browser, engine, operating system and device type in a User-Agent string. |  |
 | Security Headers | Build a Content-Security-Policy, HSTS and other security headers for nginx, Apache, Caddy, Express or Netlify. |  |
 | Web Server Config | Generate nginx, Apache or Caddy configuration for a static site, a single-page app or a reverse proxy. |  |
+| WireGuard Config Generator | Make a WireGuard server and client configurations with fresh keys, preshared keys, NAT rules and QR codes for phones. | WireGuard config generators |
 | Link Unwrapper | Recover the real address behind Outlook Safe Links, Proofpoint, Google, Facebook and other redirects, and strip tracking parameters. | Outlook Safelink decoder, Redirect link decoder |
 | IP Address Converter | IPv4 and IPv6 in decimal, hex, binary and mapped forms; IP ranges to CIDR blocks; random IPv6 ULA prefixes. | IPv4 address converter, IPv4 range expander, IPv6 ULA generator |
 | MAC Address Lookup | Find the manufacturer of a MAC address from the bundled IEEE registry, and generate random or prefixed addresses. | MAC address lookup, MAC address generator |
@@ -236,6 +238,7 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | --- | --- | --- |
 | Image Converter | Convert and compress between PNG, JPEG, WebP and AVIF. | AVIF Converter, PNG to WebP Converter, Image Compress |
 | Image Resize | Resize by pixels or percentage, keeping the aspect ratio if you want. | Image Resize |
+| Image Annotator | Mark up screenshots and photos: arrows, boxes, text, numbered steps, highlights, and blur or pixelation for private details. Paste with Ctrl+V. | Snagit and Greenshot editors, online screenshot annotators |
 | Image Crop | Crop freely or to a fixed aspect ratio. | Image Crop |
 | Image Rotate | Rotate by any angle and flip horizontally or vertically. | Image Rotate |
 | Image Filter | Adjust brightness, contrast, saturation, blur and more, or go greyscale. | Image Filter, Image Grayscale |
@@ -249,6 +252,68 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | Photo Metadata (EXIF) | See the camera, date and GPS location hidden in photos, and save a copy without them. |  |
 | QR Code Reader | Read QR codes from screenshots and photos, and see what Wi-Fi, contact or link details they hold. |  |
 | CSS Sprite Generator | Combine icons into one sprite sheet and get the CSS class for each, at 1× or 2×. |  |
+| Image Watermark | Add a text watermark in a corner, the centre or repeated across the picture, with opacity and angle. | SnapOtter Watermark |
+| Meme and Caption Maker | Put top and bottom text on a picture, outlined on the picture or in caption bars. | SnapOtter Meme generator |
+| Screenshot Beautifier | Set a screenshot in an app or browser window on a gradient, with rounded corners and a shadow, for slides and posts. | SnapOtter Screenshot beautifier |
+| Passport and ID Photo | Crop a portrait to 35 × 45 mm, 2 × 2 in and other sizes with head guides, and make a print sheet of copies. | SnapOtter Passport photo |
+| Image to SVG (Trace) | Trace logos, icons and drawings into scalable SVG shapes, with presets for logos, artwork and line art. | SnapOtter Vectorize |
+| GIF Maker | Make an animated GIF from pictures, with frame timing, size, colours and back-and-forth play. | SnapOtter GIF maker |
+| Duplicate Picture Finder | Find identical and look-alike pictures among hundreds of files with a perceptual hash, and save a report. | SnapOtter Duplicate finder |
+
+## AI image and speech
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Background Remover | Cut out the subject of a photo, or put it on a colour or a blurred background. AI model on this computer. | SnapOtter Background Remover |
+| Image Upscaler | Enlarge pictures 2×, 3× or 4× with Real-ESRGAN, recovering detail instead of blurring. | SnapOtter Upscaler |
+| Face Blur | Find faces and blur, pixelate or cover them; remove boxes or draw your own before saving. | SnapOtter Face Blur |
+| Object Eraser | Paint over people, wires or text in a photo and fill the gap from the surroundings. | SnapOtter Object Eraser |
+| Text Recognition (OCR) | Read English and Hindi text from pictures and scanned PDFs, and make scans searchable. Works offline, also in a browser. | SnapOtter OCR, Optical Character Recognition |
+| Transcription and Subtitles | Turn speech in English, Hindi and 97 other languages into text, SRT or WebVTT subtitles with Whisper, on this computer; can translate into English. | SnapOtter Transcription |
+| AI Models | Download, import or remove the AI engine and models the AI tools use, and see their licences and sizes. |  |
+
+## PDF
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Merge and Organise PDF | Merge PDFs, and reorder, rotate or delete pages by dragging page pictures. Runs in the app; nothing is uploaded. | SnapOtter PDF merge, SnapOtter PDF organise |
+| Split PDF | Split a PDF into page ranges or single pages, keep chosen pages, or remove some. | SnapOtter PDF split |
+| PDF Watermark and Page Numbers | Add a watermark, page numbers ("Page 3 of 12") or a header or footer line, with a live preview. | SnapOtter PDF watermark, SnapOtter PDF page numbers |
+| PDF Properties | See page sizes, version and form fields, and edit or remove the title, author, keywords and dates. | SnapOtter PDF metadata |
+| Pictures and PDF | Turn pictures into a PDF (A4, Letter or each picture’s size), or save PDF pages as PNG, JPEG or WebP. | SnapOtter Images to PDF, SnapOtter PDF to images |
+| PDF Passwords and Compression | Add or remove PDF passwords (AES-256), optimise losslessly, or shrink pictures. Uses qpdf and Ghostscript. | SnapOtter PDF protect, SnapOtter PDF unlock, SnapOtter PDF compress |
+| PDF Form Filler | Fill in PDF forms, or write text, ticks and dates anywhere on scanned and printed-style forms, in English or Hindi; can lock the answers. | Adobe Fill & Sign (filling), Smallpdf and iLovePDF form filling |
+| PDF Signer | Sign PDFs with a drawn, typed or scanned signature, and digitally with a .p12 or .pfx certificate (or a self-signed one made here). | Adobe Fill & Sign (signing), DocuSign-style self signing, Smallpdf eSign |
+
+## Diagrams and viewers
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Mermaid Diagram Editor | Write flowcharts, sequence, class, state, Gantt, ER, mind map and timeline diagrams as text and see them drawn; save SVG or PNG. | Mermaid Live Editor |
+| Graphviz (DOT) Viewer | Draw Graphviz DOT graphs with the real Graphviz layout engine, live as you type; save SVG or PNG. | GraphvizOnline, Edotor |
+| SQL to ER Diagram | Paste CREATE TABLE statements and get an entity-relationship diagram with keys and relationships, or the Mermaid code for it. | dbdiagram.io (from SQL), drawSQL |
+| OpenAPI Viewer | Read OpenAPI 3 and Swagger 2 documents as a browsable API reference with parameters, bodies, responses and schemas; export Markdown. | Swagger Editor (viewing), Redocly preview |
+| HAR Viewer | Open HTTP Archive files from browser developer tools: requests, timings waterfall, headers and bodies, with filters. | Google HAR Analyzer |
+| Hex Viewer | Look inside any file byte by byte: offsets, hex and text, search for text or bytes, and read values as integers, floats and dates. | HexEd.it (viewing) |
+| SQLite Browser | Open SQLite databases or load CSV files as tables, run any SQL, and export results as CSV or JSON. | DB Browser for SQLite (browsing), online CSV SQL tools |
+| 3D Model and G-code Viewer | Turn and zoom STL, OBJ, PLY, glTF and GLB models, and preview 3D-printer and CNC G-code toolpaths coloured by height. | viewstl.com, NC Viewer |
+| Code Screenshot | Turn code into a clean picture with syntax colours, a window frame and a background, for slides and posts. | Carbon, ray.so |
+
+## Files, video and audio
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| File Converter | Convert video, audio, pictures, drawings, Office documents, Markdown and e-books in batches with the programs installed on this computer. | ConvertX |
+| Video Toolkit | Compress, trim, resize, crop, rotate, speed up, join, mute, make GIFs, save frames, add logos and subtitles. Uses FFmpeg. | SnapOtter Video tools |
+| Audio Toolkit | Convert, trim, join, even out loudness, fade, remove silence and noise, change speed, and draw waveforms. Uses FFmpeg. | SnapOtter Audio tools |
+| ZIP and Archives | Open ZIP (also with a password), TAR and .gz files, preview and save what is inside, or make a ZIP. | SnapOtter ZIP tools |
+| CSV Merge and Split | Merge CSV files by column name, with an optional source column and duplicate removal, or split one by rows or by a column. | SnapOtter CSV tools |
+
+## Recipe (CyberChef)
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Recipe | Chain CyberChef’s 505 operations to decode, decrypt, decompress, hash, chart and analyse data, with Magic to work out the steps. Loads CyberChef recipes. | CyberChef |
 
 ## Math, units and time
 
@@ -263,6 +328,26 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | Date Calculator | Days, weeks, months and working days between dates, or a date plus or minus days, workdays, months or years. | Date calculator, Days between dates |
 | Time Sheet Calculator | Total hours worked from start and end times with breaks, overtime and pay. | Time sheet calculator |
 | Coordinates Converter | Convert latitude and longitude between decimal, DMS, UTM, geohash and Plus Codes, and measure distance and bearing. | Coordinates converter |
+| Time Zone Planner | See one time in many places and find meeting hours that fall in everyone’s working day, with daylight saving handled. | timeanddate.com meeting planner, World Time Buddy |
+
+## Calculator library
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Finance Calculators | Loan EMI, SIP, compound interest, recurring deposits, CAGR, ROI, GST, margins, break-even, inflation and more. | Omni Calculator Finance |
+| Health Calculators | BMI, BMR and daily calories, body fat, ideal weight, heart-rate zones, water and protein intake. | Omni Calculator Health |
+| Sports Calculators | Running pace and race prediction, one-rep max, VO₂ max, cycling, swimming, hiking and cricket run rates. | Omni Calculator Sports |
+| Physics Calculators | Motion, forces, energy, momentum, pressure, Ohm’s law, projectiles, waves, gravity and heat. | Omni Calculator Physics |
+| Chemistry Calculators | Molarity, dilution, gas laws, pH and buffers, yield, half-life, ppm and reaction rates. | Omni Calculator Chemistry |
+| Math Calculators | Triangles, circles and solids, quadratic equations, proportions, logarithms, slopes and polygons. | Omni Calculator Math |
+| Statistics Calculators | Z-scores, confidence intervals, sample size, margin of error, combinations and probabilities. | Omni Calculator Statistics |
+| Construction Calculators | Concrete, bricks, tiles, paint, flooring cost, roof pitch, gravel, timber, tanks and stairs. | Omni Calculator Construction |
+| Conversion Calculators | Fuel economy, pace and speed, temperature, cups to grams, screen size and shoe sizes. | Omni Calculator Conversion |
+| Everyday Life Calculators | Appliance electricity cost, trip fuel cost, unit prices, marks and CGPA, gas cylinders and battery life. | Omni Calculator Everyday Life |
+| Food Calculators | Recipe scaling, calories from macros, pizza value, coffee and rice ratios, baking pans and brines. | Omni Calculator Food |
+| Biology Calculators | Growth and generation time, Hardy–Weinberg, DNA concentration, Beer–Lambert, centrifuge g-force and more. | Omni Calculator Biology |
+| Ecology and Weather Calculators | Car and electricity CO₂, rainwater harvesting, solar output, dew point, heat index and wind chill. | Omni Calculator Ecology and Weather |
+| Other Calculators | Download time, video size, print size, aspect ratio, typing and reading speed, storage and inverter backup. | Omni Calculator Other |
 
 ## Projection and AV
 
@@ -292,6 +377,8 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | Ohm's Law Calculator | Enter any two of voltage, current, resistance and power to get the other two. |  |
 | EV Charging Calculator | Charging time and cost for a vehicle battery, and the supply needed for a group of AC or DC chargers. |  |
 | Data Centre Power | IT load, UPS modules with redundancy, cooling and facility power from rack density and PUE, with yearly energy cost. |  |
+| Resistor and Capacitor Codes | Resistor colour bands both ways, SMD resistor codes (including EIA-96), capacitor markings and the nearest E-series values. | Digi-Key and Mouser code calculators |
+| Serial Monitor | Talk to Arduino, ESP32, GPS and other devices on a serial (COM) port as text or hex, with timestamps, DTR and RTS. | Arduino Serial Monitor, online Web Serial terminals |
 
 ## Batteries, UPS and solar
 
@@ -348,16 +435,19 @@ Benchtop has 242 tools. All of them work without a network connection except the
 
 ## Coverage of the original web tools
 
-264 web tools map onto Benchtop tools:
+338 web tools map onto Benchtop tools:
 
 | Web tool | Benchtop tool |
 | --- | --- |
 | 3-Phase Power Calculator | Power Converter (kW, kVA, Amps, hp) |
 | Add line numbers | Text Cleaner |
+| Adobe Fill & Sign (filling) | PDF Form Filler |
+| Adobe Fill & Sign (signing) | PDF Signer |
 | AES encryption and decryption | AES Encryption |
 | Android Button Maker | Android Button Maker |
 | Android Pixel Calculator | Android Pixel Calculator |
 | Animation | Animation |
+| Arduino Serial Monitor | Serial Monitor |
 | Argon2 hash | Password Hashing |
 | ASCII art text generator | ASCII Art Text |
 | ASCII to Text Converter | ASCII ↔ Text |
@@ -390,6 +480,7 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | Box Shadow | Box Shadow |
 | Broken link checker | Broken Link Checker |
 | Cable Size Calculator | Cable Size and Voltage Drop |
+| Carbon | Code Screenshot |
 | Case Converter | Case Converter |
 | Chart maker | Chart Maker |
 | Chronometer | Stopwatch and Timer |
@@ -401,6 +492,7 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | Color scheme generator | Colour Harmonies |
 | Color Shades Generator | Colour Shades |
 | Color Swapper | Colour Replacer |
+| ConvertX | File Converter |
 | Coordinates converter | Coordinates Converter |
 | Credit card validator | Card Number Validator |
 | Cron Expression Generator | Cron Expression |
@@ -425,19 +517,26 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | cURL to Code Converter | cURL to Code |
 | cURL to Fetch Converter | cURL to Code |
 | Customer Acquisition Cost (CAC) Calculator | CAC Calculator |
+| CyberChef | Recipe |
 | Date calculator | Date Calculator |
 | Days between dates | Date Calculator |
+| DB Browser for SQLite (browsing) | SQLite Browser |
+| dbdiagram.io (from SQL) | SQL to ER Diagram |
 | Device information | Device Information |
 | Diff Checker | Diff Checker |
+| Digi-Key and Mouser code calculators | Resistor and Capacitor Codes |
 | DKIM checker | Email DNS Check |
 | DMARC checker | Email DNS Check |
 | DNS lookup | DNS Lookup |
 | DNS propagation checker | DNS Propagation |
 | DNSSEC check | DNS Lookup |
+| DocuSign-style self signing | PDF Signer |
 | Domain age checker | Domain WHOIS and Expiry |
 | Domain expiry checker | Domain WHOIS and Expiry |
 | Domain to IP | IP Lookup |
+| drawSQL | SQL to ER Diagram |
 | Duplicate Line Remover | Duplicate Line Remover |
+| Edotor | Graphviz (DOT) Viewer |
 | Email extractor | Extract from Text |
 | Email header analyzer | Email Header Analyzer |
 | Email normalizer | Email Normalizer |
@@ -450,13 +549,16 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | Favicon Generator | Favicon and ICO |
 | Flexbox layout Generator | Flexbox |
 | Glassmorphism Generator | Glassmorphism |
+| Google HAR Analyzer | HAR Viewer |
 | Gradient Generator | Gradient Generator |
 | Gradient Image | Gradient Generator |
+| GraphvizOnline | Graphviz (DOT) Viewer |
 | Grid layout Generator | Grid |
 | Gzip compress / decompress | Gzip Compress |
 | Hash text | Hash and HMAC |
 | Hex Decoder | Hex ↔ Text |
 | Hex to Decimal Converter | Number Base Converter |
+| HexEd.it (viewing) | Hex Viewer |
 | HTML Encoder / Decoder | HTML Entities |
 | HTML Formatter | HTML Formatter |
 | HTML to BBCode | BBCode ↔ HTML |
@@ -513,6 +615,7 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | Math evaluator | Math Evaluator |
 | Matrix Transform | Transform |
 | MD5 hash generator | Hash and HMAC |
+| Mermaid Live Editor | Mermaid Diagram Editor |
 | Mesh Gradient Generator | Mesh Gradient |
 | Minify JS | JavaScript Minifier |
 | Mock data generator | Mock Data Generator |
@@ -523,14 +626,34 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | MX lookup | DNS Lookup |
 | MX lookup | Email DNS Check |
 | Nano ID generator | UUID and ID Generator |
+| NC Viewer | 3D Model and G-code Viewer |
 | NS lookup | DNS Lookup |
 | NTLM hash | Hash and HMAC |
 | Number to Words Converter | Number to Words |
 | Numeronym generator | Numeronym Generator |
 | OKLCH Converter | Colour Converter |
+| Omni Calculator Biology | Biology Calculators |
+| Omni Calculator Chemistry | Chemistry Calculators |
+| Omni Calculator Construction | Construction Calculators |
+| Omni Calculator Conversion | Conversion Calculators |
+| Omni Calculator Ecology and Weather | Ecology and Weather Calculators |
+| Omni Calculator Everyday Life | Everyday Life Calculators |
+| Omni Calculator Finance | Finance Calculators |
+| Omni Calculator Food | Food Calculators |
+| Omni Calculator Health | Health Calculators |
+| Omni Calculator Math | Math Calculators |
+| Omni Calculator Other | Other Calculators |
+| Omni Calculator Physics | Physics Calculators |
+| Omni Calculator Sports | Sports Calculators |
+| Omni Calculator Statistics | Statistics Calculators |
+| online CSR and certificate generators | Certificate Maker |
+| online CSV SQL tools | SQLite Browser |
 | Online REST client | HTTP Request |
+| online screenshot annotators | Image Annotator |
+| online Web Serial terminals | Serial Monitor |
 | Open graph meta generator | Meta Tag Generator |
 | Open port checker | Port Checker |
+| Optical Character Recognition | Text Recognition (OCR) |
 | Outlook Safelink decoder | Link Unwrapper |
 | Password strength analyser | Password Strength |
 | PDF compare | Diff Checker |
@@ -548,9 +671,11 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | Random number generator | Random Generator |
 | Random port generator | Random Generator |
 | Random Word Generator | Random Words |
+| ray.so | Code Screenshot |
 | RDAP lookup | Domain WHOIS and Expiry |
 | Redirect checker | Website Status |
 | Redirect link decoder | Link Unwrapper |
+| Redocly preview | OpenAPI Viewer |
 | Regex cheatsheet | Regex Cheat Sheet and Code |
 | Regex code generator | Regex Cheat Sheet and Code |
 | Remove extra spaces | Text Cleaner |
@@ -563,6 +688,37 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | SHA-1 Hash Generator | Hash and HMAC |
 | SHA-512 Hash Generator | Hash and HMAC |
 | Shadcn Theme Generator | shadcn/ui Theme |
+| Smallpdf and iLovePDF form filling | PDF Form Filler |
+| Smallpdf eSign | PDF Signer |
+| Snagit and Greenshot editors | Image Annotator |
+| SnapOtter Audio tools | Audio Toolkit |
+| SnapOtter Background Remover | Background Remover |
+| SnapOtter CSV tools | CSV Merge and Split |
+| SnapOtter Duplicate finder | Duplicate Picture Finder |
+| SnapOtter Face Blur | Face Blur |
+| SnapOtter GIF maker | GIF Maker |
+| SnapOtter Images to PDF | Pictures and PDF |
+| SnapOtter Meme generator | Meme and Caption Maker |
+| SnapOtter Object Eraser | Object Eraser |
+| SnapOtter OCR | Text Recognition (OCR) |
+| SnapOtter Passport photo | Passport and ID Photo |
+| SnapOtter PDF compress | PDF Passwords and Compression |
+| SnapOtter PDF merge | Merge and Organise PDF |
+| SnapOtter PDF metadata | PDF Properties |
+| SnapOtter PDF organise | Merge and Organise PDF |
+| SnapOtter PDF page numbers | PDF Watermark and Page Numbers |
+| SnapOtter PDF protect | PDF Passwords and Compression |
+| SnapOtter PDF split | Split PDF |
+| SnapOtter PDF to images | Pictures and PDF |
+| SnapOtter PDF unlock | PDF Passwords and Compression |
+| SnapOtter PDF watermark | PDF Watermark and Page Numbers |
+| SnapOtter Screenshot beautifier | Screenshot Beautifier |
+| SnapOtter Transcription | Transcription and Subtitles |
+| SnapOtter Upscaler | Image Upscaler |
+| SnapOtter Vectorize | Image to SVG (Trace) |
+| SnapOtter Video tools | Video Toolkit |
+| SnapOtter Watermark | Image Watermark |
+| SnapOtter ZIP tools | ZIP and Archives |
 | SPF checker | Email DNS Check |
 | SSL checker | SSL Certificate Checker |
 | SSL expiry checker | SSL Certificate Checker |
@@ -576,6 +732,7 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | SVG to PNG Converter | SVG to PNG |
 | SVG to React Component Converter | SVG to React |
 | SVG Viewer | SVG Viewer |
+| Swagger Editor (viewing) | OpenAPI Viewer |
 | Syntax highlighter | Syntax Highlighter |
 | Table converter | Table Converter |
 | Tailwind Colors | Tailwind Colours |
@@ -586,6 +743,7 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | Text Shadow | Text Shadow |
 | Text to NATO alphabet | NATO Phonetic Alphabet |
 | Time sheet calculator | Time Sheet Calculator |
+| timeanddate.com meeting planner | Time Zone Planner |
 | TLS checker | SSL Certificate Checker |
 | TOML to YAML | Data Format Converter |
 | Transformer Calculator | Transformer Size |
@@ -601,13 +759,16 @@ Benchtop has 242 tools. All of them work without a network connection except the
 | URL extractor | Extract from Text |
 | UTF-8 Decoder | UTF-8 Bytes |
 | UUID & GUID Generator | UUID and ID Generator |
+| viewstl.com | 3D Model and G-code Viewer |
 | Wave Generator | Wave Generator |
 | Website down checker | Website Status |
 | What is my IP | IP Lookup |
 | WHOIS lookup | Domain WHOIS and Expiry |
 | WiFi QR code generator | QR Code Generator |
+| WireGuard config generators | WireGuard Config Generator |
 | Word compare | Diff Checker |
 | Word to text | Document to Text |
+| World Time Buddy | Time Zone Planner |
 | XML diff | Diff Checker |
 | XML Formatter | XML Formatter |
 | XML to JSON | Data Format Converter |
@@ -626,8 +787,12 @@ Benchtop has 242 tools. All of them work without a network connection except the
 - **Website speed test and blocklist checks (DNS Checker)**: They depend on measurement servers or blocklist operators that restrict automated queries.
 - **Camera and microphone recorders (IT Tools)**: Benchtop asks for no camera or microphone access; your system’s own recorder does this better.
 - **Code formatters for C, Go and Python (freecodeformat)**: Each would add a compiler-sized WebAssembly download; use the language’s own formatter (clang-format, gofmt, ruff format).
-- **Games, astrology, health and sports calculators (CalcPanel)**: Outside the scope of a developer and engineering toolbox.
+- **Games and astrology calculators (CalcPanel)**: Outside the scope of a developer and engineering toolbox. Health and sports calculators are in the calculator library.
+- **Medicine dose calculators (Omni Calculator: drug dosage, IV drip rate, insulin, paediatric doses)**: A wrong dose can cause serious harm, and safe dosing depends on the product label and a clinician’s judgement, so these are deliberately left out.
+- **Omni Calculator: most of its 3,700 calculators**: The library covers about 170 of the most used ones across Omni’s 14 categories, each solvable for any value; niche ones can be built in the Math Evaluator.
+- **Omni Calculator: currency and live-price calculators**: They need exchange rates and prices from the internet; Benchtop’s calculators work offline.
 - **Pantone colour lookup**: Pantone colour data is proprietary; Colour Converter covers RGB, HSL, HSV, CMYK and Lab.
+- **CyberChef: Automated Validation Test Op**: An internal helper of CyberChef’s own test suite; every other CyberChef operation is in the Recipe tool.
 
 ### Differences from the web versions
 

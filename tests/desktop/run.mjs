@@ -11,8 +11,9 @@
  * The binary defaults to src-tauri/target/release/benchtop; set BENCHTOP_BINARY to override.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
+import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Builder, By, until } from 'selenium-webdriver';
@@ -207,6 +208,163 @@ try {
     const response = JSON.parse(outcome.startsWith('error') ? '{}' : outcome);
     const state = (port) => (response.results ?? []).find((result) => result.port === port)?.state;
     if (state(4444) !== 'open' || state(9) !== 'closed') throw new Error(`unexpected probe result: ${outcome}`);
+  });
+
+  /** Calls a desktop command from the page, returning its result or throwing its error. */
+  const invoke = async (command, args = {}) => {
+    const outcome = await driver.executeAsyncScript(
+      `const done = arguments[arguments.length - 1];
+       window.__TAURI_INTERNALS__.invoke(arguments[0], arguments[1]).then((value) => done({ value }), (error) => done({ error: String(error?.message ?? error) }));`,
+      command,
+      args,
+    );
+    if (outcome.error !== undefined) throw new Error(outcome.error);
+    return outcome.value;
+  };
+
+  /** Drops fixture files on an element, as a user dragging them from the file manager would. */
+  const dropFiles = async (selector, files) => {
+    await driver.executeScript(
+      `const transfer = new DataTransfer();
+       for (const [base64, name, type] of arguments[1]) {
+         const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+         transfer.items.add(new File([bytes], name, { type }));
+       }
+       document.querySelector(arguments[0]).dispatchEvent(new DragEvent('drop', { dataTransfer: transfer, bubbles: true, cancelable: true }));`,
+      selector,
+      files.map(([bytes, name, type]) => [Buffer.from(bytes).toString('base64'), name, type]),
+    );
+  };
+
+  await check('the AI model catalogue is available', async () => {
+    const status = await invoke('ai_status');
+    const kinds = new Set(status.items.map((item) => item.kind));
+    for (const kind of ['runtime', 'background', 'upscale', 'faces', 'eraser', 'speech']) if (!kinds.has(kind)) throw new Error(`no ${kind} models listed`);
+  });
+
+  if (process.env.BENCHTOP_TEST_DOWNLOADS) {
+    await check('the AI engine and a model download, verify and install', async () => {
+      for (const id of ['runtime', 'u2netp']) await invoke('ai_install', { id });
+      const status = await invoke('ai_status');
+      for (const id of ['runtime', 'u2netp']) if (!status.items.find((item) => item.id === id)?.installed) throw new Error(`${id} not installed`);
+    });
+
+    await check('a background-removal job runs in the AI worker process', async () => {
+      const png = readFileSync(resolve(ROOT, 'tests/e2e/fixtures/sample.png'));
+      const outcome = await driver.executeAsyncScript(
+        `const done = arguments[arguments.length - 1];
+         const input = Uint8Array.from(atob(arguments[0]), (c) => c.charCodeAt(0));
+         const body = new Uint8Array(8 + input.length);
+         new DataView(body.buffer).setBigUint64(0, BigInt(input.length), true);
+         body.set(input, 8);
+         const request = { op: 'background', model: 'u2netp', options: { mode: 'cutout', edges: 'soft' } };
+         window.__TAURI_INTERNALS__.invoke('ai_run', body, { headers: { 'x-ai': encodeURIComponent(JSON.stringify(request)) } }).then(
+           (raw) => {
+             const bytes = new Uint8Array(raw);
+             const length = new DataView(bytes.buffer, bytes.byteOffset).getUint32(0, true);
+             const header = JSON.parse(new TextDecoder().decode(bytes.subarray(4, 4 + length)));
+             done({ header, magic: Array.from(bytes.subarray(4 + length, 8 + length)) });
+           },
+           (error) => done({ error: String(error?.message ?? error) }),
+         );`,
+        png.toString('base64'),
+      );
+      if (outcome.error) throw new Error(outcome.error);
+      if (outcome.header.width !== 640 || outcome.header.height !== 400) throw new Error(`unexpected size ${JSON.stringify(outcome.header)}`);
+      if (outcome.magic.join(',') !== '137,80,78,71') throw new Error('the result is not a PNG');
+      await open('background-remover');
+      await driver.sleep(1500);
+      if ((await driver.findElements(By.css('[data-testid=ai-gate]'))).length > 0) throw new Error('the tool still asks for downloads');
+    });
+  }
+
+  await check('the converters find installed programs and refuse unknown files', async () => {
+    const found = await invoke('convert_programs');
+    if (typeof found.programs !== 'object' || !('ffmpeg' in found.programs)) throw new Error('no program list');
+    // FFmpeg is on most Linux desktops and CI images; say so when it is not, without failing.
+    if (!found.programs.ffmpeg) console.log('        (FFmpeg is not installed here)');
+    try {
+      await invoke('convert_run', { job: { id: 'test', recipe: 'media-convert', inputs: ['not-a-token'], destination: 'beside' } });
+      throw new Error('an unknown file token was accepted');
+    } catch (error) {
+      if (!/Choose the file again/.test(String(error.message))) throw error;
+    }
+  });
+
+  await check('the calculator library solves in the web view', async () => {
+    await open('calc-finance');
+    await driver.wait(async () => /8,?678\.23/.test(await driver.executeScript("return document.querySelector('[data-testid=calc-field-payment] input')?.value ?? ''")), 20_000, 'no EMI');
+  });
+
+  await check("a recipe bakes in its own worker, including an operation from CyberChef's code", async () => {
+    await open('recipe');
+    await driver.findElement(By.xpath("//button[normalize-space()='Load']")).click();
+    const box = await driver.wait(until.elementLocated(By.css('textarea[placeholder^="Paste a CyberChef recipe"]')), 10_000);
+    await box.sendKeys(
+      JSON.stringify([
+        { op: 'To Base64', args: ['A-Za-z0-9+/='] },
+        { op: 'MD6', args: [256, 64, ''] },
+      ]),
+    );
+    await driver.findElement(By.xpath("//button[normalize-space()='Load recipe']")).click();
+    await driver.wait(async () => (await driver.findElements(By.css('[data-testid=recipe-step]'))).length === 2, 10_000, 'the recipe did not load');
+    await driver.executeScript(
+      `const view = document.querySelector('[data-testid=recipe-input] .cm-content')?.cmTile?.root?.view;
+       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: 'abc' } });`,
+    );
+    const expected = 'e90c0314b7630e3d90e13023ced295c6cfc8e167e578bacfe7181cc0d52cd8d6';
+    await driver.wait(
+      async () => (await driver.executeScript("return document.querySelector('[data-testid=recipe-output] .cm-content')?.textContent ?? ''")).includes(expected),
+      60_000,
+      'no MD6 digest from the recipe worker',
+    );
+  });
+
+  await check('a dropped file is staged in a folder only this user can read', async () => {
+    const staged = await driver.executeAsyncScript(
+      `const done = arguments[arguments.length - 1];
+       window.__TAURI_INTERNALS__.invoke('stage_file', new Uint8Array([104, 105]), { headers: { 'x-file-name': encodeURIComponent('desktop check.txt') } })
+         .then((file) => done(file), (error) => done({ error: String(error) }));`,
+    );
+    if (staged.error || staged.name !== 'desktop check.txt' || staged.size !== 2) throw new Error(JSON.stringify(staged));
+    const root = resolve(process.env.XDG_CACHE_HOME || resolve(homedir(), '.cache'), 'app.benchtop.desktop/dropped');
+    const holder = readdirSync(root)
+      .map((name) => resolve(root, name))
+      .find((dir) => existsSync(resolve(dir, 'desktop check.txt')));
+    if (!holder) throw new Error(`no staged copy under ${root}`);
+    for (const dir of [root, holder]) {
+      const mode = statSync(dir).mode & 0o777;
+      if (mode !== 0o700) throw new Error(`${dir} has mode ${mode.toString(8)}`);
+    }
+  });
+
+  await check('only release pages can be opened in the system browser', async () => {
+    const refused = await invoke('open_release_page', { tag: '../../evil' }).then(
+      () => 'opened',
+      (error) => String(error.message),
+    );
+    if (!/not a release tag/.test(refused)) throw new Error(refused);
+  });
+
+  await check('PDF pages are read and drawn (pdf-lib and PDF.js in the web view)', async () => {
+    await open('pdf-organise');
+    const { PDFDocument, StandardFonts } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    for (let i = 1; i <= 3; i++) doc.addPage([595, 842]).drawText(`Page ${i}`, { x: 60, y: 760, size: 28, font });
+    await dropFiles('[data-testid=pdf-drop]', [[await doc.save(), 'three.pdf', 'application/pdf']]);
+    await driver.wait(async () => (await driver.findElements(By.css('.pdf-page .pdf-thumb img'))).length === 3, 30_000, 'page pictures did not appear');
+  });
+
+  await check('text recognition runs in the web view (Tesseract WebAssembly)', async () => {
+    await open('ocr');
+    await dropFiles('.dropzone', [[readFileSync(resolve(ROOT, 'tests/e2e/fixtures/ocr.png')), 'note.png', 'image/png']]);
+    await driver.findElement(By.css('[data-testid=ocr-run]')).click();
+    await driver.wait(
+      async () => (await driver.executeScript("return document.querySelector('[data-testid=ocr-output] .cm-content')?.textContent ?? ''")).includes('offline'),
+      120_000,
+      'no text recognised',
+    );
   });
 
   await check('the window refuses to navigate away from the app', async () => {

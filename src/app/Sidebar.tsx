@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'preact/hooks';
 import { APP_NAME } from '../brand';
+import { openCalculator, searchCalculators } from '../calc/launch';
+import { openRecipeOperation, searchOperations } from '../recipe/launch';
 import { CATEGORIES, findTool, searchTools, TOOLS } from '../tools/registry';
 import type { ToolEntry } from '../tools/types';
 import { Icon } from '../ui/icons';
@@ -27,6 +29,8 @@ export function Sidebar({ route, onOpenPalette }: { route: Route; onOpenPalette:
   const [query, setQuery] = useState('');
   const activeId = route.page === 'tool' ? route.id : '';
   const results = useMemo(() => (query.trim() === '' ? null : searchTools(query)), [query]);
+  const operations = useMemo(() => (query.trim() === '' ? [] : searchOperations(query, 6)), [query]);
+  const calculators = useMemo(() => (query.trim() === '' ? [] : searchCalculators(query, 6)), [query]);
   const favorites = settings.favorites.map(findTool).filter((tool): tool is ToolEntry => tool !== undefined);
 
   return (
@@ -56,7 +60,7 @@ export function Sidebar({ route, onOpenPalette }: { route: Route; onOpenPalette:
               }
             }}
           />
-          <button type="button" class="kbd" onClick={onOpenPalette} title="Open the command palette" aria-label="Open the command palette">
+          <button type="button" class="kbd" onClick={onOpenPalette} title="Open the command palette" aria-label="Open the command palette, Ctrl K">
             Ctrl K
           </button>
         </div>
@@ -74,6 +78,56 @@ export function Sidebar({ route, onOpenPalette }: { route: Route; onOpenPalette:
                 <ToolLink key={tool.id} tool={tool} active={tool.id === activeId} />
               ))}
             </ul>
+            {calculators.length > 0 && (
+              <>
+                <h2 class="sidebar-heading">
+                  <span>Calculators</span>
+                  <span class="count">{calculators.length}</span>
+                </h2>
+                <ul class="tool-list">
+                  {calculators.map((calc) => (
+                    <li key={calc.id}>
+                      <button
+                        type="button"
+                        class="sidebar-link sidebar-op"
+                        title={`Open the ${calc.name} calculator`}
+                        onClick={() => {
+                          openCalculator(calc.id);
+                          setQuery('');
+                        }}
+                      >
+                        {calc.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {operations.length > 0 && (
+              <>
+                <h2 class="sidebar-heading">
+                  <span>Recipe operations</span>
+                  <span class="count">{operations.length}</span>
+                </h2>
+                <ul class="tool-list">
+                  {operations.map((op) => (
+                    <li key={op.id}>
+                      <button
+                        type="button"
+                        class="sidebar-link sidebar-op"
+                        title={`Add ${op.name} to the Recipe tool (${op.category})`}
+                        onClick={() => {
+                          openRecipeOperation(op.id);
+                          setQuery('');
+                        }}
+                      >
+                        {op.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </section>
         ) : (
           <>

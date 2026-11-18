@@ -490,7 +490,8 @@ describe('Colour', () => {
     for (const token of ['primary', 'primary-foreground', 'muted-foreground', 'destructive', 'border', 'ring', 'chart-5', 'sidebar-ring']) {
       expect(css.match(new RegExp(`--${token}: oklch\\(`, 'g'))).toHaveLength(2);
     }
-    expect(result.fields).toHaveLength(6);
+    expect(result.fields).toHaveLength(8);
+    expect(result.fields?.find((item) => item.label === 'Dark: text on destructive')?.tone).toBe('ok');
     expect(result.fields?.every((item) => item.tone === 'ok')).toBe(true);
     expect(result.preview?.kind).toBe('html');
   });

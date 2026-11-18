@@ -5,6 +5,9 @@
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { unzipSync } from 'fflate';
+import { degrees, PDFDocument, StandardFonts } from 'pdf-lib';
+import { CALC_CATEGORIES } from '../../src/calc/types';
 import { TOOLS } from '../../src/tools/registry';
 
 const SAMPLE_PNG = readFileSync(new URL('./fixtures/sample.png', import.meta.url));
@@ -12,6 +15,35 @@ const SAMPLE_PNG = readFileSync(new URL('./fixtures/sample.png', import.meta.url
 const EXIF_JPEG = readFileSync(new URL('./fixtures/exif.jpg', import.meta.url));
 /** A QR code holding "WIFI:S:Benchtop Lab;T:WPA;P:correct horse;;". */
 const QR_PNG = readFileSync(new URL('./fixtures/qr.png', import.meta.url));
+/** Black text on white: "Benchtop reads this text offline." */
+const OCR_PNG = readFileSync(new URL('./fixtures/ocr.png', import.meta.url));
+const OCR_HINDI_PNG = readFileSync(new URL('./fixtures/ocr-hindi.png', import.meta.url));
+
+/** A PDF whose pages say "Page N". */
+async function samplePdf(pages: number, rotate = 0): Promise<Buffer> {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  for (let i = 1; i <= pages; i++) {
+    const page = doc.addPage([595.28, 841.89]);
+    page.drawText(`Page ${i}`, { x: 60, y: 760, size: 28, font });
+    if (rotate) page.setRotation(degrees(rotate));
+  }
+  doc.setTitle('Sample');
+  return Buffer.from(await doc.save());
+}
+
+async function chooseFiles(page: Page, trigger: Locator, files: { name: string; mimeType: string; buffer: Buffer }[]): Promise<void> {
+  const chooser = page.waitForEvent('filechooser');
+  await trigger.click();
+  await (await chooser).setFiles(files);
+}
+
+const pdfFile = async (name: string, pages: number, rotate = 0) => ({ name, mimeType: 'application/pdf', buffer: await samplePdf(pages, rotate) });
+
+/** Tools that run programs or AI models on the computer explain in a browser that they need the desktop app. */
+async function desktopGate(page: Page): Promise<void> {
+  await expect(page.getByTestId('tool')).toContainText('desktop app');
+}
 
 /** RFC 6238 TOTP (SHA-1, 6 digits, 30 s) computed independently of the app. */
 function referenceTotp(secretBase32: string, timeMs: number): string {
@@ -261,6 +293,264 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
     const bytes = await download(page, () => page.getByTestId('export-save').click());
     expect([...bytes.subarray(0, 4)]).toEqual(PNG);
   },
+  'background-remover': desktopGate,
+  'image-upscaler': desktopGate,
+  'face-blur': desktopGate,
+  'object-eraser': desktopGate,
+  transcribe: desktopGate,
+  'ai-models': desktopGate,
+  'file-converter': desktopGate,
+  'video-tools': desktopGate,
+  'audio-tools': desktopGate,
+  'pdf-security': desktopGate,
+  ocr: async (page) => {
+    await chooseFiles(page, page.getByRole('button', { name: 'Add pictures or PDFs' }), [{ name: 'note.png', mimeType: 'image/png', buffer: OCR_PNG }]);
+    await page.getByTestId('ocr-run').click();
+    await expect.poll(() => editorText(page.getByTestId('ocr-output')), { timeout: 90_000 }).toContain('offline');
+    // Hindi: the bundled tessdata_fast model reads Devanagari.
+    await page.getByRole('button', { name: /Remove note\.png/ }).click();
+    await page.getByRole('radio', { name: /Hindi/ }).click();
+    await chooseFiles(page, page.getByRole('button', { name: 'Add pictures or PDFs' }), [{ name: 'hindi.png', mimeType: 'image/png', buffer: OCR_HINDI_PNG }]);
+    await page.getByTestId('ocr-run').click();
+    await expect.poll(() => editorText(page.getByTestId('ocr-output')), { timeout: 90_000 }).toContain('नमस्ते');
+  },
+  recipe: async (page) => {
+    const search = page.getByTestId('recipe-search');
+    await search.fill('From Base64');
+    await page.locator('[data-op="from-base64"]').click();
+    await search.fill('gunzip');
+    await page.locator('[data-op="gunzip"]').click();
+    await page.getByTestId('recipe-input').locator('.cm-content').click();
+    await page.keyboard.insertText('H4sIAAAAAAAAA/NIzcnJVyjPL8pJAQBSntaLCwAAAA==');
+    await expect.poll(() => editorText(page.getByTestId('recipe-output')), { timeout: 30_000 }).toBe('Hello world');
+  },
+  'pdf-organise': async (page) => {
+    await chooseFiles(page, page.getByTestId('pdf-drop'), [await pdfFile('a.pdf', 3), await pdfFile('b.pdf', 2, 90)]);
+    await expect(page.locator('.pdf-page')).toHaveCount(5);
+    await page.getByLabel('Rotate page 1 right').click();
+    await page.getByLabel('Delete page 5').click();
+    const saved = await PDFDocument.load(await download(page, () => page.getByTestId('pdf-save').click()));
+    expect(saved.getPageCount()).toBe(4);
+    expect(saved.getPage(0).getRotation().angle).toBe(90);
+    expect(saved.getPage(3).getRotation().angle).toBe(90);
+  },
+  'pdf-split': async (page) => {
+    await chooseFiles(page, page.getByTestId('pdf-drop'), [await pdfFile('report.pdf', 6)]);
+    await page.getByTestId('split-ranges').fill('1-2, 5-');
+    await expect(page.getByTestId('split-plan').locator('li')).toHaveCount(2);
+    const zip = unzipSync(new Uint8Array(await download(page, () => page.getByTestId('split-run').click())));
+    expect(Object.keys(zip)).toEqual(['report part 1 (pages 1-2).pdf', 'report part 2 (pages 5-6).pdf']);
+  },
+  'pdf-stamp': async (page) => {
+    await chooseFiles(page, page.getByTestId('pdf-drop'), [await pdfFile('turned.pdf', 2, 90)]);
+    await expect(page.getByTestId('stamp-preview')).toBeVisible({ timeout: 30_000 });
+    const saved = await PDFDocument.load(await download(page, () => page.getByTestId('stamp-run').click()));
+    expect(saved.getPageCount()).toBe(2);
+    // Text outside Latin-1 (rupee sign, Devanagari) is drawn with the bundled Unicode font.
+    await page.getByTestId('stamp-watermark').fill('मूल्य ₹100');
+    await expect(page.getByTestId('stamp-preview')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.recipe-error')).toHaveCount(0);
+    const unicode = await PDFDocument.load(await download(page, () => page.getByTestId('stamp-run').click()));
+    expect(unicode.getPageCount()).toBe(2);
+  },
+  'image-annotate': async (page) => {
+    await chooseFiles(page, page.getByTestId('annotate-open'), [{ name: 'shot.png', mimeType: 'image/png', buffer: SAMPLE_PNG }]);
+    const canvas = page.getByTestId('annotate-canvas');
+    await expect(canvas).toBeVisible();
+    const box = (await canvas.boundingBox()) as { x: number; y: number; width: number; height: number };
+    await page.mouse.move(box.x + 10, box.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 5 });
+    await page.mouse.up();
+    await page.keyboard.press('n');
+    await canvas.click({ position: { x: 30, y: 30 } });
+    await expect(page.getByTestId('tool')).toContainText('2 marks');
+    await page.keyboard.press('Control+z');
+    await expect(page.getByTestId('tool')).toContainText('1 mark');
+    const saved = await download(page, () => page.getByTestId('annotate-save').click());
+    expect(saved.subarray(1, 4).toString()).toBe('PNG');
+  },
+  'mermaid-editor': async (page) => {
+    await expect(page.getByTestId('diagram-preview').locator('svg')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('diagram-preview')).toContainText('Planetarium show');
+  },
+  'graphviz-viewer': async (page) => {
+    await expect(page.getByTestId('diagram-preview').locator('svg')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('diagram-preview')).toContainText('package');
+  },
+  'sql-er-diagram': async (page) => {
+    await expect(page.getByTestId('diagram-preview').locator('svg')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('diagram-preview')).toContainText('bookings');
+  },
+  'openapi-viewer': async (page) => {
+    await expect(page.getByTestId('openapi-view')).toContainText('Book seats');
+    await expect(page.getByTestId('openapi-view')).toContainText('OpenAPI 3.0.3');
+  },
+  'har-viewer': async (page) => {
+    const har = {
+      log: {
+        creator: { name: 'test', version: '1' },
+        entries: [0, 1].map((i) => ({
+          startedDateTime: `2026-01-01T00:00:0${i}.000Z`,
+          time: 50,
+          request: { method: 'GET', url: `https://example.org/${i}`, headers: [] },
+          response: { status: 200, statusText: 'OK', headers: [{ name: 'server', value: 'demo' }], content: { mimeType: 'text/html', size: 10, text: 'hello' } },
+        })),
+      },
+    };
+    await chooseFiles(page, page.getByTestId('har-open'), [{ name: 'site.har', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(har)) }]);
+    await expect(page.getByTestId('har-table').locator('tbody tr')).toHaveCount(2);
+    await page.getByTestId('har-table').locator('tbody tr').first().click();
+    await expect(page.getByTestId('har-detail')).toContainText('server');
+  },
+  'hex-viewer': async (page) => {
+    await chooseFiles(page, page.getByTestId('hex-open'), [{ name: 'sample.png', mimeType: 'image/png', buffer: SAMPLE_PNG }]);
+    await expect(page.getByTestId('hex-rows')).toContainText('89 50 4e 47'.split(' ')[0] as string);
+    await page.getByRole('textbox', { name: 'Search', exact: true }).fill('IHDR');
+    await page.getByTestId('hex-search').click();
+    await expect(page.getByTestId('tool')).toContainText('1 found');
+    await expect(page.getByTestId('hex-inspector')).toContainText('Offset 12');
+  },
+  'sqlite-browser': async (page) => {
+    await chooseFiles(page, page.getByTestId('sqlite-csv'), [{ name: 'visits.csv', mimeType: 'text/csv', buffer: Buffer.from('city,count\nBengaluru,120\nMysuru,45\n') }]);
+    await expect(page.getByTestId('sqlite-tables')).toContainText('visits');
+    await page.getByTestId('sqlite-run').click();
+    await expect(page.getByTestId('sqlite-results')).toContainText('Mysuru');
+  },
+  'model-viewer': async (page) => {
+    const stl = 'solid t\nfacet normal 0 0 1\nouter loop\nvertex 0 0 0\nvertex 1 0 0\nvertex 0 1 0\nendloop\nendfacet\nendsolid t\n';
+    await chooseFiles(page, page.getByTestId('model-open'), [{ name: 'part.stl', mimeType: 'model/stl', buffer: Buffer.from(stl) }]);
+    await expect(page.getByTestId('model-info')).toContainText('1 triangles', { timeout: 30_000 });
+  },
+  'code-screenshot': async (page) => {
+    const png = await download(page, () => page.getByTestId('shot-save').click());
+    expect(png.subarray(1, 4).toString()).toBe('PNG');
+  },
+  'component-codes': async (page) => {
+    await expect(page.getByTestId('band-result')).toHaveText('4.7 kΩ ±5%');
+    await page.getByRole('radio', { name: 'SMD resistors' }).click();
+    await page.getByTestId('smd-input').fill('4R7');
+    await expect(page.getByTestId('smd-result')).toContainText('4.7 Ω');
+    await page.getByRole('radio', { name: 'Capacitors' }).click();
+    await page.getByTestId('cap-input').fill('2A104J');
+    await expect(page.getByTestId('cap-result')).toHaveText('100 nF, ±5%, 100 V');
+  },
+  'serial-monitor': async (page) => {
+    await expect(page.getByTestId('tool')).toContainText(/Connect|desktop app/);
+  },
+  'wireguard-config': async (page) => {
+    await expect(page.getByTestId('wg-config')).toHaveCount(4);
+    await expect(page.getByTestId('wg-config').first()).toContainText('ListenPort = 51820');
+    await expect(page.getByTestId('wg-config').nth(1)).toContainText('Endpoint = vpn.example.org:51820');
+  },
+  'certificate-maker': async (page) => {
+    await page.getByTestId('cert-make').click();
+    await expect(page.getByTestId('cert-output')).toHaveCount(2, { timeout: 30_000 });
+    await expect(page.getByTestId('cert-output').first()).toContainText('BEGIN CERTIFICATE');
+  },
+  'time-zones': async (page) => {
+    await expect(page.getByTestId('tz-table')).toContainText('Asia/Kolkata');
+    await expect(page.getByTestId('tz-table').locator('tr')).toHaveCount(4);
+  },
+  'pdf-forms': async (page) => {
+    await chooseFiles(page, page.getByTestId('form-open'), [await pdfFile('application.pdf', 1)]);
+    const sheet = page.getByTestId('pdf-page-view').locator('svg');
+    await expect(sheet).toBeVisible({ timeout: 30_000 });
+    await page.getByLabel('Text for the next click').fill('नाम: आशा ₹500');
+    await sheet.click({ position: { x: 120, y: 200 } });
+    await expect(page.getByTestId('placed-list').locator('li')).toHaveCount(1);
+    const saved = await download(page, () => page.getByTestId('form-save').click());
+    const doc = await PDFDocument.load(saved);
+    expect(doc.getPageCount()).toBe(1);
+    // The Hindi text brings in Benchtop Sans (about 330 kB), so the file grows.
+    expect(saved.length).toBeGreaterThan(200_000);
+  },
+  'pdf-sign': async (page) => {
+    await chooseFiles(page, page.getByTestId('sign-open'), [await pdfFile('contract.pdf', 2)]);
+    await expect(page.getByTestId('pdf-page-view')).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('radio', { name: 'Type' }).click();
+    await page.getByLabel('Your name').fill('Asha Rao');
+    await page.getByText('Also sign digitally with a certificate').click();
+    await page.getByRole('button', { name: 'Make a certificate' }).click();
+    await page.getByLabel('Name to show as the signer').fill('Asha Rao');
+    await page.getByLabel('Password for the file').fill('secret');
+    const p12 = await download(page, () => page.getByTestId('cert-create').click());
+    expect(p12.length).toBeGreaterThan(1000);
+    await expect(page.getByTestId('cert-summary')).toContainText('Asha Rao');
+    const signed = Buffer.from(await download(page, () => page.getByTestId('sign-save').click())).toString('latin1');
+    expect(signed).toContain('/adbe.pkcs7.detached');
+    expect(signed).toMatch(/\/ByteRange \[ 0 \d+ \d+ \d+ +\]/);
+  },
+  'pdf-properties': async (page) => {
+    await chooseFiles(page, page.getByTestId('pdf-drop'), [await pdfFile('slides.pdf', 2)]);
+    await expect(page.getByTestId('pdf-facts')).toContainText('A4');
+    await page.getByTestId('pdf-title').fill('Quarterly slides');
+    const saved = await PDFDocument.load(await download(page, () => page.getByTestId('pdf-write').click()));
+    expect(saved.getTitle()).toBe('Quarterly slides');
+  },
+  'pdf-pictures': async (page) => {
+    await chooseFiles(page, page.getByTestId('pictures-drop'), [{ name: 'sample.png', mimeType: 'image/png', buffer: SAMPLE_PNG }]);
+    const saved = await PDFDocument.load(await download(page, () => page.getByTestId('pictures-run').click()));
+    expect(saved.getPageCount()).toBe(1);
+  },
+  'image-vectorise': async (page) => {
+    await chooseImage(page, page.getByTestId('dropzone'));
+    await expect(page.getByTestId('vec-result')).toBeVisible({ timeout: 30_000 });
+    const svg = (await download(page, () => page.getByTestId('vec-save').click())).toString('utf8');
+    expect(svg).toMatch(/^<svg [^>]*viewBox="0 0 640 400"/);
+  },
+  'gif-maker': async (page) => {
+    await chooseFiles(page, page.getByTestId('gif-drop'), [
+      { name: 'one.png', mimeType: 'image/png', buffer: SAMPLE_PNG },
+      { name: 'two.png', mimeType: 'image/png', buffer: QR_PNG },
+    ]);
+    await page.getByTestId('gif-build').click();
+    await expect(page.getByTestId('gif-result')).toBeVisible({ timeout: 30_000 });
+    const gif = await download(page, () => page.getByRole('button', { name: 'Save GIF' }).click());
+    expect(gif.subarray(0, 6).toString('latin1')).toBe('GIF89a');
+  },
+  'duplicate-images': async (page) => {
+    await chooseFiles(page, page.getByTestId('dup-drop'), [
+      { name: 'a.png', mimeType: 'image/png', buffer: SAMPLE_PNG },
+      { name: 'copy of a.png', mimeType: 'image/png', buffer: SAMPLE_PNG },
+      { name: 'qr.png', mimeType: 'image/png', buffer: QR_PNG },
+    ]);
+    await expect(page.getByTestId('dup-group')).toHaveCount(1);
+    await expect(page.getByTestId('dup-group')).toContainText('Identical files');
+  },
+  'archive-tool': async (page) => {
+    await page.getByRole('radio', { name: 'Make a ZIP' }).click();
+    await chooseFiles(page, page.getByTestId('zip-add'), [
+      { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Gallery notes\n') },
+      { name: 'sample.png', mimeType: 'image/png', buffer: SAMPLE_PNG },
+    ]);
+    const zip = await download(page, () => page.getByTestId('zip-make').click());
+    expect(Object.keys(unzipSync(new Uint8Array(zip)))).toEqual(['notes.txt', 'sample.png']);
+    await page.getByRole('radio', { name: 'Open an archive' }).click();
+    await chooseFiles(page, page.getByTestId('zip-drop'), [{ name: 'archive.zip', mimeType: 'application/zip', buffer: zip }]);
+    await expect(page.getByTestId('zip-list').locator('li')).toHaveCount(2);
+    await page.getByRole('button', { name: 'notes.txt' }).click();
+    await expect(page.locator('.zip-preview-text')).toContainText('Gallery notes');
+  },
+  'csv-tools': async (page) => {
+    await chooseFiles(page, page.getByTestId('csv-drop'), [
+      { name: 'a.csv', mimeType: 'text/csv', buffer: Buffer.from('id,name\n1,Asha\n') },
+      { name: 'b.csv', mimeType: 'text/csv', buffer: Buffer.from('name,id,city\nRavi,2,Mysuru\n') },
+    ]);
+    const csv = (await download(page, () => page.getByTestId('csv-save').click())).toString('utf8');
+    expect(csv).toBe('id,name,city\r\n1,Asha,\r\n2,Ravi,Mysuru\r\n');
+  },
+  ...Object.fromEntries(
+    CALC_CATEGORIES.map((category) => [
+      `calc-${category.id}`,
+      async (page: Page) => {
+        // The first calculator opens with its example worked out.
+        await expect(page.getByTestId('calc-card')).toBeVisible({ timeout: 30_000 });
+        await expect(page.locator('.calc-field.is-computed').first()).toBeVisible();
+        await expect(page.getByTestId('calc-status')).not.toContainText('more value');
+      },
+    ]),
+  ),
 };
 
 for (const entry of TOOLS) {

@@ -150,7 +150,10 @@ export async function checkPdfSignatures(pdf: Uint8Array): Promise<PdfSignature[
     const window = text.slice(Math.max(0, (match.index ?? 0) - 6000), a + b) + text.slice(c, c + 6000);
     const value = (name: string) => {
       const found = new RegExp(`/${name}\\s*\\(((?:[^()\\\\]|\\\\.|\\([^()]*\\))*)\\)`).exec(window)?.[1];
-      return found === undefined ? undefined : pdfString(found);
+      if (found !== undefined) return pdfString(found);
+      // Hex strings (<FEFF…>), as many signing tools write non-Latin text.
+      const hex = new RegExp(`/${name}\\s*<([0-9A-Fa-f\\s]*)>`).exec(window)?.[1]?.replace(/\\s/g, '');
+      return hex === undefined ? undefined : pdfString(String.fromCharCode(...(hex.match(/../g) ?? []).map((pair) => Number.parseInt(pair, 16))));
     };
     const subFilter = /\/SubFilter\s*\/([\w.]+)/.exec(window)?.[1];
     const isTimestamp = subFilter === 'ETSI.RFC3161';

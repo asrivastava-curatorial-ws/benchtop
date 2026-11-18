@@ -1,6 +1,6 @@
 [package]
 name = "benchtop"
-version = "2.0.0"
+version = "3.1.0"
 description = "Benchtop: an open-source desktop toolbox of developer and engineering utilities"
 license = "MIT"
 edition = "2021"
@@ -10,7 +10,7 @@ publish = false
 [lib]
 # The _lib suffix avoids a name clash with the binary on Windows (cargo issue #8519).
 name = "benchtop_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -25,7 +25,7 @@ url = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 base64 = "0.22"
-tokio = { version = "1", features = ["net", "time", "io-util", "rt", "macros", "sync"] }
+tokio = { version = "1", features = ["net", "time", "io-util", "rt", "macros", "sync", "fs"] }
 # Online checks: HTTP(S), TLS inspection, DNS and WHOIS.  ring is the only crypto provider,
 # which keeps Windows and macOS builds free of extra native toolchains.
 # Bodies are returned undecoded (the web view inflates gzip/deflate itself), so the headers stay as sent.
@@ -38,6 +38,38 @@ http = "1"
 hickory-proto = { version = "0.26", default-features = false, features = ["std", "dnssec-ring"] }
 hickory-resolver = { version = "0.26", default-features = false, features = ["system-config", "tokio"] }
 
+# AI tools (version 3): ONNX Runtime is loaded at run time from a copy downloaded on first use,
+# so the installer stays small and the same build runs with or without a GPU.
+# api-21: with api-22 the crate enables automatic device selection, which makes ONNX Runtime 1.22 abort on CPU-only machines.
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["std", "load-dynamic", "api-21"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "bmp", "tiff", "gif"] }
+symphonia = { version = "0.5", default-features = false, features = ["mp3", "aac", "isomp4", "flac", "wav", "pcm", "ogg", "vorbis", "mkv", "alac", "adpcm"] }
+rubato = "0.16"
+rustfft = "6"
+sha2 = "0.10"
+flate2 = "1"
+tar = "0.4"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+# The command line finds the app data folder the same way Tauri does.
+dirs = "7"
+# Serial Monitor (no libudev: ports are listed from sysfs on Linux).
+serialport = { version = "4", default-features = false }
+bzip2 = { version = "0.5", default-features = false, features = ["libbz2-rs-sys"] }
+which = "7"
+
+[target.'cfg(unix)'.dependencies]
+# The command line exits quietly when its output pipe closes (benchtop models | head).
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["coreml"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["cuda"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+ort = { version = "=2.0.0-rc.15", default-features = false, features = ["directml"] }
+
 [dev-dependencies]
 rcgen = "0.14"
 tokio = { version = "1", features = ["rt-multi-thread"] }
@@ -48,3 +80,21 @@ lto = true
 opt-level = "s"
 panic = "abort"
 strip = true
+
+# Image decoding, FFTs and resampling are hot loops in the AI tools: optimise them for speed.
+[profile.release.package.image]
+opt-level = 3
+[profile.release.package.rustfft]
+opt-level = 3
+[profile.release.package.rubato]
+opt-level = 3
+[profile.release.package.zune-jpeg]
+opt-level = 3
+[profile.release.package.png]
+opt-level = 3
+[profile.release.package.symphonia-codec-aac]
+opt-level = 3
+[profile.release.package.symphonia-bundle-mp3]
+opt-level = 3
+[profile.release.package.benchtop]
+opt-level = 3

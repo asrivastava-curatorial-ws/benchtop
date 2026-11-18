@@ -7,6 +7,7 @@
  * Works with pnpm, npm and Yarn layouts: dependencies are found by walking up
  * from each package's real directory, the way Node itself resolves them.
  */
+import { execFileSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,11 +17,69 @@ const LICENSE_FILE = /^(?:licen[cs]e|copying|notice)(?:[.-].*)?$/i;
 
 /** Components compiled into a dependency's WebAssembly, keyed by that dependency; texts live in licenses/. */
 const EMBEDDED = {
+  'libyara-wasm': [{ name: 'YARA (compiled into libyara-wasm)', version: '4.x', license: 'BSD-3-Clause', repository: 'https://github.com/VirusTotal/yara', file: 'yara-COPYING.txt' }],
   'jq-wasm': [
     { name: 'jq (compiled into jq-wasm)', version: '1.8.2', license: 'MIT, with ICU (decNumber) and other notices', repository: 'https://github.com/jqlang/jq', file: 'jq-COPYING.txt' },
     { name: 'Oniguruma (compiled into jq-wasm)', version: 'as bundled with jq 1.8.2', license: 'BSD-2-Clause', repository: 'https://github.com/kkos/oniguruma', file: 'oniguruma-COPYING.txt' },
   ],
 };
+
+/** Bundled components that do not come from npm; texts live in licenses/. */
+const BUNDLED = [
+  {
+    name: 'CyberChef (operation designs reimplemented, and the code of 65 operations)',
+    version: '10',
+    license: 'Apache-2.0',
+    repository: 'https://github.com/gchq/CyberChef',
+    file: 'cyberchef-NOTICE.txt',
+  },
+  {
+    name: 'tessdata_fast English and Hindi models (eng.traineddata, hin.traineddata)',
+    version: '4.1.0',
+    license: 'Apache-2.0',
+    repository: 'https://github.com/tesseract-ocr/tessdata_fast',
+    file: 'tessdata-NOTICE.txt',
+  },
+  { name: 'Benchtop Sans (built from Noto Sans and Noto Sans Devanagari)', version: '2.004 / 2.001', license: 'OFL-1.1', repository: 'https://github.com/notofonts', file: 'benchtop-sans-NOTICE.txt' },
+];
+
+/**
+ * Rust crates compiled into the desktop program, with their licences and
+ * where their source is published (crates.io).  Needs cargo; returns an empty
+ * list without it, as in web-only builds.
+ */
+export function collectCrates(root = ROOT) {
+  let meta;
+  try {
+    const out = execFileSync('cargo', ['metadata', '--format-version', '1', '--manifest-path', join(root, 'src-tauri', 'Cargo.toml')], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    meta = JSON.parse(out);
+  } catch {
+    return [];
+  }
+  const packages = new Map(meta.packages.map((pkg) => [pkg.id, pkg]));
+  const nodes = new Map(meta.resolve.nodes.map((node) => [node.id, node]));
+  const seen = new Set();
+  const stack = [meta.resolve.root];
+  while (stack.length > 0) {
+    const id = stack.pop();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    for (const dep of nodes.get(id)?.deps ?? []) {
+      // Only normal dependencies end up in the program.
+      if (dep.dep_kinds.some((kind) => kind.kind === null)) stack.push(dep.pkg);
+    }
+  }
+  seen.delete(meta.resolve.root);
+  return [...seen]
+    .map((id) => packages.get(id))
+    .filter(Boolean)
+    .map((pkg) => ({ name: pkg.name, version: pkg.version, license: pkg.license ?? 'see the crate', repository: pkg.repository ?? `https://crates.io/crates/${pkg.name}` }))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
+}
 
 function findPackage(name, fromDir) {
   let dir = fromDir;
@@ -37,10 +96,16 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
-function licenseOf(pkg) {
+/** The licence a package declares, or else the one its licence file is recognisably the text of. */
+function licenseOf(pkg, texts = []) {
   if (typeof pkg.license === 'string') return pkg.license;
   if (pkg.license && typeof pkg.license.type === 'string') return pkg.license.type;
   if (Array.isArray(pkg.licenses)) return pkg.licenses.map((entry) => entry.type ?? entry).join(' OR ');
+  const text = texts.join('\n');
+  if (/Permission is hereby granted, free of charge/.test(text)) return 'MIT (from its licence file)';
+  if (/Redistribution and use in source and binary forms/.test(text)) {
+    return /Neither the name/.test(text) ? 'BSD-3-Clause (from its licence file)' : 'BSD-2-Clause (from its licence file)';
+  }
   return 'UNKNOWN';
 }
 
@@ -64,7 +129,7 @@ export function collectLicenses(root = ROOT) {
       .filter((file) => LICENSE_FILE.test(file))
       .sort();
     const texts = files.map((file) => readFileSync(join(dir, file), 'utf8').trim());
-    seen.set(key, { name: pkg.name, version: pkg.version, license: licenseOf(pkg), repository: repositoryOf(pkg), texts });
+    seen.set(key, { name: pkg.name, version: pkg.version, license: licenseOf(pkg, texts), repository: repositoryOf(pkg), texts });
     for (const dependency of Object.keys(pkg.dependencies ?? {})) queue.push({ name: dependency, from: dir });
     for (const dependency of Object.keys(pkg.optionalDependencies ?? {})) queue.push({ name: dependency, from: dir });
   }
@@ -75,10 +140,13 @@ export function collectLicenses(root = ROOT) {
       seen.set(`${component.name}@${component.version}`, { ...component, texts: [readFileSync(join(root, 'licenses', component.file), 'utf8').trim()] });
     }
   }
+  for (const component of BUNDLED) {
+    seen.set(`${component.name}@${component.version}`, { ...component, texts: [readFileSync(join(root, 'licenses', component.file), 'utf8').trim()] });
+  }
   return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
 }
 
-export function renderNotice(packages) {
+export function renderNotice(packages, crates = []) {
   const header = ['Benchtop includes the following open-source software.', 'Each component is distributed under the licence shown with it.', '', `${packages.length} packages.`, ''].join('\n');
   const body = packages
     .map((pkg) => {
@@ -89,7 +157,10 @@ export function renderNotice(packages) {
       return lines.join('\n');
     })
     .join('\n\n\n');
-  return `${header}\n${body}\n`;
+  const rust = crates.length
+    ? `\n\n\nRust crates in the desktop program\n----------------------------------\nEach is published with its source and licence text at the address shown (crates.io).\n\n${crates.map((c) => `${c.name} ${c.version}: ${c.license} (${c.repository})`).join('\n')}\n`
+    : '';
+  return `${header}\n${body}\n${rust}`;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -99,6 +170,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     for (const pkg of packages) counts.set(pkg.license, (counts.get(pkg.license) ?? 0) + 1);
     for (const [license, count] of [...counts].sort((a, b) => b[1] - a[1])) console.log(`${String(count).padStart(4)}  ${license}`);
   } else {
-    process.stdout.write(renderNotice(packages));
+    process.stdout.write(renderNotice(packages, collectCrates()));
   }
 }

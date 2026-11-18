@@ -4,6 +4,7 @@ import { findTool } from '../tools/registry';
 import { Icon } from '../ui/icons';
 import { Toasts } from '../ui/toast';
 import { CommandPalette } from './CommandPalette';
+import { DropDialog } from './DropDialog';
 import { Home } from './Home';
 import { useRoute } from './router';
 import { SettingsView } from './SettingsView';
@@ -15,6 +16,8 @@ export function App() {
   const route = useRoute();
   const sidebarHidden = useSettings((settings) => settings.sidebarHidden);
   const [palette, setPalette] = useState(false);
+  const [dropped, setDropped] = useState<File[] | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   // Registered during the first render (not after paint) so a shortcut pressed as the window opens is not lost.
   useLayoutEffect(() => {
@@ -28,17 +31,44 @@ export function App() {
         updateSettings({ sidebarHidden: !getSettings().sidebarHidden });
       }
     };
-    // A file dropped outside a drop target must never make the window navigate to it.
-    const blockNavigation = (event: DragEvent) => {
-      if (event.dataTransfer?.types.includes('Files')) event.preventDefault();
+    // A file dropped outside a drop target must never make the window navigate to it;
+    // instead the app offers the tools that can open it.
+    let depth = 0;
+    const hasFiles = (event: DragEvent) => event.dataTransfer?.types.includes('Files') === true;
+    const onDragOver = (event: DragEvent) => {
+      if (hasFiles(event)) event.preventDefault();
+    };
+    const onDragEnter = (event: DragEvent) => {
+      if (!hasFiles(event)) return;
+      depth++;
+      setDragging(true);
+    };
+    const onDragLeave = (event: DragEvent) => {
+      if (!hasFiles(event)) return;
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) setDragging(false);
+    };
+    const onDrop = (event: DragEvent) => {
+      depth = 0;
+      setDragging(false);
+      if (!hasFiles(event)) return;
+      // A tool's own drop area has already taken the files.
+      const handled = event.defaultPrevented;
+      event.preventDefault();
+      const files = Array.from(event.dataTransfer?.files ?? []);
+      if (!handled && files.length) setDropped(files);
     };
     addEventListener('keydown', onKey);
-    addEventListener('dragover', blockNavigation);
-    addEventListener('drop', blockNavigation);
+    addEventListener('dragover', onDragOver);
+    addEventListener('dragenter', onDragEnter);
+    addEventListener('dragleave', onDragLeave);
+    addEventListener('drop', onDrop);
     return () => {
       removeEventListener('keydown', onKey);
-      removeEventListener('dragover', blockNavigation);
-      removeEventListener('drop', blockNavigation);
+      removeEventListener('dragover', onDragOver);
+      removeEventListener('dragenter', onDragEnter);
+      removeEventListener('dragleave', onDragLeave);
+      removeEventListener('drop', onDrop);
     };
   }, []);
 
@@ -82,6 +112,12 @@ export function App() {
           ))}
       </main>
       {palette && <CommandPalette onClose={() => setPalette(false)} />}
+      {dropped && <DropDialog files={dropped} onClose={() => setDropped(null)} />}
+      {dragging && !dropped && (
+        <div class="drop-hint" aria-hidden="true">
+          Drop on a tool’s drop area, or anywhere else to see which tools can open the file
+        </div>
+      )}
       <Toasts />
     </div>
   );

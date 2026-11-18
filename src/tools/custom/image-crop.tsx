@@ -182,6 +182,7 @@ function ImageCrop() {
             baseName={image.name.replace(/(\.[^.]+)?$/, '-cropped$1')}
             originalSize={image.size}
             label="Save cropped image"
+            from="image-crop"
           />
         )}
       </aside>

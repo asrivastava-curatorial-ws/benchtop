@@ -3,6 +3,7 @@
  * dropped file), and a result made of text, a preview and labelled fields.
  */
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { useIncomingFiles } from '../app/handoff';
 import { useSettings } from '../app/store';
 import { byteLength, formatBytes } from '../lib/bytes';
 import { errorMessage, ToolError } from '../lib/errors';
@@ -15,6 +16,7 @@ import { FieldList } from './FieldList';
 import { useDelayedFlag, useToolValues } from './hooks';
 import { Icon, type IconName } from './icons';
 import { PreviewView } from './Preview';
+import { SendTo } from './SendTo';
 import { attempt, notify } from './toast';
 
 /** Files that panes with `documents` turn into text (see lib/documents.ts). */
@@ -44,9 +46,11 @@ interface InputPaneProps {
   readonly wrap: boolean;
   readonly errorLine?: number;
   readonly testId: string;
+  /** The main input takes files dropped on the window or sent from another tool. */
+  readonly takesHandoff?: boolean;
 }
 
-function InputPane({ pane, fallbackLabel, value, onChange, file, onFile, wrap, errorLine, testId }: InputPaneProps) {
+function InputPane({ pane, fallbackLabel, value, onChange, file, onFile, wrap, errorLine, testId, takesHandoff = false }: InputPaneProps) {
   const [dragging, setDragging] = useState(false);
   const label = pane.label ?? fallbackLabel;
 
@@ -65,6 +69,9 @@ function InputPane({ pane, fallbackLabel, value, onChange, file, onFile, wrap, e
         onChange(await readTextFile(chosen));
       }
     });
+  useIncomingFiles((files) => {
+    if (takesHandoff && files[0]) void accept(files[0]);
+  });
 
   return (
     <div
@@ -323,6 +330,14 @@ export function TextToolView({ entry, spec }: { entry: ToolEntry; spec: TextTool
           {result?.binary && <ActionButton icon="save" label={`Save ${result.binary.name}`} onClick={saveBinary} primary />}
           {showsOutput && <ActionButton icon="copy" label="Copy" disabled={!output} onClick={copyOutput} />}
           {showsOutput && <ActionButton icon="save" label="Save" disabled={!output} onClick={saveOutput} />}
+          {(result?.binary || (showsOutput && output)) && (
+            <SendTo
+              from={entry.id}
+              make={() =>
+                result?.binary ? new File([result.binary.bytes as BlobPart], result.binary.name, { type: result.binary.mime }) : output ? new File([output], filename, { type: 'text/plain' }) : null
+              }
+            />
+          )}
         </div>
       </div>
       <div class="pane-body">
@@ -409,6 +424,7 @@ export function TextToolView({ entry, spec }: { entry: ToolEntry; spec: TextTool
                 wrap={wrap}
                 errorLine={outcome.state === 'error' ? outcome.line : undefined}
                 testId="input-editor"
+                takesHandoff
               />
             )}
             {spec.input2 && <InputPane pane={spec.input2} fallbackLabel="Second input" value={input2} onChange={setInput2} file={null} onFile={() => undefined} wrap={wrap} testId="input2-editor" />}
@@ -433,6 +449,7 @@ export function TextToolView({ entry, spec }: { entry: ToolEntry; spec: TextTool
                   wrap={wrap}
                   errorLine={outcome.state === 'error' ? outcome.line : undefined}
                   testId="input-editor"
+                  takesHandoff
                 />
               )}
               {outputPane}

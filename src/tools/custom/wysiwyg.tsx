@@ -6,7 +6,30 @@ import { defineCustomTool } from '../types';
 
 const START = '<h2>Welcome to the galleries</h2><p>Type here and use the toolbar: <strong>bold</strong>, <em>italic</em>, lists and links all work.</p><ul><li>Engines</li><li>Electricity</li></ul>';
 
-const ACTIONS: readonly { command: string; value?: string; label: string; title: string }[] = [
+interface Action {
+  readonly command: string;
+  readonly value?: string;
+  readonly label: string;
+  readonly title: string;
+}
+
+const words = (text: string) =>
+  text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+
+/**
+ * The tooltip also serves as the spoken name when it contains the visible
+ * text (or the button shows only a symbol), so voice control can use what is
+ * on screen; otherwise the visible text is the name and the tooltip describes it.
+ */
+function spokenName(action: Action): string | undefined {
+  const visible = words(action.label);
+  return !visible || words(action.title).includes(visible) ? action.title : undefined;
+}
+
+const ACTIONS: readonly Action[] = [
   { command: 'formatBlock', value: 'p', label: 'P', title: 'Paragraph' },
   { command: 'formatBlock', value: 'h1', label: 'H1', title: 'Heading 1' },
   { command: 'formatBlock', value: 'h2', label: 'H2', title: 'Heading 2' },
@@ -87,7 +110,7 @@ function Wysiwyg() {
               type="button"
               class="button button-small"
               title={action.title}
-              aria-label={action.title}
+              aria-label={spokenName(action)}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => run(action)}
             >

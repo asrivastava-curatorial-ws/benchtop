@@ -3,9 +3,33 @@
 //! Every tool runs inside the web view; this side only provides a native
 //! window, the clipboard, a "Save as" dialog, a guard that keeps the window on
 //! the app's own pages, and the network commands used by the "Online checks"
-//! tools (see `net.rs`).  The web view itself cannot reach the network.
+//! tools (see `net.rs`), the AI worker and model store (`ai/`), files chosen
+//! in the native "Open" dialog (`files.rs`), and the converters that run
+//! programs installed on the computer (`convert.rs`).  The web view itself
+//! cannot reach the network.
 
+mod ai;
+mod cli;
+mod convert;
+mod files;
+mod links;
 mod net;
+mod serial;
+
+/// Entry point for `benchtop --ai-worker` (see `ai/worker.rs`).
+pub fn ai_worker_main() {
+    ai::worker::main()
+}
+
+/// Whether the process arguments name a command-line command (see `cli.rs`).
+pub fn wants_cli(args: &[String]) -> bool {
+    cli::wanted(args)
+}
+
+/// Runs a command-line command and returns the exit code.
+pub fn cli_main(args: Vec<String>) -> i32 {
+    cli::main(args)
+}
 
 use std::path::{Path, PathBuf};
 
@@ -14,6 +38,17 @@ use tauri::ipc::{InvokeBody, Request};
 use tauri::webview::PageLoadEvent;
 use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
+
+/// Whether `route` (a "#/…" address inside the app) is safe to open the window on:
+/// a page and an optional query of URL-safe characters.  It is written into a
+/// script, so quotes, backslashes and anything else are refused.
+pub(crate) fn safe_route(route: &str) -> bool {
+    route.starts_with("#/")
+        && route.len() <= 4096
+        && route[2..]
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-/_?=&.~%+".contains(c))
+}
 
 /// Pages the main window may show.  Anything else (a link, a stray redirect)
 /// is refused, so the app can never turn into a general web browser.
@@ -86,6 +121,11 @@ async fn save_file(app: AppHandle, request: Request<'_>) -> Result<Option<String
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    run_with(None)
+}
+
+/// Opens the window, on `route` (a `#/tool/<id>` hash) when one is given.
+pub fn run_with(route: Option<String>) {
     tauri::Builder::default()
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -96,10 +136,44 @@ pub fn run() {
             net::net_tls,
             net::net_dns,
             net::net_whois,
-            net::net_tcp_probe
+            net::net_tcp_probe,
+            files::pick_paths,
+            files::stage_file,
+            ai::ai_status,
+            ai::ai_install,
+            ai::ai_cancel_install,
+            ai::ai_remove,
+            ai::ai_import,
+            ai::ai_run,
+            ai::ai_cancel,
+            convert::convert_programs,
+            convert::convert_probe,
+            convert::convert_frame,
+            convert::convert_run,
+            convert::convert_cancel,
+            convert::convert_pick_folder,
+            convert::convert_reveal,
+            serial::serial_ports,
+            serial::serial_open,
+            serial::serial_write,
+            serial::serial_signals,
+            serial::serial_close,
+            links::open_release_page
         ])
-        .setup(|app| {
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+        .manage(files::PickedFiles::default())
+        .manage(convert::ConvertState::default())
+        .manage(serial::SerialState::default())
+        .setup(move |app| {
+            app.manage(ai::AiState::new(ai::models_root(app.handle())));
+            let mut window =
+                WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()));
+            if let Some(route) = route.as_deref().filter(|route| safe_route(route)) {
+                // `benchtop open <tool>`: start on that tool (the router reads the hash on load).
+                window = window.initialization_script(format!(
+                    "if (!location.hash || location.hash === '#/') location.hash = '{route}';"
+                ));
+            }
+            window
                 .title("Benchtop")
                 .inner_size(1360.0, 860.0)
                 .min_inner_size(900.0, 600.0)

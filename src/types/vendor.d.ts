@@ -72,3 +72,54 @@ declare module '*.scss?raw' {
 declare module 'pdfjs-dist/legacy/build/pdf.min.mjs' {
   export * from 'pdfjs-dist/legacy/build/pdf.mjs';
 }
+
+declare module 'gifenc' {
+  export type Palette = number[][];
+  export interface GifEncoder {
+    writeFrame(
+      index: Uint8Array,
+      width: number,
+      height: number,
+      options?: { palette?: Palette; delay?: number; repeat?: number; transparent?: boolean; transparentIndex?: number; dispose?: number },
+    ): void;
+    finish(): void;
+    bytes(): Uint8Array;
+    reset(): void;
+  }
+  export function GIFEncoder(options?: { auto?: boolean; initialCapacity?: number }): GifEncoder;
+  export function quantize(
+    rgba: Uint8Array | Uint8ClampedArray,
+    maxColors: number,
+    options?: { format?: 'rgb565' | 'rgb444' | 'rgba4444'; oneBitAlpha?: boolean | number; clearAlpha?: boolean },
+  ): Palette;
+  export function applyPalette(rgba: Uint8Array | Uint8ClampedArray, palette: Palette, format?: 'rgb565' | 'rgb444' | 'rgba4444'): Uint8Array;
+}
+
+declare module 'imagetracerjs' {
+  interface TracerOptions {
+    ltres?: number;
+    qtres?: number;
+    pathomit?: number;
+    rightangleenhance?: boolean;
+    colorsampling?: number;
+    numberofcolors?: number;
+    mincolorratio?: number;
+    colorquantcycles?: number;
+    layering?: number;
+    strokewidth?: number;
+    linefilter?: boolean;
+    scale?: number;
+    roundcoords?: number;
+    viewbox?: boolean;
+    desc?: boolean;
+    blurradius?: number;
+    blurdelta?: number;
+    pal?: { r: number; g: number; b: number; a: number }[];
+  }
+  const tracer: {
+    imagedataToSVG(imageData: ImageData | { width: number; height: number; data: Uint8ClampedArray }, options?: TracerOptions): string;
+  };
+  export default tracer;
+}
+
+declare module 'regenerator-runtime/runtime';

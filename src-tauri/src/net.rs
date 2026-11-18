@@ -58,6 +58,11 @@ fn provider() -> Arc<CryptoProvider> {
         .unwrap_or_else(|| Arc::new(rustls::crypto::ring::default_provider()))
 }
 
+/// Installs the ring crypto provider for other modules' HTTPS clients (model downloads).
+pub(crate) fn ensure_crypto_provider() {
+    let _ = provider();
+}
+
 fn clamp_timeout(ms: Option<u64>, default_ms: u64) -> Duration {
     Duration::from_millis(ms.unwrap_or(default_ms).clamp(500, 120_000))
 }

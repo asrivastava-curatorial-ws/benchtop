@@ -33,7 +33,7 @@ export function Home({ onOpenPalette }: { onOpenPalette: () => void }) {
     <div class="home">
       <header class="home-header">
         <h1>{TOOLS.length} developer tools that work without a network</h1>
-        <p>Everything runs on this computer. Nothing you paste, open or generate is sent anywhere, and the app never connects to the internet.</p>
+        <p>Everything runs on this computer: nothing you paste, open or generate is sent anywhere. Drop a file on the window to see which tools can open it.</p>
         <button type="button" class="home-search" onClick={onOpenPalette}>
           <Icon name="search" size={17} />
           <span>Find a tool</span>

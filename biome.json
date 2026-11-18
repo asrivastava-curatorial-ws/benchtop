@@ -4,7 +4,21 @@
     "enabled": false
   },
   "files": {
-    "includes": ["**", "!**/node_modules", "!**/dist", "!src-tauri/target", "!src-tauri/gen", "!test-results", "!playwright-report", "!**/*.min.css", "!docs/TOOLS.md"]
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!src-tauri/target",
+      "!src-tauri/gen",
+      "!test-results",
+      "!playwright-report",
+      "!**/*.min.css",
+      "!docs/TOOLS.md",
+      "!public/tesseract",
+      "!src/recipe/vendor",
+      "!tests/e2e/fixtures/cyberchef-port-cases.json",
+      "!tests/unit/fixtures/cyberchef-extra-cases.json"
+    ]
   },
   "formatter": {
     "enabled": true,

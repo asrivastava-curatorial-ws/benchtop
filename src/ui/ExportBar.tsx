@@ -6,6 +6,7 @@ import type { ImageFormat } from '../tools/types';
 import { Superseded } from '../worker/client';
 import { encodeCanvas, FORMAT_INFO, replaceExtension } from './canvas';
 import { Icon } from './icons';
+import { SendTo } from './SendTo';
 import { attempt, notify } from './toast';
 
 const ALL_FORMATS: readonly ImageFormat[] = ['png', 'jpeg', 'webp', 'avif'];
@@ -23,9 +24,11 @@ interface Props {
   readonly originalSize?: number;
   readonly defaultFormat?: ImageFormat;
   readonly label?: string;
+  /** The tool showing the result: adds "Send to" for opening it in another tool. */
+  readonly from?: string;
 }
 
-export function ExportBar({ render, revision, pixels, baseName, formats = ALL_FORMATS, originalSize, defaultFormat, label = 'Save image' }: Props) {
+export function ExportBar({ render, revision, pixels, baseName, formats = ALL_FORMATS, originalSize, defaultFormat, label = 'Save image', from }: Props) {
   const [format, setFormat] = useState<ImageFormat>(defaultFormat && formats.includes(defaultFormat) ? defaultFormat : (formats[0] ?? 'png'));
   const [quality, setQuality] = useState(80);
   const [lossless, setLossless] = useState(false);
@@ -128,6 +131,7 @@ export function ExportBar({ render, revision, pixels, baseName, formats = ALL_FO
         <Icon name="save" size={14} />
         {saving ? 'Encoding…' : label}
       </button>
+      {from && <SendTo from={from} small={false} make={async () => new File([await encode()], replaceExtension(baseName, info.ext), { type: info.mime })} />}
     </div>
   );
 }

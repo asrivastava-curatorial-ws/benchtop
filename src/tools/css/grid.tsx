@@ -104,7 +104,7 @@ export default defineVisualTool({
           ))}
         </div>
       ),
-      css: '.pv-grid { width: 100%; min-height: 360px; padding: 12px; border: 2px dashed var(--line-strong); border-radius: 6px; background: var(--panel); } .pv-grid-item { min-height: 44px; padding: 8px; display: grid; place-content: center; border-radius: 4px; background: var(--accent); color: #fff; font: 600 14px var(--font-ui); } .pv-grid-item:nth-child(even) { background: var(--brass); }',
+      css: '.pv-grid { width: 100%; min-height: 360px; padding: 12px; border: 2px dashed var(--line-strong); border-radius: 6px; background: var(--panel); } .pv-grid-item { min-height: 44px; padding: 8px; display: grid; place-content: center; border-radius: 4px; background: var(--accent); color: var(--on-accent); font: 600 14px var(--font-ui); } .pv-grid-item:nth-child(even) { background: var(--brass); color: #1d1400; }',
       outputs: [css(`${rule('.layout', container)}${itemCss ? `\n${itemCss}` : ''}`), html(markup)],
     };
   },

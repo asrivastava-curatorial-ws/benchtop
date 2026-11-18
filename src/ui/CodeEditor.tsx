@@ -137,7 +137,7 @@ export function CodeEditor({ value, onChange, language = 'text', readOnly = fals
           theme,
           EditorState.readOnly.of(readOnly),
           EditorState.tabSize.of(2),
-          EditorView.contentAttributes.of({ 'aria-label': label, spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
+          EditorView.contentAttributes.of({ 'aria-label': label, tabindex: '0', spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off' }),
           keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, ...(readOnly ? [] : [indentWithTab])]),
           ...(readOnly ? [] : [highlightActiveLine(), highlightActiveLineGutter()]),
           parts.language.of(languageExtension(language)),

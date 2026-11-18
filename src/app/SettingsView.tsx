@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'preact/hooks';
 import { APP_NAME } from '../brand';
-import { isDesktop, pickFile, readTextFile, saveFile } from '../platform';
+import { isDesktop, openReleasePage, pickFile, readTextFile, saveFile } from '../platform';
+import { networkStatus } from '../platform/net';
 import { NOT_INCLUDED, TOOLS } from '../tools/registry';
 import { attempt, notify } from '../ui/toast';
 import { exportSettings, forgetToolOptions, importSettings, resetSettings, type ThemeChoice, updateSettings, useSettings } from './store';
+import { checkForUpdates, RELEASES_PAGE, type UpdateCheck } from './updates';
 
 declare const __APP_VERSION__: string;
+
+/** The AI models panel, loaded only when Settings is opened in the desktop app. */
+function Suspended() {
+  const [Panel, setPanel] = useState<(() => preact.JSX.Element) | null>(null);
+  useEffect(() => {
+    void import('../tools/custom/_ai').then((module) => setPanel(() => module.AiModelsPanel));
+  }, []);
+  return Panel ? <Panel /> : <p class="tone-muted">Loading…</p>;
+}
 
 function Licenses() {
   const [text, setText] = useState<string | null>(null);
@@ -22,6 +33,60 @@ function Licenses() {
       <summary>Open-source licences of the bundled libraries and fonts</summary>
       {/* biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable from the keyboard */}
       <pre tabIndex={0}>{text ?? 'Loading…'}</pre>
+    </details>
+  );
+}
+
+/** Check for updates: one request to GitHub when pressed; nothing runs in the background. */
+function Updates() {
+  const [state, setState] = useState<{ busy: boolean; result: UpdateCheck | null; error: string | null }>({ busy: false, result: null, error: null });
+  const ready = networkStatus();
+  const check = () => {
+    setState({ busy: true, result: null, error: null });
+    checkForUpdates(__APP_VERSION__).then(
+      (result) => setState({ busy: false, result, error: null }),
+      (error: unknown) => setState({ busy: false, result: null, error: error instanceof Error ? error.message : String(error) }),
+    );
+  };
+  const { result } = state;
+  return (
+    <div class="about updates" data-testid="updates">
+      <div class="button-row">
+        <button type="button" class="button" onClick={check} disabled={state.busy || !ready.ok} data-testid="check-updates">
+          {state.busy ? 'Checking…' : 'Check for updates'}
+        </button>
+        {isDesktop && (
+          <button type="button" class="button button-quiet" onClick={() => void attempt(() => openReleasePage(result?.latest?.tag))}>
+            Open the releases page
+          </button>
+        )}
+      </div>
+      <p role="status" class={state.error ? 'tone-bad' : undefined} data-testid="update-status">
+        {!ready.ok && `${ready.reason.replace('Online checks need', 'Checking for updates needs').replace('to use this tool', 'to check')}`}
+        {ready.ok && !state.busy && !result && !state.error && 'Asks GitHub for the newest release when you press the button. Updates are never downloaded or installed by themselves.'}
+        {state.error}
+        {result?.newer &&
+          result.latest &&
+          `Benchtop ${result.latest.version} is available${result.latest.published ? ` (released ${result.latest.published})` : ''}. Download it from the releases page.`}
+        {result && !result.newer && (result.latest ? `You have the newest version, ${result.current}.` : 'No releases are published yet.')}
+      </p>
+      {!isDesktop && <p class="tone-muted">Releases: {RELEASES_PAGE}</p>}
+    </div>
+  );
+}
+
+/** Web features left out on purpose, with the reason for each. */
+function LeftOut() {
+  return (
+    <details class="licenses">
+      <summary>What is left out on purpose, and why ({NOT_INCLUDED.length})</summary>
+      <ul class="left-out">
+        {NOT_INCLUDED.map((item) => (
+          <li key={item.name}>
+            <strong>{item.name}:</strong> {item.reason}
+          </li>
+        ))}
+      </ul>
     </details>
   );
 }
@@ -104,6 +169,13 @@ export function SettingsView() {
           </label>
         </div>
       </section>
+
+      {isDesktop && (
+        <section class="settings-group" id="ai-models">
+          <h2>AI models</h2>
+          <Suspended />
+        </section>
+      )}
 
       <section class="settings-group">
         <h2>Memory</h2>
@@ -235,9 +307,11 @@ export function SettingsView() {
           {APP_NAME} {__APP_VERSION__}, {isDesktop ? 'desktop app' : 'running in a browser'}. {TOOLS.length} tools. Free and open-source software under the MIT licence.
         </p>
         <p class="about">
-          It makes no network connections: there is no telemetry, no update check and no remote content. Web features that would need a server are left out
-          {NOT_INCLUDED.length > 0 ? ` (for example ${NOT_INCLUDED.map((item) => item.name).join(', ')})` : ''}.
+          It makes no network connections of its own: no telemetry, no automatic update check and no remote content. The network is used only when you ask for it: the online checks, downloading an AI
+          model, and checking for updates below.
         </p>
+        <Updates />
+        <LeftOut />
         <Licenses />
       </section>
     </div>

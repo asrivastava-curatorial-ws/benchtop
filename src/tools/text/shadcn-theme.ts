@@ -111,7 +111,20 @@ function buildTheme(primaryInput: string, tintLevel: string, dark: boolean) {
 
 const block = (selector: string, lines: string[]): string => `${selector} {\n${lines.map((line) => `  ${line}`).join('\n')}\n}`;
 
-function previewPanel(tokens: Map<string, string>, title: string): string {
+/** `top` laid over `under` at the given opacity, as #rrggbb. */
+function over(top: string, under: string, alpha: number): string {
+  const channel = (color: string, i: number) => Number.parseInt(color.slice(1 + i * 2, 3 + i * 2), 16);
+  const mixed = [0, 1, 2].map((i) => Math.round(channel(top, i) * alpha + channel(under, i) * (1 - alpha)));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** The destructive button's fill: shadcn/ui draws it at 60% opacity in dark mode. */
+const destructiveFill = (tokens: Map<string, string>, dark: boolean): string => {
+  const fill = tokens.get('destructive') ?? '#888888';
+  return dark ? over(fill, tokens.get('card') ?? '#000000', 0.6) : fill;
+};
+
+function previewPanel(tokens: Map<string, string>, title: string, dark: boolean): string {
   const t = (name: string) => tokens.get(name) ?? '#888888';
   const button = (bg: string, fg: string, label: string, border = 'transparent') =>
     `<span style="display:inline-block;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;background:${bg};color:${fg};border:1px solid ${border};margin:0 6px 6px 0">${label}</span>`;
@@ -122,7 +135,7 @@ function previewPanel(tokens: Map<string, string>, title: string): string {
     `<div style="font-size:16px;font-weight:700;margin-bottom:4px">Create project</div>` +
     `<div style="font-size:13px;color:${t('muted-foreground')};margin-bottom:12px">Deploy your new project in one click.</div>` +
     `<div style="border:1px solid ${t('input')};border-radius:8px;padding:7px 10px;font-size:13px;color:${t('muted-foreground')};margin-bottom:12px">Project name</div>` +
-    `${button(t('primary'), t('primary-foreground'), 'Deploy')}${button(t('secondary'), t('secondary-foreground'), 'Cancel')}${button(t('destructive'), '#ffffff', 'Delete')}${button('transparent', t('foreground'), 'Outline', t('border'))}` +
+    `${button(t('primary'), t('primary-foreground'), 'Deploy')}${button(t('secondary'), t('secondary-foreground'), 'Cancel')}${button(destructiveFill(tokens, dark), '#ffffff', 'Delete')}${button('transparent', t('foreground'), 'Outline', t('border'))}` +
     '</div></div>'
   );
 }
@@ -185,11 +198,13 @@ export default defineTextTool({
       check('Light: text on background', ...pair(lightHex, 'foreground', 'background'), 4.5),
       check('Light: text on primary', ...pair(lightHex, 'primary-foreground', 'primary'), 4.5),
       check('Light: muted text on background', ...pair(lightHex, 'muted-foreground', 'background'), 4.5),
+      check('Light: text on destructive', '#ffffff', destructiveFill(lightHex, false), 4.5),
       check('Dark: text on background', ...pair(darkHex, 'foreground', 'background'), 4.5),
       check('Dark: text on primary', ...pair(darkHex, 'primary-foreground', 'primary'), 4.5),
       check('Dark: muted text on background', ...pair(darkHex, 'muted-foreground', 'background'), 4.5),
+      check('Dark: text on destructive', '#ffffff', destructiveFill(darkHex, true), 4.5),
     ];
-    const html = `<div style="display:flex;flex-wrap:wrap;gap:12px;font-family:system-ui,sans-serif">${previewPanel(lightHex, 'Light')}${previewPanel(darkHex, 'Dark')}</div>`;
+    const html = `<div style="display:flex;flex-wrap:wrap;gap:12px;font-family:system-ui,sans-serif">${previewPanel(lightHex, 'Light', false)}${previewPanel(darkHex, 'Dark', true)}</div>`;
     return {
       output,
       fields,

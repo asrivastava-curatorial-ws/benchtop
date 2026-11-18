@@ -106,6 +106,7 @@ export function ImageToolView({ entry, spec }: { entry: ToolEntry; spec: ImageTo
             formats={spec.formats}
             originalSize={image.size}
             label={outputs.length > 1 ? `Save "${current.label ?? 'image'}"` : 'Save image'}
+            from={entry.id}
           />
         )}
       </aside>

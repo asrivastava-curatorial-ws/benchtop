@@ -7,3 +7,6 @@ playwright-report/
 src-tauri/target/
 src-tauri/gen/schemas/
 .DS_Store
+# Copied from node_modules by vite.config.ts (ocrAssets) on every dev start and build.
+public/tesseract/worker.min.js
+public/tesseract/core/

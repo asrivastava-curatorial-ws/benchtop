@@ -57,6 +57,22 @@ function exifOrientation(payload: Uint8Array): number | undefined {
   return tiffOrientation(payload.subarray(6));
 }
 
+/** The EXIF orientation (1-8) of a JPEG file, or 1 when it has none. */
+export function jpegOrientation(bytes: Uint8Array): number {
+  let offset = 2;
+  while (offset + 4 <= bytes.length && bytes[offset] === 0xff) {
+    const marker = bytes[offset + 1] as number;
+    if (marker === 0xda || marker === 0xd9) break;
+    const length = ((bytes[offset + 2] as number) << 8) | (bytes[offset + 3] as number);
+    if (marker === 0xe1) {
+      const found = exifOrientation(bytes.subarray(offset + 4, offset + 2 + length));
+      if (found) return found;
+    }
+    offset += 2 + length;
+  }
+  return 1;
+}
+
 /** TIFF-structured EXIF data holding only the orientation tag. */
 function orientationTiff(orientation: number): Uint8Array {
   return new Uint8Array([...[0x4d, 0x4d, 0x00, 0x2a, 0, 0, 0, 8], ...[0, 1], ...[0x01, 0x12, 0x00, 0x03, 0, 0, 0, 1, 0, orientation, 0, 0], ...[0, 0, 0, 0]]);

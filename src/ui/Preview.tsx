@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { readSvg, svgIntrinsicSize } from '../lib/xml-scan';
 import { saveFile } from '../platform';
 import type { DiffRow, Preview as PreviewData } from '../tools/types';
+import { scrollRegion } from './a11y';
 import { encodeCanvas, rasterizeSvg } from './canvas';
 import { useObjectUrl } from './hooks';
 import { Icon } from './icons';
@@ -239,7 +240,12 @@ function ImagePreview({ bytes, mime }: { bytes: Uint8Array; mime: string }) {
 
 function HtmlPreview({ html }: { html: string }) {
   const safe = useMemo(() => sanitizeHtml(html), [html]);
-  return <div class="preview-html prose" data-testid="preview-html" dangerouslySetInnerHTML={{ __html: safe }} />;
+  const host = useRef<HTMLDivElement>(null);
+  // Code blocks scroll sideways on their own, so each needs a keyboard stop too.
+  useEffect(() => {
+    for (const block of host.current?.querySelectorAll('pre') ?? []) block.tabIndex = 0;
+  }, [safe]);
+  return <div ref={host} class="preview-html prose" data-testid="preview-html" {...scrollRegion('Preview')} dangerouslySetInnerHTML={{ __html: safe }} />;
 }
 
 export function PreviewView({ preview, name }: { preview: PreviewData; name: string }) {

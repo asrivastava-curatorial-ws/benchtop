@@ -15,6 +15,9 @@ import type { TextResult, TextToolSpec } from '../tools/types';
 import type { Job, TextJob, WorkerReply, WorkerRequest } from './protocol';
 import { deserializeError, executeJob } from './run';
 
+/** The worker's source while developing; in the app, the entry the build emits beside this chunk (see vite.config.ts). */
+const WORKER_SCRIPT = import.meta.env.DEV ? './worker.ts' : './text-worker.js';
+
 /** A newer request replaced this one; its result is no longer wanted. */
 export class Superseded extends Error {
   constructor() {
@@ -54,7 +57,7 @@ function shutDown(reason: Error): void {
 
 function spawn(): Worker | null {
   try {
-    const created = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module', name: 'benchtop-worker' });
+    const created = new Worker(new URL(WORKER_SCRIPT, import.meta.url), { type: 'module', name: 'benchtop-worker' });
     created.onmessage = (event: MessageEvent<WorkerReply>) => {
       const reply = event.data;
       if ('ready' in reply) {

@@ -1,5 +1,7 @@
 /** Rasterise SVG at any size, with or without a background. */
+
 import { useCallback, useEffect, useMemo, useState } from 'preact/hooks';
+import { useIncomingFiles } from '../../app/handoff';
 import { trimNumber } from '../../lib/color';
 import { errorMessage } from '../../lib/errors';
 import { readSvg, svgIntrinsicSize } from '../../lib/xml-scan';
@@ -125,6 +127,13 @@ function SvgToPng({ toolId }: { toolId: string }) {
       setSource(await readTextFile(file));
       setName(file.name);
     });
+  useIncomingFiles((files) =>
+    attempt(async () => {
+      const file = files[0] as File;
+      setSource(await readTextFile(file));
+      setName(file.name);
+    }),
+  );
 
   const error = 'error' in parsed ? parsed.error : preview && 'error' in preview ? preview.error : null;
 
@@ -140,7 +149,7 @@ function SvgToPng({ toolId }: { toolId: string }) {
           )}
         </div>
         {size && preview && 'canvas' in preview && (
-          <ExportBar render={render} revision={`${source.length}|${size.width}x${size.height}|${background}`} pixels={size.width * size.height} baseName={name} label="Save image" />
+          <ExportBar render={render} revision={`${source.length}|${size.width}x${size.height}|${background}`} pixels={size.width * size.height} baseName={name} label="Save image" from={toolId} />
         )}
       </aside>
       <div class="tool-main">

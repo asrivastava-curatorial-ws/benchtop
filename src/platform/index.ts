@@ -8,6 +8,12 @@ import { utf8Encode } from '../lib/bytes';
 
 export const isDesktop: boolean = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
+/** Opens the project's releases page, or one release's page, in the system's web browser (desktop app). */
+export async function openReleasePage(tag?: string): Promise<void> {
+  if (!isDesktop) throw new Error('Open the releases page from the desktop app.');
+  await invoke('open_release_page', { tag: tag ?? null });
+}
+
 export async function copyText(text: string): Promise<void> {
   if (isDesktop) {
     try {

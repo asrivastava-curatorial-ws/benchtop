@@ -2,6 +2,7 @@
 import type { ComponentChildren } from 'preact';
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { getSettings, saveToolOptions } from '../../app/store';
+import { scrollRegion } from '../../ui/a11y';
 import type { Values } from '../types';
 
 /**
@@ -110,7 +111,7 @@ export function PreviewFrame({
   }, [onResize]);
   const style = width === 'full' ? undefined : { width: `${typeof width === 'number' ? width : Number(width)}px` };
   return (
-    <div class="frame-stage">
+    <div class="frame-stage" {...scrollRegion('Preview area')}>
       <div ref={box} class={`frame-box${resizable ? ' is-resizable' : ''}`} style={style}>
         <iframe class="frame" title={title} sandbox="" srcdoc={html} data-testid={testId} referrerpolicy="no-referrer" />
       </div>

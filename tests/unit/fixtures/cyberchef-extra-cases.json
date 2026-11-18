@@ -1,0 +1,858 @@
+[
+ {
+  "file": "AvroToJSON",
+  "name": "Avro to JSON: no input (force JSON true)",
+  "input": "",
+  "recipe": [
+   {
+    "op": "Avro to JSON",
+    "args": [
+     true
+    ]
+   }
+  ],
+  "expected": "Please provide an input."
+ },
+ {
+  "file": "AvroToJSON",
+  "name": "Avro to JSON: no input (force JSON false)",
+  "input": "",
+  "recipe": [
+   {
+    "op": "Avro to JSON",
+    "args": [
+     false
+    ]
+   }
+  ],
+  "expected": "Please provide an input."
+ },
+ {
+  "file": "AvroToJSON",
+  "name": "Avro to JSON: small (force JSON true)",
+  "input": "Obj\u0001\u0004\u0016avro.schema\u0096\u0001{\"type\":\"record\",\"name\":\"small\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"}]}\u0014avro.codec\bnull\u0000N\u0002Gc.7\u0002å·\\Ú¹¦/\u0015A\u0002\u000e\fmynameN\u0002Gc.7\u0002å·\\Ú¹¦/\u0015A",
+  "recipe": [
+   {
+    "op": "Avro to JSON",
+    "args": [
+     true
+    ]
+   }
+  ],
+  "expected": "{\n    \"name\": \"myname\"\n}"
+ },
+ {
+  "file": "AvroToJSON",
+  "name": "Avro to JSON: small (force JSON false)",
+  "input": "Obj\u0001\u0004\u0016avro.schema\u0096\u0001{\"type\":\"record\",\"name\":\"small\",\"fields\":[{\"name\":\"name\",\"type\":\"string\"}]}\u0014avro.codec\bnull\u0000N\u0002Gc.7\u0002å·\\Ú¹¦/\u0015A\u0002\u000e\fmynameN\u0002Gc.7\u0002å·\\Ú¹¦/\u0015A",
+  "recipe": [
+   {
+    "op": "Avro to JSON",
+    "args": [
+     false
+    ]
+   }
+  ],
+  "expected": "{\"name\":\"myname\"}\n"
+ },
+ {
+  "file": "PGP",
+  "name": "PGP Encrypt/Decrypt: RSA, nothing",
+  "input": "",
+  "recipe": [
+   {
+    "op": "PGP Encrypt",
+    "args": [
+     "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxo0EahcezQEEAMHouiP41c1AGBU0IO0VjE2+O9WKc8Cpbv+ymy+MI6EOsiSoZ/Z+\nhjqyMumx1loeH4K0QClzcWfeAtKrXs8JjQonByKtuneRjITNnasCEmWmqZbea5qa\np9+s6A6m+VHUehrtIvipNaq/Bfrynk9RwRMoAoTYJBUyPWaSLzzaV0zNABEBAAHN\nAMK0BBMBCgAeBQJqFx7NAhsvAwsJBwMVCggCHgECF4ADFgIBAhkBAAoJEBt1IEsq\n342M/VsEALQX4Lc7Udc9Obc5AnxABhzDZnCaFHYeZFJwyWtHpIN60gGFkz9vePji\n0DP1Kbeyo6awzUIzA8tuIGgZXQCJ04KPCP8dSXH0HpbrmSinuJW5kk+ttvaJxOm1\n3m9e52i2WkomCP6i8gvMXm/VpH5kfLkbpl0ha0ycR7z8yweD4Mdpzo0EahcezQEE\nAKjU543TxZbzZiae6XWFIXjFgWE/vBC+5ZYEyTAG6jtwfP4tgagb+chJG+hoFA9H\nZXXPr5CPiNZUW6aPpbaMRmubIZs7uCpw3RfcZ+AR+Q9unf0kCJxXThRBhhWHipaL\nB44MweCueUawRjwnJVog9nIEE1Heg5G9/fHemLZJ7iU/ABEBAAHCwIMEGAEKAA8F\nAmoXHs0FCQ8JnAACGy4AqAkQG3UgSyrfjYydIAQZAQoABgUCahcezQAKCRA5/CQI\nqiKa+krFA/9Tnl0E4Ck9zR6BYKAQFpShzBnpODx28LDn/yH+20e1vt2Hgb5cerfM\n87PzIdLbavS5OYNtAVPtCc9a4WA3lQFggziOKVNt5UtsI9hNe8KfMAXpBEtXU53C\nsRKkWzi+rBlSZ9/Oh4jqsUcj0cceJRn9La71h3Kot8cxNl72zyIHK4y2A/4jNAej\nMx0Rc0VSUWnHD9vlO/imzkez7+JKIYkMm8LrG1ZeLaSlTaQ0AIpbr2+3/kMuWhM0\ndU4BHtmjjNU5ijq7/+ZBG+O2bO+vlYmDpOL6j+dkRpQgvsJdoLBt14mQbxBJfVTm\nXvfhTUPZT4nCZN+5nUNAF2XsDatMic+Yjki7Ps6NBGoXHs0BBADEJr0pscgaUine\n6UW2M0zQ57UybQphUYv4xYeZwOG1NvNLK6jcxQ9NGIlhUhJ/hV4piYy4A4bt7/Vy\nO+CgSDWXf7kc8YL1tve9k9KIMceAT60Wt7QnHSSooysH5zRtE/Zqzc9luD9iWNGU\ndKSAveJ5tJoPBJBB8cAsqWr8ZqP5qQARAQABwsCDBBgBCgAPBQJqFx7NBQkDwmcA\nAhsuAKgJEBt1IEsq342MnSAEGQEKAAYFAmoXHs0ACgkQjWbXIJgXR6SYaQP+PjA9\nSI4z/bbROkoNv73VCWM4o9r0DMASHK2Dyd71vOoOFjM/GtpGgQvjAKB82Db7+wsG\nT6V6bxpvY1sMOxCjphsLs2u2IvZLHqlc/v8CCXLHoiN3v6PVwkYG17UyZoDbCVt3\n0SCZ5jJ7gCf+MpC9RseIteW5MtbFtKb6FwGgi9GNQQQAr4PFi8aXZ71lmB7/c/8f\nXAzsWRto9v64xtlZwpQ5GSOPvwzNjQfZf3Q4lKormkoqTxxC1tsxRxvbr51ZwfJU\n8LCfKZz9p+M1ncX6nyJBJupmesqfrjWizzuEYqo8D4q0jaoWq6lEsUWLSBcJXKaA\nkHFtNAeebzImsGV9hhKv+f0=\n=IODM\n-----END PGP PUBLIC KEY BLOCK-----"
+    ]
+   },
+   {
+    "op": "PGP Decrypt",
+    "args": [
+     "-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\n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\nEq/5/Q==\n=HBWf\n-----END PGP PRIVATE KEY BLOCK-----",
+     ""
+    ]
+   }
+  ],
+  "expected": ""
+ },
+ {
+  "file": "PGP",
+  "name": "PGP Encrypt/Decrypt: RSA, All bytes",
+  "input": "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f\u0080\u0081\u0082\u0083\u0084\u0085\u0086\u0087\u0088\u0089\u008a\u008b\u008c\u008d\u008e\u008f\u0090\u0091\u0092\u0093\u0094\u0095\u0096\u0097\u0098\u0099\u009a\u009b\u009c\u009d\u009e\u009f\u00a0¡¢£¤¥¦§¨©ª«¬\u00ad®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ",
+  "recipe": [
+   {
+    "op": "PGP Encrypt",
+    "args": [
+     "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxo0EahcezQEEAMHouiP41c1AGBU0IO0VjE2+O9WKc8Cpbv+ymy+MI6EOsiSoZ/Z+\nhjqyMumx1loeH4K0QClzcWfeAtKrXs8JjQonByKtuneRjITNnasCEmWmqZbea5qa\np9+s6A6m+VHUehrtIvipNaq/Bfrynk9RwRMoAoTYJBUyPWaSLzzaV0zNABEBAAHN\nAMK0BBMBCgAeBQJqFx7NAhsvAwsJBwMVCggCHgECF4ADFgIBAhkBAAoJEBt1IEsq\n342M/VsEALQX4Lc7Udc9Obc5AnxABhzDZnCaFHYeZFJwyWtHpIN60gGFkz9vePji\n0DP1Kbeyo6awzUIzA8tuIGgZXQCJ04KPCP8dSXH0HpbrmSinuJW5kk+ttvaJxOm1\n3m9e52i2WkomCP6i8gvMXm/VpH5kfLkbpl0ha0ycR7z8yweD4Mdpzo0EahcezQEE\nAKjU543TxZbzZiae6XWFIXjFgWE/vBC+5ZYEyTAG6jtwfP4tgagb+chJG+hoFA9H\nZXXPr5CPiNZUW6aPpbaMRmubIZs7uCpw3RfcZ+AR+Q9unf0kCJxXThRBhhWHipaL\nB44MweCueUawRjwnJVog9nIEE1Heg5G9/fHemLZJ7iU/ABEBAAHCwIMEGAEKAA8F\nAmoXHs0FCQ8JnAACGy4AqAkQG3UgSyrfjYydIAQZAQoABgUCahcezQAKCRA5/CQI\nqiKa+krFA/9Tnl0E4Ck9zR6BYKAQFpShzBnpODx28LDn/yH+20e1vt2Hgb5cerfM\n87PzIdLbavS5OYNtAVPtCc9a4WA3lQFggziOKVNt5UtsI9hNe8KfMAXpBEtXU53C\nsRKkWzi+rBlSZ9/Oh4jqsUcj0cceJRn9La71h3Kot8cxNl72zyIHK4y2A/4jNAej\nMx0Rc0VSUWnHD9vlO/imzkez7+JKIYkMm8LrG1ZeLaSlTaQ0AIpbr2+3/kMuWhM0\ndU4BHtmjjNU5ijq7/+ZBG+O2bO+vlYmDpOL6j+dkRpQgvsJdoLBt14mQbxBJfVTm\nXvfhTUPZT4nCZN+5nUNAF2XsDatMic+Yjki7Ps6NBGoXHs0BBADEJr0pscgaUine\n6UW2M0zQ57UybQphUYv4xYeZwOG1NvNLK6jcxQ9NGIlhUhJ/hV4piYy4A4bt7/Vy\nO+CgSDWXf7kc8YL1tve9k9KIMceAT60Wt7QnHSSooysH5zRtE/Zqzc9luD9iWNGU\ndKSAveJ5tJoPBJBB8cAsqWr8ZqP5qQARAQABwsCDBBgBCgAPBQJqFx7NBQkDwmcA\nAhsuAKgJEBt1IEsq342MnSAEGQEKAAYFAmoXHs0ACgkQjWbXIJgXR6SYaQP+PjA9\nSI4z/bbROkoNv73VCWM4o9r0DMASHK2Dyd71vOoOFjM/GtpGgQvjAKB82Db7+wsG\nT6V6bxpvY1sMOxCjphsLs2u2IvZLHqlc/v8CCXLHoiN3v6PVwkYG17UyZoDbCVt3\n0SCZ5jJ7gCf+MpC9RseIteW5MtbFtKb6FwGgi9GNQQQAr4PFi8aXZ71lmB7/c/8f\nXAzsWRto9v64xtlZwpQ5GSOPvwzNjQfZf3Q4lKormkoqTxxC1tsxRxvbr51ZwfJU\n8LCfKZz9p+M1ncX6nyJBJupmesqfrjWizzuEYqo8D4q0jaoWq6lEsUWLSBcJXKaA\nkHFtNAeebzImsGV9hhKv+f0=\n=IODM\n-----END PGP PUBLIC KEY BLOCK-----"
+    ]
+   },
+   {
+    "op": "PGP Decrypt",
+    "args": [
+     "-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\n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\nEq/5/Q==\n=HBWf\n-----END PGP PRIVATE KEY BLOCK-----",
+     ""
+    ]
+   }
+  ],
+  "expected": "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f\u0080\u0081\u0082\u0083\u0084\u0085\u0086\u0087\u0088\u0089\u008a\u008b\u008c\u008d\u008e\u008f\u0090\u0091\u0092\u0093\u0094\u0095\u0096\u0097\u0098\u0099\u009a\u009b\u009c\u009d\u009e\u009f\u00a0¡¢£¤¥¦§¨©ª«¬\u00ad®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
+ },
+ {
+  "file": "PGP",
+  "name": "PGP Encrypt/Decrypt: ECC, nothing",
+  "input": "",
+  "recipe": [
+   {
+    "op": "PGP Encrypt",
+    "args": [
+     "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxm8EahclbRMFK4EEACIDAwSvC1SlbUU7/QJFldLQGfAeyhu0mRvTIcxzANM9SdkI\ndS2ArnVOZCB7cnfj5AF1nAjphKCv+01LAkGpCF6dUrvDwDeicMaq+E1OPVc+G0bH\nO4qQwJgyRLV/GNUZ0ASSmNbNAMKWBBMTCgAeBQJqFyVtAhsvAwsJBwMVCggCHgEC\nF4ADFgIBAhkBAAoJEF3faKPz6pIn7LQBfijD9cQAg8gKrKGY85jnQ9N/q6mh5NxA\nzuyffKgPoN5WlI/28dtSDPBSTRCRyrPU6QGA/C6RwBh5g7gSmQwmSmmyEmr8QDrq\nBBzjrvRpRpPvC4H7Ty1txGFH/0e5uJhiKtVMzlIEahclbRMIKoZIzj0DAQcCAwRn\n9Bq5GWBB/klNeZZDI2HB53WqsGGxfiT4FFXOmYkGA5GmNrqHavp/Nh6Da87Aryic\ncwvbqZvKszsBRy/gu1L6wsAnBBgTCgAPBQJqFyVtBQkPCZwAAhsCAGoJEF3faKPz\n6pInXyAEGRMKAAYFAmoXJW0ACgkQVQZtQ9p5kJtfDQD+Ns1eh7rEAXveFSOLhx7V\nw/5kUWm8wVWbqWDK5tJTF5EA/2+3jIQfg+/pE+VkO/NuIGQ9bUqGmGuX0s14Tcjq\nDm9LNugBf27462A7iEkTab0nOQXtd6+L3PeHRUPUT1CFq+74M5GABr0wobJ5CCaQ\nNxQH++IKvwF+MSD0JajEVgi99qzSQOTZe8UGArddSCIJuUxNwEzaxvT6DombpLJ2\nO4yYklR/xwoJzlYEahclbRIIKoZIzj0DAQcCAwRjn9T4UunA8a8ZuWP31AJheebC\nAcPFWBGxdkxFeX65heVpMipOZ97EczRkitfAmiwt7cREq6yhvZ42KMOcZHPIAwEK\nCcKHBBgTCgAPBQJqFyVtBQkDwmcAAhsMAAoJEF3faKPz6pInX6wBfjCSncZmJEC1\nRm6MLdsnS6RgmOJ40cVqkDqv7SS7eZH/04UNtVpM8RwvueGAZj3irwF9G9zN0KUg\nrSt1j9uilAOri4RGiIH9uwfVUVp0gS8xl4imlYZvx33cilkSsZP3FAjw\n=BHOx\n-----END PGP PUBLIC KEY BLOCK-----"
+    ]
+   },
+   {
+    "op": "PGP Decrypt",
+    "args": [
+     "-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxaQEahclbRMFK4EEACIDAwSvC1SlbUU7/QJFldLQGfAeyhu0mRvTIcxzANM9SdkI\ndS2ArnVOZCB7cnfj5AF1nAjphKCv+01LAkGpCF6dUrvDwDeicMaq+E1OPVc+G0bH\nO4qQwJgyRLV/GNUZ0ASSmNYAAYCxPV5eRqoX/13vQ38EFBDqWVQE5BuIvvFqNI2R\n2RW7hAyI8AWazxDF90gurec8mWYXJM0AwpYEExMKAB4FAmoXJW0CGy8DCwkHAxUK\nCAIeAQIXgAMWAgECGQEACgkQXd9oo/PqkifstAF+KMP1xACDyAqsoZjzmOdD03+r\nqaHk3EDO7J98qA+g3laUj/bx21IM8FJNEJHKs9TpAYD8LpHAGHmDuBKZDCZKabIS\navxAOuoEHOOu9GlGk+8LgftPLW3EYUf/R7m4mGIq1UzHdwRqFyVtEwgqhkjOPQMB\nBwIDBGf0GrkZYEH+SU15lkMjYcHndaqwYbF+JPgUVc6ZiQYDkaY2uodq+n82HoNr\nzsCvKJxzC9upm8qzOwFHL+C7UvoAAP9MeWPmsuLSLXq+cVeqoEHAFQ/VYTBL/N7A\nXeiiDdUbKBFmwsAnBBgTCgAPBQJqFyVtBQkPCZwAAhsCAGoJEF3faKPz6pInXyAE\nGRMKAAYFAmoXJW0ACgkQVQZtQ9p5kJtfDQD+Ns1eh7rEAXveFSOLhx7Vw/5kUWm8\nwVWbqWDK5tJTF5EA/2+3jIQfg+/pE+VkO/NuIGQ9bUqGmGuX0s14TcjqDm9LNugB\nf27462A7iEkTab0nOQXtd6+L3PeHRUPUT1CFq+74M5GABr0wobJ5CCaQNxQH++IK\nvwF+MSD0JajEVgi99qzSQOTZe8UGArddSCIJuUxNwEzaxvT6DombpLJ2O4yYklR/\nxwoJx3sEahclbRIIKoZIzj0DAQcCAwRjn9T4UunA8a8ZuWP31AJheebCAcPFWBGx\ndkxFeX65heVpMipOZ97EczRkitfAmiwt7cREq6yhvZ42KMOcZHPIAwEKCQABAFwA\nUyvBBcchnSFCguG8EbEeA+DFKS62fvhqMHyMLGtfDUvChwQYEwoADwUCahclbQUJ\nA8JnAAIbDAAKCRBd32ij8+qSJ1+sAX4wkp3GZiRAtUZujC3bJ0ukYJjieNHFapA6\nr+0ku3mR/9OFDbVaTPEcL7nhgGY94q8BfRvczdClIK0rdY/bopQDq4uERoiB/bsH\n1VFadIEvMZeIppWGb8d93IpZErGT9xQI8A==\n=XC/n\n-----END PGP PRIVATE KEY BLOCK-----",
+     ""
+    ]
+   }
+  ],
+  "expected": ""
+ },
+ {
+  "file": "PGP",
+  "name": "PGP Encrypt/Decrypt: ECC, All bytes",
+  "input": "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f\u0080\u0081\u0082\u0083\u0084\u0085\u0086\u0087\u0088\u0089\u008a\u008b\u008c\u008d\u008e\u008f\u0090\u0091\u0092\u0093\u0094\u0095\u0096\u0097\u0098\u0099\u009a\u009b\u009c\u009d\u009e\u009f\u00a0¡¢£¤¥¦§¨©ª«¬\u00ad®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ",
+  "recipe": [
+   {
+    "op": "PGP Encrypt",
+    "args": [
+     "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxm8EahclbRMFK4EEACIDAwSvC1SlbUU7/QJFldLQGfAeyhu0mRvTIcxzANM9SdkI\ndS2ArnVOZCB7cnfj5AF1nAjphKCv+01LAkGpCF6dUrvDwDeicMaq+E1OPVc+G0bH\nO4qQwJgyRLV/GNUZ0ASSmNbNAMKWBBMTCgAeBQJqFyVtAhsvAwsJBwMVCggCHgEC\nF4ADFgIBAhkBAAoJEF3faKPz6pIn7LQBfijD9cQAg8gKrKGY85jnQ9N/q6mh5NxA\nzuyffKgPoN5WlI/28dtSDPBSTRCRyrPU6QGA/C6RwBh5g7gSmQwmSmmyEmr8QDrq\nBBzjrvRpRpPvC4H7Ty1txGFH/0e5uJhiKtVMzlIEahclbRMIKoZIzj0DAQcCAwRn\n9Bq5GWBB/klNeZZDI2HB53WqsGGxfiT4FFXOmYkGA5GmNrqHavp/Nh6Da87Aryic\ncwvbqZvKszsBRy/gu1L6wsAnBBgTCgAPBQJqFyVtBQkPCZwAAhsCAGoJEF3faKPz\n6pInXyAEGRMKAAYFAmoXJW0ACgkQVQZtQ9p5kJtfDQD+Ns1eh7rEAXveFSOLhx7V\nw/5kUWm8wVWbqWDK5tJTF5EA/2+3jIQfg+/pE+VkO/NuIGQ9bUqGmGuX0s14Tcjq\nDm9LNugBf27462A7iEkTab0nOQXtd6+L3PeHRUPUT1CFq+74M5GABr0wobJ5CCaQ\nNxQH++IKvwF+MSD0JajEVgi99qzSQOTZe8UGArddSCIJuUxNwEzaxvT6DombpLJ2\nO4yYklR/xwoJzlYEahclbRIIKoZIzj0DAQcCAwRjn9T4UunA8a8ZuWP31AJheebC\nAcPFWBGxdkxFeX65heVpMipOZ97EczRkitfAmiwt7cREq6yhvZ42KMOcZHPIAwEK\nCcKHBBgTCgAPBQJqFyVtBQkDwmcAAhsMAAoJEF3faKPz6pInX6wBfjCSncZmJEC1\nRm6MLdsnS6RgmOJ40cVqkDqv7SS7eZH/04UNtVpM8RwvueGAZj3irwF9G9zN0KUg\nrSt1j9uilAOri4RGiIH9uwfVUVp0gS8xl4imlYZvx33cilkSsZP3FAjw\n=BHOx\n-----END PGP PUBLIC KEY BLOCK-----"
+    ]
+   },
+   {
+    "op": "PGP Decrypt",
+    "args": [
+     "-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxaQEahclbRMFK4EEACIDAwSvC1SlbUU7/QJFldLQGfAeyhu0mRvTIcxzANM9SdkI\ndS2ArnVOZCB7cnfj5AF1nAjphKCv+01LAkGpCF6dUrvDwDeicMaq+E1OPVc+G0bH\nO4qQwJgyRLV/GNUZ0ASSmNYAAYCxPV5eRqoX/13vQ38EFBDqWVQE5BuIvvFqNI2R\n2RW7hAyI8AWazxDF90gurec8mWYXJM0AwpYEExMKAB4FAmoXJW0CGy8DCwkHAxUK\nCAIeAQIXgAMWAgECGQEACgkQXd9oo/PqkifstAF+KMP1xACDyAqsoZjzmOdD03+r\nqaHk3EDO7J98qA+g3laUj/bx21IM8FJNEJHKs9TpAYD8LpHAGHmDuBKZDCZKabIS\navxAOuoEHOOu9GlGk+8LgftPLW3EYUf/R7m4mGIq1UzHdwRqFyVtEwgqhkjOPQMB\nBwIDBGf0GrkZYEH+SU15lkMjYcHndaqwYbF+JPgUVc6ZiQYDkaY2uodq+n82HoNr\nzsCvKJxzC9upm8qzOwFHL+C7UvoAAP9MeWPmsuLSLXq+cVeqoEHAFQ/VYTBL/N7A\nXeiiDdUbKBFmwsAnBBgTCgAPBQJqFyVtBQkPCZwAAhsCAGoJEF3faKPz6pInXyAE\nGRMKAAYFAmoXJW0ACgkQVQZtQ9p5kJtfDQD+Ns1eh7rEAXveFSOLhx7Vw/5kUWm8\nwVWbqWDK5tJTF5EA/2+3jIQfg+/pE+VkO/NuIGQ9bUqGmGuX0s14TcjqDm9LNugB\nf27462A7iEkTab0nOQXtd6+L3PeHRUPUT1CFq+74M5GABr0wobJ5CCaQNxQH++IK\nvwF+MSD0JajEVgi99qzSQOTZe8UGArddSCIJuUxNwEzaxvT6DombpLJ2O4yYklR/\nxwoJx3sEahclbRIIKoZIzj0DAQcCAwRjn9T4UunA8a8ZuWP31AJheebCAcPFWBGx\ndkxFeX65heVpMipOZ97EczRkitfAmiwt7cREq6yhvZ42KMOcZHPIAwEKCQABAFwA\nUyvBBcchnSFCguG8EbEeA+DFKS62fvhqMHyMLGtfDUvChwQYEwoADwUCahclbQUJ\nA8JnAAIbDAAKCRBd32ij8+qSJ1+sAX4wkp3GZiRAtUZujC3bJ0ukYJjieNHFapA6\nr+0ku3mR/9OFDbVaTPEcL7nhgGY94q8BfRvczdClIK0rdY/bopQDq4uERoiB/bsH\n1VFadIEvMZeIppWGb8d93IpZErGT9xQI8A==\n=XC/n\n-----END PGP PRIVATE KEY BLOCK-----",
+     ""
+    ]
+   }
+  ],
+  "expected": "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f\u0080\u0081\u0082\u0083\u0084\u0085\u0086\u0087\u0088\u0089\u008a\u008b\u008c\u008d\u008e\u008f\u0090\u0091\u0092\u0093\u0094\u0095\u0096\u0097\u0098\u0099\u009a\u009b\u009c\u009d\u009e\u009f\u00a0¡¢£¤¥¦§¨©ª«¬\u00ad®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ"
+ },
+ {
+  "file": "PGP",
+  "name": "PGP Sign/Verify: RSA, All bytes",
+  "input": "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000b\f\r\u000e\u000f\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u007f\u0080\u0081\u0082\u0083\u0084\u0085\u0086\u0087\u0088\u0089\u008a\u008b\u008c\u008d\u008e\u008f\u0090\u0091\u0092\u0093\u0094\u0095\u0096\u0097\u0098\u0099\u009a\u009b\u009c\u009d\u009e\u009f\u00a0¡¢£¤¥¦§¨©ª«¬\u00ad®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ",
+  "recipe": [
+   {
+    "op": "PGP Sign",
+    "args": [
+     "-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\n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\nEq/5/Q==\n=HBWf\n-----END PGP PRIVATE KEY BLOCK-----",
+     ""
+    ]
+   },
+   {
+    "op": "PGP Verify",
+    "args": [
+     "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxo0EahcezQEEAMHouiP41c1AGBU0IO0VjE2+O9WKc8Cpbv+ymy+MI6EOsiSoZ/Z+\nhjqyMumx1loeH4K0QClzcWfeAtKrXs8JjQonByKtuneRjITNnasCEmWmqZbea5qa\np9+s6A6m+VHUehrtIvipNaq/Bfrynk9RwRMoAoTYJBUyPWaSLzzaV0zNABEBAAHN\nAMK0BBMBCgAeBQJqFx7NAhsvAwsJBwMVCggCHgECF4ADFgIBAhkBAAoJEBt1IEsq\n342M/VsEALQX4Lc7Udc9Obc5AnxABhzDZnCaFHYeZFJwyWtHpIN60gGFkz9vePji\n0DP1Kbeyo6awzUIzA8tuIGgZXQCJ04KPCP8dSXH0HpbrmSinuJW5kk+ttvaJxOm1\n3m9e52i2WkomCP6i8gvMXm/VpH5kfLkbpl0ha0ycR7z8yweD4Mdpzo0EahcezQEE\nAKjU543TxZbzZiae6XWFIXjFgWE/vBC+5ZYEyTAG6jtwfP4tgagb+chJG+hoFA9H\nZXXPr5CPiNZUW6aPpbaMRmubIZs7uCpw3RfcZ+AR+Q9unf0kCJxXThRBhhWHipaL\nB44MweCueUawRjwnJVog9nIEE1Heg5G9/fHemLZJ7iU/ABEBAAHCwIMEGAEKAA8F\nAmoXHs0FCQ8JnAACGy4AqAkQG3UgSyrfjYydIAQZAQoABgUCahcezQAKCRA5/CQI\nqiKa+krFA/9Tnl0E4Ck9zR6BYKAQFpShzBnpODx28LDn/yH+20e1vt2Hgb5cerfM\n87PzIdLbavS5OYNtAVPtCc9a4WA3lQFggziOKVNt5UtsI9hNe8KfMAXpBEtXU53C\nsRKkWzi+rBlSZ9/Oh4jqsUcj0cceJRn9La71h3Kot8cxNl72zyIHK4y2A/4jNAej\nMx0Rc0VSUWnHD9vlO/imzkez7+JKIYkMm8LrG1ZeLaSlTaQ0AIpbr2+3/kMuWhM0\ndU4BHtmjjNU5ijq7/+ZBG+O2bO+vlYmDpOL6j+dkRpQgvsJdoLBt14mQbxBJfVTm\nXvfhTUPZT4nCZN+5nUNAF2XsDatMic+Yjki7Ps6NBGoXHs0BBADEJr0pscgaUine\n6UW2M0zQ57UybQphUYv4xYeZwOG1NvNLK6jcxQ9NGIlhUhJ/hV4piYy4A4bt7/Vy\nO+CgSDWXf7kc8YL1tve9k9KIMceAT60Wt7QnHSSooysH5zRtE/Zqzc9luD9iWNGU\ndKSAveJ5tJoPBJBB8cAsqWr8ZqP5qQARAQABwsCDBBgBCgAPBQJqFx7NBQkDwmcA\nAhsuAKgJEBt1IEsq342MnSAEGQEKAAYFAmoXHs0ACgkQjWbXIJgXR6SYaQP+PjA9\nSI4z/bbROkoNv73VCWM4o9r0DMASHK2Dyd71vOoOFjM/GtpGgQvjAKB82Db7+wsG\nT6V6bxpvY1sMOxCjphsLs2u2IvZLHqlc/v8CCXLHoiN3v6PVwkYG17UyZoDbCVt3\n0SCZ5jJ7gCf+MpC9RseIteW5MtbFtKb6FwGgi9GNQQQAr4PFi8aXZ71lmB7/c/8f\nXAzsWRto9v64xtlZwpQ5GSOPvwzNjQfZf3Q4lKormkoqTxxC1tsxRxvbr51ZwfJU\n8LCfKZz9p+M1ncX6nyJBJupmesqfrjWizzuEYqo8D4q0jaoWq6lEsUWLSBcJXKaA\nkHFtNAeebzImsGV9hhKv+f0=\n=IODM\n-----END PGP PUBLIC KEY BLOCK-----"
+    ]
+   }
+  ],
+  "match": {
+   "source": "Signed by PGP key ID: 2ADF8D8C\\nPGP fingerprint: 7afe93ff7614167c3fe831fe1b75204b2adf8d8c\\nSigned on .*\\n----------------------------------\\n",
+   "flags": ""
+  }
+ },
+ {
+  "file": "PGP",
+  "name": "PGP Decrypt and Verify: UTF8, Alice -> Bob",
+  "input": "-----BEGIN PGP MESSAGE-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nwX4DEY2FMRPYAl0SAgMEKY2yuB8s16oRWWhJ1RsxNhR8byKFUyFZvi0ETIORMYu+\nkkLWgFlVjqPV9q2eVtuVK9f+S/OIm0pztImhq5ZNMDB8r7s0wX4YskSrWRpMKwRr\nCtoNlPS3//fT3Ll4a2tn8guxyC7lAtmJ6nxZj+qpSZLSwQwBhFlgARdqlp4eTAhF\nPRcqHVCqZYSTdjAyerLtfZDaswEwLgGxsshRSJ7BDHxg7NqRcdFkChrWT0s4JpnV\n/Woq0xcApim1bpyHXG/tT4oM3hbjfpulb92gq2TUNdzb9lJGaKbLHl/0zkoBvHDE\npxtr021JXERB8MNDIIpDESpjCrZ20YCHNr/sBqVm0yM7YGrDLlV+n7oUgL4HK2FU\ntehxUEt4rca81UesYu/Wul6mHh/7Ft4jJuZuf/w9fCWQ6z+9MAEOBXdzWUp5BCyF\nce1STpICAdtRHInJ9zR08qn0ahrwHsvHPFPVIQJDargD5MSqav/3LS2TYqKYYKHy\nTUCxIWqA77Qk3rEaFX+eHxTW4BTlMPArA7ffywkgJAPzrLL+gEgtOLCv2RhNZevR\nweglQRtcuh5N/F9fsmPfsi80R0//LpEeyFX6GueXDw81+AKG9pOTI71Ny8H4W0eA\nB5dCiOFNHZKCZUlA6GFa04X/XgmfPzTPMtgizbT72/2kfwxJGZY4ngdMVLqfhnVA\nnfyQLFrOF9giJqDEsjtPXJ0h20stMLMykPUIK0UUf9vPthE86ugCY1XcGQWsuB4U\njmdH1dqEUk29TaUz/97s\n=Ah/0\n-----END PGP MESSAGE-----\n",
+  "recipe": [
+   {
+    "op": "PGP Decrypt and Verify",
+    "args": [
+     "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxo0EahcezQEEAMHouiP41c1AGBU0IO0VjE2+O9WKc8Cpbv+ymy+MI6EOsiSoZ/Z+\nhjqyMumx1loeH4K0QClzcWfeAtKrXs8JjQonByKtuneRjITNnasCEmWmqZbea5qa\np9+s6A6m+VHUehrtIvipNaq/Bfrynk9RwRMoAoTYJBUyPWaSLzzaV0zNABEBAAHN\nAMK0BBMBCgAeBQJqFx7NAhsvAwsJBwMVCggCHgECF4ADFgIBAhkBAAoJEBt1IEsq\n342M/VsEALQX4Lc7Udc9Obc5AnxABhzDZnCaFHYeZFJwyWtHpIN60gGFkz9vePji\n0DP1Kbeyo6awzUIzA8tuIGgZXQCJ04KPCP8dSXH0HpbrmSinuJW5kk+ttvaJxOm1\n3m9e52i2WkomCP6i8gvMXm/VpH5kfLkbpl0ha0ycR7z8yweD4Mdpzo0EahcezQEE\nAKjU543TxZbzZiae6XWFIXjFgWE/vBC+5ZYEyTAG6jtwfP4tgagb+chJG+hoFA9H\nZXXPr5CPiNZUW6aPpbaMRmubIZs7uCpw3RfcZ+AR+Q9unf0kCJxXThRBhhWHipaL\nB44MweCueUawRjwnJVog9nIEE1Heg5G9/fHemLZJ7iU/ABEBAAHCwIMEGAEKAA8F\nAmoXHs0FCQ8JnAACGy4AqAkQG3UgSyrfjYydIAQZAQoABgUCahcezQAKCRA5/CQI\nqiKa+krFA/9Tnl0E4Ck9zR6BYKAQFpShzBnpODx28LDn/yH+20e1vt2Hgb5cerfM\n87PzIdLbavS5OYNtAVPtCc9a4WA3lQFggziOKVNt5UtsI9hNe8KfMAXpBEtXU53C\nsRKkWzi+rBlSZ9/Oh4jqsUcj0cceJRn9La71h3Kot8cxNl72zyIHK4y2A/4jNAej\nMx0Rc0VSUWnHD9vlO/imzkez7+JKIYkMm8LrG1ZeLaSlTaQ0AIpbr2+3/kMuWhM0\ndU4BHtmjjNU5ijq7/+ZBG+O2bO+vlYmDpOL6j+dkRpQgvsJdoLBt14mQbxBJfVTm\nXvfhTUPZT4nCZN+5nUNAF2XsDatMic+Yjki7Ps6NBGoXHs0BBADEJr0pscgaUine\n6UW2M0zQ57UybQphUYv4xYeZwOG1NvNLK6jcxQ9NGIlhUhJ/hV4piYy4A4bt7/Vy\nO+CgSDWXf7kc8YL1tve9k9KIMceAT60Wt7QnHSSooysH5zRtE/Zqzc9luD9iWNGU\ndKSAveJ5tJoPBJBB8cAsqWr8ZqP5qQARAQABwsCDBBgBCgAPBQJqFx7NBQkDwmcA\nAhsuAKgJEBt1IEsq342MnSAEGQEKAAYFAmoXHs0ACgkQjWbXIJgXR6SYaQP+PjA9\nSI4z/bbROkoNv73VCWM4o9r0DMASHK2Dyd71vOoOFjM/GtpGgQvjAKB82Db7+wsG\nT6V6bxpvY1sMOxCjphsLs2u2IvZLHqlc/v8CCXLHoiN3v6PVwkYG17UyZoDbCVt3\n0SCZ5jJ7gCf+MpC9RseIteW5MtbFtKb6FwGgi9GNQQQAr4PFi8aXZ71lmB7/c/8f\nXAzsWRto9v64xtlZwpQ5GSOPvwzNjQfZf3Q4lKormkoqTxxC1tsxRxvbr51ZwfJU\n8LCfKZz9p+M1ncX6nyJBJupmesqfrjWizzuEYqo8D4q0jaoWq6lEsUWLSBcJXKaA\nkHFtNAeebzImsGV9hhKv+f0=\n=IODM\n-----END PGP PUBLIC KEY BLOCK-----",
+     "-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxaQEahclbRMFK4EEACIDAwSvC1SlbUU7/QJFldLQGfAeyhu0mRvTIcxzANM9SdkI\ndS2ArnVOZCB7cnfj5AF1nAjphKCv+01LAkGpCF6dUrvDwDeicMaq+E1OPVc+G0bH\nO4qQwJgyRLV/GNUZ0ASSmNYAAYCxPV5eRqoX/13vQ38EFBDqWVQE5BuIvvFqNI2R\n2RW7hAyI8AWazxDF90gurec8mWYXJM0AwpYEExMKAB4FAmoXJW0CGy8DCwkHAxUK\nCAIeAQIXgAMWAgECGQEACgkQXd9oo/PqkifstAF+KMP1xACDyAqsoZjzmOdD03+r\nqaHk3EDO7J98qA+g3laUj/bx21IM8FJNEJHKs9TpAYD8LpHAGHmDuBKZDCZKabIS\navxAOuoEHOOu9GlGk+8LgftPLW3EYUf/R7m4mGIq1UzHdwRqFyVtEwgqhkjOPQMB\nBwIDBGf0GrkZYEH+SU15lkMjYcHndaqwYbF+JPgUVc6ZiQYDkaY2uodq+n82HoNr\nzsCvKJxzC9upm8qzOwFHL+C7UvoAAP9MeWPmsuLSLXq+cVeqoEHAFQ/VYTBL/N7A\nXeiiDdUbKBFmwsAnBBgTCgAPBQJqFyVtBQkPCZwAAhsCAGoJEF3faKPz6pInXyAE\nGRMKAAYFAmoXJW0ACgkQVQZtQ9p5kJtfDQD+Ns1eh7rEAXveFSOLhx7Vw/5kUWm8\nwVWbqWDK5tJTF5EA/2+3jIQfg+/pE+VkO/NuIGQ9bUqGmGuX0s14TcjqDm9LNugB\nf27462A7iEkTab0nOQXtd6+L3PeHRUPUT1CFq+74M5GABr0wobJ5CCaQNxQH++IK\nvwF+MSD0JajEVgi99qzSQOTZe8UGArddSCIJuUxNwEzaxvT6DombpLJ2O4yYklR/\nxwoJx3sEahclbRIIKoZIzj0DAQcCAwRjn9T4UunA8a8ZuWP31AJheebCAcPFWBGx\ndkxFeX65heVpMipOZ97EczRkitfAmiwt7cREq6yhvZ42KMOcZHPIAwEKCQABAFwA\nUyvBBcchnSFCguG8EbEeA+DFKS62fvhqMHyMLGtfDUvChwQYEwoADwUCahclbQUJ\nA8JnAAIbDAAKCRBd32ij8+qSJ1+sAX4wkp3GZiRAtUZujC3bJ0ukYJjieNHFapA6\nr+0ku3mR/9OFDbVaTPEcL7nhgGY94q8BfRvczdClIK0rdY/bopQDq4uERoiB/bsH\n1VFadIEvMZeIppWGb8d93IpZErGT9xQI8A==\n=XC/n\n-----END PGP PRIVATE KEY BLOCK-----",
+     ""
+    ]
+   }
+  ],
+  "expected": "Signed by PGP key ID: 2ADF8D8C\nPGP fingerprint: 7afe93ff7614167c3fe831fe1b75204b2adf8d8c\nSigned on Wed, 27 May 2026 17:18:20 GMT\n----------------------------------\nШанцы на высвятленне таго, што адбываецца на самай справе ў сусвеце настолькі выдаленыя, адзінае, што трэба зрабіць, гэта павесіць пачуццё яго і трымаць сябе занятымі."
+ },
+ {
+  "file": "PGP",
+  "name": "PGP Decrypt: ASCII, Alice",
+  "input": "-----BEGIN PGP MESSAGE-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nwYwDOfwkCKoimvoBA/98ONH8b+HoaDOVLhtF+9Pz5Sk/NZ43htOpm/3+b2B81GKZ\nfcUfJYzItyt4X5Ps1ksfrArokG6blkIHPwZdcF7TJ9rWy/cC9S3zP/LF893xT9Z7\nbuWj1BjqfNy15WtGJnnQeCJVI4ya0cb3G/I/zAF/mT6R/JcldbJ1OTz9Zy5pZtKi\nAQL7B8IscCxsx9jxc1ZR3swn+fr603BVP6/mXRRtKIa5DXZR5uMU9ChZ5AYQeHXe\nZzstlcSJWJvuF+uJy3Yc07ttzqQtOQGLh0iBeALK7BWqLsUBqKabZSHTZ4uFdkv9\n86ZebPsfjVlhz4oFYenBUq1C15Zpvut28pHpgh2TLuXPHKkmTwI2Zz9LvVRjBW7A\nrmDPrpTfy9MOrkjkY7zQSevi\n=/Zwh\n-----END PGP MESSAGE-----",
+  "recipe": [
+   {
+    "op": "PGP Decrypt",
+    "args": [
+     "-----BEGIN PGP PRIVATE KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\n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\nEq/5/Q==\n=HBWf\n-----END PGP PRIVATE KEY BLOCK-----",
+     ""
+    ]
+   }
+  ],
+  "expected": "A common mistake that people make when trying to design something completely foolproof is to underestimate the ingenuity of complete fools."
+ },
+ {
+  "file": "PGP",
+  "name": "PGP Verify: ASCII, Alice",
+  "input": "-----BEGIN PGP MESSAGE-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nyMB1AnicO8LLzMDFaPlHhWOV0qxfjKcnljJkiTsIOiok5+fm5ucp5GYWlyRmpyqU\nZCSWKBSk5hfkpCrkggTKM1LzFEqKKjPz0hVK8hVSUosz0/MUivNzU0syQGJA/UC1\nJak5lQpp+fk5BUX5+WkKmcUgtaV5KalFqcUlmbmJJSCTUxWAGlLzSjNLKhWAimA6\nwfqK9Q7NYWFg5GJgY2UCOYyBi1MA5tqzj1kYZqaFSuxmUvBnvvAzZOOuyT9vnT75\n5GVzY2WfOB8H08l5vCZNbBUegsqPPh2aXPQgo8GglTPO2e7qY75g49mzDm+8POfH\nnstrb2/93JHrXD5fbcbuVrsFJ01XWE2Xy7HtTgrasGG7ySLZqLStBj2r0n4dTX7g\nMV1ETCdx6nqHA+4as4Oy9040BACRHYIP\n=rkte\n-----END PGP MESSAGE-----",
+  "recipe": [
+   {
+    "op": "PGP Verify",
+    "args": [
+     "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxo0EahcezQEEAMHouiP41c1AGBU0IO0VjE2+O9WKc8Cpbv+ymy+MI6EOsiSoZ/Z+\nhjqyMumx1loeH4K0QClzcWfeAtKrXs8JjQonByKtuneRjITNnasCEmWmqZbea5qa\np9+s6A6m+VHUehrtIvipNaq/Bfrynk9RwRMoAoTYJBUyPWaSLzzaV0zNABEBAAHN\nAMK0BBMBCgAeBQJqFx7NAhsvAwsJBwMVCggCHgECF4ADFgIBAhkBAAoJEBt1IEsq\n342M/VsEALQX4Lc7Udc9Obc5AnxABhzDZnCaFHYeZFJwyWtHpIN60gGFkz9vePji\n0DP1Kbeyo6awzUIzA8tuIGgZXQCJ04KPCP8dSXH0HpbrmSinuJW5kk+ttvaJxOm1\n3m9e52i2WkomCP6i8gvMXm/VpH5kfLkbpl0ha0ycR7z8yweD4Mdpzo0EahcezQEE\nAKjU543TxZbzZiae6XWFIXjFgWE/vBC+5ZYEyTAG6jtwfP4tgagb+chJG+hoFA9H\nZXXPr5CPiNZUW6aPpbaMRmubIZs7uCpw3RfcZ+AR+Q9unf0kCJxXThRBhhWHipaL\nB44MweCueUawRjwnJVog9nIEE1Heg5G9/fHemLZJ7iU/ABEBAAHCwIMEGAEKAA8F\nAmoXHs0FCQ8JnAACGy4AqAkQG3UgSyrfjYydIAQZAQoABgUCahcezQAKCRA5/CQI\nqiKa+krFA/9Tnl0E4Ck9zR6BYKAQFpShzBnpODx28LDn/yH+20e1vt2Hgb5cerfM\n87PzIdLbavS5OYNtAVPtCc9a4WA3lQFggziOKVNt5UtsI9hNe8KfMAXpBEtXU53C\nsRKkWzi+rBlSZ9/Oh4jqsUcj0cceJRn9La71h3Kot8cxNl72zyIHK4y2A/4jNAej\nMx0Rc0VSUWnHD9vlO/imzkez7+JKIYkMm8LrG1ZeLaSlTaQ0AIpbr2+3/kMuWhM0\ndU4BHtmjjNU5ijq7/+ZBG+O2bO+vlYmDpOL6j+dkRpQgvsJdoLBt14mQbxBJfVTm\nXvfhTUPZT4nCZN+5nUNAF2XsDatMic+Yjki7Ps6NBGoXHs0BBADEJr0pscgaUine\n6UW2M0zQ57UybQphUYv4xYeZwOG1NvNLK6jcxQ9NGIlhUhJ/hV4piYy4A4bt7/Vy\nO+CgSDWXf7kc8YL1tve9k9KIMceAT60Wt7QnHSSooysH5zRtE/Zqzc9luD9iWNGU\ndKSAveJ5tJoPBJBB8cAsqWr8ZqP5qQARAQABwsCDBBgBCgAPBQJqFx7NBQkDwmcA\nAhsuAKgJEBt1IEsq342MnSAEGQEKAAYFAmoXHs0ACgkQjWbXIJgXR6SYaQP+PjA9\nSI4z/bbROkoNv73VCWM4o9r0DMASHK2Dyd71vOoOFjM/GtpGgQvjAKB82Db7+wsG\nT6V6bxpvY1sMOxCjphsLs2u2IvZLHqlc/v8CCXLHoiN3v6PVwkYG17UyZoDbCVt3\n0SCZ5jJ7gCf+MpC9RseIteW5MtbFtKb6FwGgi9GNQQQAr4PFi8aXZ71lmB7/c/8f\nXAzsWRto9v64xtlZwpQ5GSOPvwzNjQfZf3Q4lKormkoqTxxC1tsxRxvbr51ZwfJU\n8LCfKZz9p+M1ncX6nyJBJupmesqfrjWizzuEYqo8D4q0jaoWq6lEsUWLSBcJXKaA\nkHFtNAeebzImsGV9hhKv+f0=\n=IODM\n-----END PGP PUBLIC KEY BLOCK-----"
+    ]
+   }
+  ],
+  "expected": "Signed by PGP key ID: 2ADF8D8C\nPGP fingerprint: 7afe93ff7614167c3fe831fe1b75204b2adf8d8c\nSigned on Wed, 27 May 2026 19:03:45 GMT\n----------------------------------\nA common mistake that people make when trying to design something completely foolproof is to underestimate the ingenuity of complete fools."
+ },
+ {
+  "file": "PGP",
+  "name": "Parse PGP Key: Alice Public",
+  "input": "-----BEGIN PGP PUBLIC KEY BLOCK-----\nVersion: Keybase OpenPGP v2.1.17\nComment: https://keybase.io/crypto\n\nxo0EahcezQEEAMHouiP41c1AGBU0IO0VjE2+O9WKc8Cpbv+ymy+MI6EOsiSoZ/Z+\nhjqyMumx1loeH4K0QClzcWfeAtKrXs8JjQonByKtuneRjITNnasCEmWmqZbea5qa\np9+s6A6m+VHUehrtIvipNaq/Bfrynk9RwRMoAoTYJBUyPWaSLzzaV0zNABEBAAHN\nAMK0BBMBCgAeBQJqFx7NAhsvAwsJBwMVCggCHgECF4ADFgIBAhkBAAoJEBt1IEsq\n342M/VsEALQX4Lc7Udc9Obc5AnxABhzDZnCaFHYeZFJwyWtHpIN60gGFkz9vePji\n0DP1Kbeyo6awzUIzA8tuIGgZXQCJ04KPCP8dSXH0HpbrmSinuJW5kk+ttvaJxOm1\n3m9e52i2WkomCP6i8gvMXm/VpH5kfLkbpl0ha0ycR7z8yweD4Mdpzo0EahcezQEE\nAKjU543TxZbzZiae6XWFIXjFgWE/vBC+5ZYEyTAG6jtwfP4tgagb+chJG+hoFA9H\nZXXPr5CPiNZUW6aPpbaMRmubIZs7uCpw3RfcZ+AR+Q9unf0kCJxXThRBhhWHipaL\nB44MweCueUawRjwnJVog9nIEE1Heg5G9/fHemLZJ7iU/ABEBAAHCwIMEGAEKAA8F\nAmoXHs0FCQ8JnAACGy4AqAkQG3UgSyrfjYydIAQZAQoABgUCahcezQAKCRA5/CQI\nqiKa+krFA/9Tnl0E4Ck9zR6BYKAQFpShzBnpODx28LDn/yH+20e1vt2Hgb5cerfM\n87PzIdLbavS5OYNtAVPtCc9a4WA3lQFggziOKVNt5UtsI9hNe8KfMAXpBEtXU53C\nsRKkWzi+rBlSZ9/Oh4jqsUcj0cceJRn9La71h3Kot8cxNl72zyIHK4y2A/4jNAej\nMx0Rc0VSUWnHD9vlO/imzkez7+JKIYkMm8LrG1ZeLaSlTaQ0AIpbr2+3/kMuWhM0\ndU4BHtmjjNU5ijq7/+ZBG+O2bO+vlYmDpOL6j+dkRpQgvsJdoLBt14mQbxBJfVTm\nXvfhTUPZT4nCZN+5nUNAF2XsDatMic+Yjki7Ps6NBGoXHs0BBADEJr0pscgaUine\n6UW2M0zQ57UybQphUYv4xYeZwOG1NvNLK6jcxQ9NGIlhUhJ/hV4piYy4A4bt7/Vy\nO+CgSDWXf7kc8YL1tve9k9KIMceAT60Wt7QnHSSooysH5zRtE/Zqzc9luD9iWNGU\ndKSAveJ5tJoPBJBB8cAsqWr8ZqP5qQARAQABwsCDBBgBCgAPBQJqFx7NBQkDwmcA\nAhsuAKgJEBt1IEsq342MnSAEGQEKAAYFAmoXHs0ACgkQjWbXIJgXR6SYaQP+PjA9\nSI4z/bbROkoNv73VCWM4o9r0DMASHK2Dyd71vOoOFjM/GtpGgQvjAKB82Db7+wsG\nT6V6bxpvY1sMOxCjphsLs2u2IvZLHqlc/v8CCXLHoiN3v6PVwkYG17UyZoDbCVt3\n0SCZ5jJ7gCf+MpC9RseIteW5MtbFtKb6FwGgi9GNQQQAr4PFi8aXZ71lmB7/c/8f\nXAzsWRto9v64xtlZwpQ5GSOPvwzNjQfZf3Q4lKormkoqTxxC1tsxRxvbr51ZwfJU\n8LCfKZz9p+M1ncX6nyJBJupmesqfrjWizzuEYqo8D4q0jaoWq6lEsUWLSBcJXKaA\nkHFtNAeebzImsGV9hhKv+f0=\n=IODM\n-----END PGP PUBLIC KEY BLOCK-----",
+  "recipe": [
+   {
+    "op": "Parse PGP Key",
+    "args": []
+   }
+  ],
+  "expected": "Public Key Information\n======================\nVersion       : 4\nCreation Date : 2026-05-27T16:41:49.000Z\nKey ID        : 1B75204B2ADF8D8C\nFingerprint   : 7AFE93FF7614167C3FE831FE1B75204B2ADF8D8C\nAlgorithm     : RSA (Encrypt or Sign)\nKey Size      : 1024 bits\n"
+ },
+ {
+  "file": "PGP",
+  "name": "Parse PGP Key: RFC9580 legacy V4 (A.1)",
+  "input": "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nxjMEU/NfCxYJKwYBBAHaRw8BAQdAPwmJlL3ZFu1AUxl5NOSofIBzOhKA1i+AEJku\nQ+47JAY=\n-----END PGP PUBLIC KEY BLOCK-----",
+  "recipe": [
+   {
+    "op": "Parse PGP Key",
+    "args": []
+   }
+  ],
+  "expected": "Public Key Information\n======================\nVersion       : 4\nCreation Date : 2014-08-19T14:28:27.000Z\nKey ID        : 8CFDE12197965A9A\nFingerprint   : C959BDBAFA32A2F89A153B678CFDE12197965A9A\nAlgorithm     : EdDSA\nCurve         : ed25519Legacy\n"
+ },
+ {
+  "file": "PGP",
+  "name": "Parse PGP Key: RFC9580 v6 (A.3)",
+  "input": "-----BEGIN PGP PUBLIC KEY BLOCK-----\n\nxioGY4d/4xsAAAAg+U2nu0jWCmHlZ3BqZYfQMxmZu52JGggkLq2EVD34laPCsQYf\nGwoAAABCBYJjh3/jAwsJBwUVCg4IDAIWAAKbAwIeCSIhBssYbE8GCaaX5NUt+mxy\nKwwfHifBilZwj2Ul7Ce62azJBScJAgcCAAAAAK0oIBA+LX0ifsDm185Ecds2v8lw\ngyU2kCcUmKfvBXbAf6rhRYWzuQOwEn7E/aLwIwRaLsdry0+VcallHhSu4RN6HWaE\nQsiPlR4zxP/TP7mhfVEe7XWPxtnMUMtf15OyA51YBM4qBmOHf+MZAAAAIIaTJINn\n+eUBXbki+PSAld2nhJh/LVmFsS+60WyvXkQ1wpsGGBsKAAAALAWCY4d/4wKbDCIh\nBssYbE8GCaaX5NUt+mxyKwwfHifBilZwj2Ul7Ce62azJAAAAAAQBIKbpGG2dWTX8\nj+VjFM21J0hqWlEg+bdiojWnKfA5AQpWUWtnNwDEM0g12vYxoWM8Y81W+bHBw805\nI8kWVkXU6vFOi+HWvv/ira7ofJu16NnoUkhclkUrk0mXubZvyl4GBg==\n-----END PGP PUBLIC KEY BLOCK-----",
+  "recipe": [
+   {
+    "op": "Parse PGP Key",
+    "args": []
+   }
+  ],
+  "expected": "Public Key Information\n======================\nVersion       : 6\nCreation Date : 2022-11-30T16:08:03.000Z\nKey ID        : CB186C4F0609A697\nFingerprint   : CB186C4F0609A697E4D52DFA6C722B0C1F1E27C18A56708F6525EC27BAD9ACC9\nAlgorithm     : Ed25519\nCurve         : Ed25519\n"
+ },
+ {
+  "file": "Template",
+  "name": "Template: Simple Print",
+  "input": "{}",
+  "recipe": [
+   {
+    "op": "Template",
+    "args": [
+     "Hello, world!"
+    ]
+   }
+  ],
+  "expected": "Hello, world!"
+ },
+ {
+  "file": "Template",
+  "name": "Template: Print Basic Variables",
+  "input": "{\"one\": 1, \"two\": 2}",
+  "recipe": [
+   {
+    "op": "Template",
+    "args": [
+     "{{ one }} {{ two }}"
+    ]
+   }
+  ],
+  "expected": "1 2"
+ },
+ {
+  "file": "Template",
+  "name": "Template: Partials",
+  "input": "{\"users\":[{\"name\":\"Someone\",\"age\":25},{\"name\":\"Someone Else\",\"age\":32}]}",
+  "recipe": [
+   {
+    "op": "Template",
+    "args": [
+     "{{#*inline \"user\"}}\nName: {{ name }}\nAge: {{ age }}\n{{/inline}}\n{{#each users}}\n{{> user}}\n\n{{/each}}"
+    ]
+   }
+  ],
+  "expected": "Name: Someone\nAge: 25\n\nName: Someone Else\nAge: 32\n\n"
+ },
+ {
+  "file": "Template",
+  "name": "Template: Disallow XSS",
+  "input": "{\"test\": \"<script></script>\"}",
+  "recipe": [
+   {
+    "op": "Template",
+    "args": [
+     "<script></script>{{ test }}"
+    ]
+   }
+  ],
+  "expected": "<script></script>&lt;script&gt;&lt;/script&gt;"
+ },
+ {
+  "file": "Charts",
+  "name": "Scatter chart",
+  "input": "100 100\n200 200\n300 300\n400 400\n500 500",
+  "recipe": [
+   {
+    "op": "Scatter chart",
+    "args": [
+     "Line feed",
+     "Space",
+     false,
+     "time",
+     "stress",
+     "black",
+     5,
+     false
+    ]
+   }
+  ],
+  "match": {
+   "source": "^<svg width",
+   "flags": ""
+  }
+ },
+ {
+  "file": "Charts",
+  "name": "Hex density chart",
+  "input": "100 100\n200 200\n300 300\n400 400\n500 500",
+  "recipe": [
+   {
+    "op": "Hex Density chart",
+    "args": [
+     "Line feed",
+     "Space",
+     25,
+     15,
+     true,
+     "",
+     "",
+     true,
+     "white",
+     "black",
+     true
+    ]
+   }
+  ],
+  "match": {
+   "source": "^<svg width",
+   "flags": ""
+  }
+ },
+ {
+  "file": "Charts",
+  "name": "Series chart",
+  "input": "100 100 100\n200 200 200\n300 300 300\n400 400 400\n500 500 500",
+  "recipe": [
+   {
+    "op": "Series chart",
+    "args": [
+     "Line feed",
+     "Space",
+     "",
+     1,
+     "mediumseagreen, dodgerblue, tomato"
+    ]
+   }
+  ],
+  "match": {
+   "source": "^<svg width",
+   "flags": ""
+  }
+ },
+ {
+  "file": "Charts",
+  "name": "Series chart escapes x-axis values in serialized SVG",
+  "input": "s,x\"><script>globalThis.seriesChartInjected=1</script><g a=\",1",
+  "recipe": [
+   {
+    "op": "Series chart",
+    "args": [
+     "Line feed",
+     "Comma",
+     "",
+     1,
+     "red"
+    ]
+   }
+  ],
+  "unexpected": {
+   "source": "<[\\s/]*script\\b|__data__=",
+   "flags": "i"
+  }
+ },
+ {
+  "file": "Charts",
+  "name": "Heatmap chart",
+  "input": "100 100\n200 200\n300 300\n400 400\n500 500",
+  "recipe": [
+   {
+    "op": "Heatmap chart",
+    "args": [
+     "Line feed",
+     "Space",
+     25,
+     25,
+     true,
+     "",
+     "",
+     false,
+     "white",
+     "black"
+    ]
+   }
+  ],
+  "match": {
+   "source": "^<svg width",
+   "flags": ""
+  }
+ },
+ {
+  "file": "ShowOnMap",
+  "name": "Show on map: valid coordinate pair",
+  "input": "51.5007, -0.1246",
+  "recipe": [
+   {
+    "op": "Show on map",
+    "args": [
+     13,
+     "Auto",
+     "Auto"
+    ]
+   }
+  ],
+  "match": {
+   "source": "51\\.5007,-0\\.1246",
+   "flags": ""
+  }
+ },
+ {
+  "file": "ShowOnMap",
+  "name": "Show on map: single value is rejected with a helpful error",
+  "input": "1, 24",
+  "recipe": [
+   {
+    "op": "Show on map",
+    "args": [
+     13,
+     "Auto",
+     "\\n"
+    ]
+   }
+  ],
+  "expected": "Could not show coordinates '1.4' on the map. Expected a latitude and longitude pair - check that the input format and delimiter are correct."
+ },
+ {
+  "file": "ShowOnMap",
+  "name": "Show on map: empty input format is rejected",
+  "input": "1, 24",
+  "recipe": [
+   {
+    "op": "Show on map",
+    "args": [
+     13,
+     "",
+     "Auto"
+    ]
+   }
+  ],
+  "expected": "Input Format cannot be empty."
+ },
+ {
+  "file": "ShowOnMap",
+  "name": "Show on map: empty input delimiter is rejected",
+  "input": "1, 24",
+  "recipe": [
+   {
+    "op": "Show on map",
+    "args": [
+     13,
+     "Auto",
+     ""
+    ]
+   }
+  ],
+  "expected": "Input Delimiter cannot be empty."
+ },
+ {
+  "file": "RenderPDF",
+  "name": "RenderPDF",
+  "input": "Not a PDF",
+  "recipe": [
+   {
+    "op": "Render PDF",
+    "args": [
+     "Raw"
+    ]
+   }
+  ],
+  "expected": "Input does not appear to be a PDF file."
+ },
+ {
+  "file": "RenderPDF",
+  "name": "RenderPDF",
+  "input": "",
+  "recipe": [
+   {
+    "op": "Generate QR Code",
+    "args": [
+     "PDF",
+     1,
+     1,
+     "Low"
+    ]
+   },
+   {
+    "op": "Render PDF",
+    "args": [
+     "Raw"
+    ]
+   }
+  ],
+  "match": {
+   "source": "^<iframe src=\"data:application\\/pdf;base64,JVBERi0xLjAKCjEgMCBvYmogPDwg",
+   "flags": ""
+  }
+ },
+ {
+  "file": "RenderPDF",
+  "name": "RenderPDF followed by Generate QR Code error returns plain text",
+  "input": "%PDF-1.0\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "recipe": [
+   {
+    "op": "Render PDF",
+    "args": [
+     "Raw"
+    ]
+   },
+   {
+    "op": "Generate QR Code",
+    "args": [
+     "PNG",
+     1,
+     0,
+     "High"
+    ]
+   }
+  ],
+  "expected": "Error generating QR code. (Error: Too much data)"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: malformed input reports byte offset",
+  "input": "08",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "Exhausted Buffer at byte offset 1"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: invalid wire type reports byte offset",
+  "input": "0f",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "Unknown type 0x7 at byte offset 0"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: continued field header reports byte offset",
+  "input": "80",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "Exhausted Buffer at byte offset 1"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: truncated fixed32 reports byte offset",
+  "input": "05",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "Exhausted Buffer at byte offset 1"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: truncated fixed64 reports byte offset",
+  "input": "0901020304050607",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "Exhausted Buffer at byte offset 8"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: truncated length-delimited payload reports byte offset",
+  "input": "0a030102",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "Exhausted Buffer at byte offset 4"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: schema-backed nested failure reports absolute byte offset",
+  "input": "0a0108",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "message Outer { optional Inner inner = 1; } message Inner { optional int32 value = 1; }",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "Input RangeError: index out of range: 3 + 1 > 3 at byte offset 3"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: no schema",
+  "input": "0d1c0000001203596f751a024d65202b2a0a0a066162633132331200",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "{\n    \"1\": 28,\n    \"2\": \"You\",\n    \"3\": \"Me\",\n    \"4\": 43,\n    \"5\": {\n        \"1\": \"abc123\",\n        \"2\": {}\n    }\n}"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: partial schema, no unknown fields",
+  "input": "0d1c0000001203596f751a024d65202b2a0a0a066162633132331200",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "message Test {\n                    repeated fixed32 Apple = 1;\n                    optional string Banana = 2;\n                    repeated string Carrot = 3;\n                    }",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "{\n    \"Apple\": [\n        28\n    ],\n    \"Carrot\": [\n        \"Me\"\n    ],\n    \"Banana\": \"You\"\n}"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: partial schema, show unknown fields",
+  "input": "0d1c0000001203596f751a024d65202b2a0a0a066162633132331200",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "message Test {\n                    repeated fixed32 Apple = 1;\n                    optional string Banana = 2;\n                    repeated string Carrot = 3;\n                    }",
+     true,
+     false
+    ]
+   }
+  ],
+  "expected": "{\n    \"Test\": {\n        \"Apple\": [\n            28\n        ],\n        \"Carrot\": [\n            \"Me\"\n        ],\n        \"Banana\": \"You\"\n    },\n    \"Unknown Fields\": {\n        \"4\": 43,\n        \"5\": {\n            \"1\": \"abc123\",\n            \"2\": {}\n        }\n    }\n}"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: full schema, no unknown fields",
+  "input": "0d1c0000001203596f751a024d65202b2a0a0a06616263313233120031ff00000000000000",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "message Test {\n                        repeated fixed32 Apple = 1;\n                        optional string Banana = 2;\n                        repeated string Carrot = 3;\n                        optional int32 Date = 4;\n                        optional subTest Elderberry = 5;\n                        optional fixed64 Huckleberry = 6;\n                    }\n                    message subTest {\n                        optional string Fig = 1;\n                        optional subSubTest Grape = 2;\n                    }\n                    message subSubTest {}",
+     false,
+     false
+    ]
+   }
+  ],
+  "expected": "{\n    \"Apple\": [\n        28\n    ],\n    \"Carrot\": [\n        \"Me\"\n    ],\n    \"Banana\": \"You\",\n    \"Date\": 43,\n    \"Elderberry\": {\n        \"Fig\": \"abc123\",\n        \"Grape\": {}\n    },\n    \"Huckleberry\": 255\n}"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Decode: partial schema, show unknown fields, show types",
+  "input": "0d1c0000001203596f751a024d65202b2a0a0a06616263313233120031ba32a96cc10200003801",
+  "recipe": [
+   {
+    "op": "From Hex",
+    "args": [
+     "Auto"
+    ]
+   },
+   {
+    "op": "Protobuf Decode",
+    "args": [
+     "message Test {\n                        optional string Banana = 2;\n                        repeated string Carrot = 3;\n                        optional int32 Date = 4;\n                        optional Options Imbe = 7;\n                    }\n                    message subTest {\n                        optional string Fig = 1;\n                        optional subSubTest Grape = 2;\n                    }\n                    message subSubTest {}\n                    enum Options {\n                    Option0 = 0;\n                    Option1 = 1;\n                    Option2 = 2;\n                    }",
+     true,
+     true
+    ]
+   }
+  ],
+  "expected": "{\n    \"Test\": {\n        \"Carrot (string)\": [\n            \"Me\"\n        ],\n        \"Banana (string)\": \"You\",\n        \"Date (int32)\": 43,\n        \"Imbe (Options)\": \"Option1\"\n    },\n    \"Unknown Fields\": {\n        \"field #1: 32-Bit (e.g. fixed32, float)\": 28,\n        \"field #5: L-delim (e.g. string, message)\": {\n            \"field #1: L-delim (e.g. string, message)\": \"abc123\",\n            \"field #2: L-delim (e.g. string, message)\": {}\n        },\n        \"field #6: 64-Bit (e.g. fixed64, double)\": 3029774971578\n    }\n}"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Encode",
+  "input": "{\n    \"Apple\": [\n        28\n    ],\n    \"Banana\": \"You\",\n    \"Carrot\": [\n        \"Me\"\n    ],\n    \"Date\": 43,\n    \"Elderberry\": {\n        \"Fig\": \"abc123\",\n        \"Grape\": {}\n    },\n    \"Huckleberry\": [\n        3029774971578\n    ],\n    \"Imbe\": 1\n}",
+  "recipe": [
+   {
+    "op": "Protobuf Encode",
+    "args": [
+     "message Test {\n                        repeated fixed32 Apple = 1;\n                        optional string Banana = 2;\n                        repeated string Carrot = 3;\n                        optional int32 Date = 4;\n                        optional subTest Elderberry = 5;\n                        repeated fixed64 Huckleberry = 6;\n                        optional Options Imbe = 7;\n                    }\n                    message subTest {\n                        optional string Fig = 1;\n                        optional subSubTest Grape = 2;\n                    }\n                    message subSubTest {}\n                    enum Options {\n                    Option0 = 0;\n                    Option1 = 1;\n                    Option2 = 2;\n                    }"
+    ]
+   },
+   {
+    "op": "To Hex",
+    "args": [
+     "None",
+     0
+    ]
+   }
+  ],
+  "expected": "0d1c0000001203596f751a024d65202b2a0a0a06616263313233120031ba32a96cc10200003801"
+ },
+ {
+  "file": "Protobuf",
+  "name": "Protobuf Encode: incomplete schema",
+  "input": "{\n    \"Apple\": [\n        28\n    ],\n    \"Banana\": \"You\",\n    \"Carrot\": [\n        \"Me\"\n    ],\n    \"Date\": 43,\n    \"Elderberry\": {\n        \"Fig\": \"abc123\",\n        \"Grape\": {}\n    },\n    \"Huckleberry\": [\n        3029774971578\n    ],\n    \"Imbe\": 1\n}",
+  "recipe": [
+   {
+    "op": "Protobuf Encode",
+    "args": [
+     "message Test {\n                        optional string Banana = 2;\n                        optional int32 Date = 4;\n                        optional subTest Elderberry = 5;\n                        repeated fixed64 Huckleberry = 6;\n                    }\n                    message subTest {\n                        optional string Fig = 1;\n                        optional subSubTest Grape = 2;\n                    }\n                    message subSubTest {}\n                    enum Options {\n                    Option0 = 0;\n                    Option1 = 1;\n                    Option2 = 2;\n                    }"
+    ]
+   },
+   {
+    "op": "To Hex",
+    "args": [
+     "None",
+     0
+    ]
+   }
+  ],
+  "expected": "1203596f75202b2a0a0a06616263313233120031ba32a96cc1020000"
+ }
+]

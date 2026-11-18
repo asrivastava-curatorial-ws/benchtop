@@ -50,7 +50,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: Benchtop ${{ github.ref_name }}
-          releaseBody: Offline developer tools. See the assets below for installers.
+          releaseBody: "What is new in this version is in CHANGELOG.md. Installers for Linux, Windows and macOS are below; the command line is described in docs/CLI.md."
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

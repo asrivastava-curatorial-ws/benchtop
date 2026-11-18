@@ -1,5 +1,6 @@
 /** Lets the user provide an image by dropping, choosing or pasting it. */
 import { useEffect, useState } from 'preact/hooks';
+import { useIncomingFiles } from '../app/handoff';
 import { formatBytes } from '../lib/bytes';
 import { pickFile } from '../platform';
 import { loadImage } from './canvas';
@@ -39,6 +40,12 @@ export function ImageDrop({ image, onImage, accept = 'image/*,.svg,.ico,.avif', 
     setLoading(true);
     void attempt(async () => onImage(await loadImageFile(file))).finally(() => setLoading(false));
   };
+
+  // A picture dropped on the window, or sent from another tool.
+  useIncomingFiles(
+    (files) => take(files[0]),
+    (file) => file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg|tiff?)$/i.test(file.name),
+  );
 
   // Images copied to the clipboard can be pasted anywhere on the page.
   useEffect(() => {
