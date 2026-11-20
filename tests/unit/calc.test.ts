@@ -150,3 +150,64 @@ describe('known answers', () => {
     expect(formatNumber(6.02214076e23, 'en-US')).toBe('6.0221e+23');
   });
 });
+
+describe('heat, acoustics and saw-angle calculators', () => {
+  it('adds and subtracts decibels', () => {
+    expect(run('decibel-sum', { L1: 85, L2: 82 }).out('L')).toBeCloseTo(86.764, 3);
+    expect(run('decibel-sum', { L1: 85, L: 86.764 }).out('L2')).toBeCloseTo(82, 2);
+    expect(run('decibel-identical', { L1: 70, n: 4 }).out('L')).toBeCloseTo(76.0206, 4);
+    expect(run('sound-distance', { L1: 90, r1: 1, r2: 10 }, { source: 20 }).out('L2')).toBeCloseTo(70, 9);
+    expect(run('sound-distance', { L1: 90, r1: 1, r2: 10 }, { source: 10 }).out('L2')).toBeCloseTo(80, 9);
+    expect(run('sound-power-pressure', { Lw: 95, r: 5 }, { Q: 2 }).out('Lp')).toBeCloseTo(73.039, 3);
+  });
+
+  it('room acoustics, wavelength, weighting, dose and the mass law', () => {
+    expect(run('reverberation-time', { V: 300, S: 290, alpha: 0.2 }, { formula: 0 }).out('RT')).toBeCloseTo(0.83276, 4);
+    expect(run('reverberation-time', { V: 300, S: 290, alpha: 0.2 }, { formula: 1 }).out('RT')).toBeCloseTo(0.74639, 4);
+    expect(run('sound-wavelength', { f: 1000, T: 20 }).out('c')).toBeCloseTo(343.23, 1);
+    expect(run('a-weighting', { f: 1000 }).out('A')).toBeCloseTo(0, 1);
+    expect(run('a-weighting', { f: 100 }).out('A')).toBeCloseTo(-19.1, 1);
+    expect(run('a-weighting', { f: 100 }).out('C')).toBeCloseTo(-0.3, 1);
+    expect(run('noise-dose', { L: 95, t: 2 }, { rule: 0 }).out('dose')).toBeCloseTo(251.98, 1);
+    expect(run('noise-dose', { L: 95, t: 2 }, { rule: 1 }).out('dose')).toBeCloseTo(50, 6);
+    expect(run('mass-law', { rho: 2300, t: 100, f: 500 }).out('TL')).toBeCloseTo(54.21, 2);
+  });
+
+  it('insulated pipes, expansion loops and heat exchangers', () => {
+    const pipe = run('pipe-insulation', { D: 114.3, t: 50, k: 0.04, Ti: 180, Ta: 25, h: 10, L: 50, hours: 8000 });
+    expect(pipe.out('q')).toBeCloseTo(58.503, 2);
+    expect(pipe.out('Ts')).toBeCloseTo(33.69, 2);
+    // Thickness for a 30 °C surface, solved backwards.
+    expect(run('pipe-insulation', { D: 114.3, Ts: 33.6898, k: 0.04, Ti: 180, Ta: 25, h: 10, L: 50, hours: 8000 }).out('t')).toBeCloseTo(50, 1);
+    const loop = run('expansion-loop', { La: 60, alpha: 12, dT: 150, D: 114.3, E: 200, sigma: 100 }, { share: 0.5 });
+    expect(loop.out('dL')).toBeCloseTo(108, 6);
+    expect(loop.out('leg')).toBeCloseTo(6.0854, 3);
+    const hx = run('lmtd', { Th1: 90, Th2: 60, Tc1: 20, Tc2: 45, U: 1000, A: 5 }, { flow: 0 });
+    expect(hx.out('lmtd')).toBeCloseTo(42.4509, 3);
+    expect(hx.out('Q')).toBeCloseTo(212.25, 1);
+  });
+
+  it('combustion, fuel, balloons and buoyancy', () => {
+    const air = run('combustion-air', { C: 86.5, H: 13.2, O: 0, S: 0.3, O2: 3 });
+    expect(air.out('Ast')).toBeCloseTo(14.4967, 3);
+    expect(air.out('excess')).toBeCloseTo(16.667, 2);
+    const flue = run('flue-gas-loss', { Tf: 180, Ta: 25, O2: 3 }, { fuel: 0 });
+    expect(flue.out('loss')).toBeCloseTo(7.0783, 3);
+    expect(flue.out('eta')).toBeCloseTo(92.9217, 3);
+    expect(flue.out('CO2')).toBeCloseTo(10.114, 3);
+    expect(run('fuel-use', { Q: 1000, cv: 46.1, eff: 85, price: 65 }).out('m')).toBeCloseTo(91.873, 2);
+    expect(run('hot-air-balloon', { V: 2800, Ta: 15, Ti: 100, p: 101.325 }).out('lift')).toBeCloseTo(781.3, 0);
+    const float = run('buoyancy', { V: 50, rhof: 1000, m: 30 });
+    expect(float.out('Fb')).toBeCloseTo(490.33, 1);
+    expect(float.out('spare')).toBeCloseTo(20, 9);
+  });
+
+  it('saw angles for crown moulding and sloped boxes', () => {
+    const crown = run('crown-moulding', { spring: 38, corner: 90 });
+    expect(crown.out('miter')).toBeCloseTo(31.62, 2);
+    expect(crown.out('bevel')).toBeCloseTo(33.86, 2);
+    const box = run('compound-miter-box', { n: 4, tilt: 15 });
+    expect(box.out('miter')).toBeCloseTo(14.51, 2);
+    expect(box.out('bevel')).toBeCloseTo(43.08, 2);
+  });
+});

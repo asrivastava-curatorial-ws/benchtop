@@ -36,12 +36,12 @@ export const CATEGORIES: readonly Category[] = [
   {
     id: 'calc',
     name: 'Calculator library',
-    blurb: 'About 200 calculators for finance, health, sports, science, electronics, engineering, construction, food and more; leave any value empty to work it out',
+    blurb: 'About 220 calculators for finance, health, sports, science, electronics, engineering, heat, acoustics, construction, food and more; leave any value empty to work it out',
   },
   { id: 'av', name: 'Projection and AV', blurb: 'Throw distance, screen size, brightness, viewing distance' },
   { id: 'electrical', name: 'Electrical and power', blurb: 'kW and kVA, cables, breakers, transformers, motors. Screening estimates' },
   { id: 'energy', name: 'Batteries, UPS and solar', blurb: 'Runtime, battery banks, UPS sizing, solar arrays' },
-  { id: 'mechanical', name: 'Mechanical and fluids', blurb: 'Pumps, pipes, valves, pneumatics, hydraulics, machining, bearings' },
+  { id: 'mechanical', name: 'Mechanical and fluids', blurb: 'Steam tables, beams and sections, pumps, pipes, valves, pneumatics, hydraulics, machining, bearings' },
   { id: 'hvac', name: 'HVAC and building', blurb: 'Cooling load, airflow, ducts, psychrometrics, refrigerants' },
   { id: 'misc', name: 'Reference and extras', blurb: 'Playground, calculators, cheat sheets' },
 ];
@@ -1024,12 +1024,38 @@ export const TOOLS: readonly ToolEntry[] = [
     keywords: ['palette', 'colour scheme', 'complementary', 'triadic'],
     covers: ['Color scheme generator'],
   }),
-  text('math', {
+  other('math', 'custom', () => import('./custom/unit-converter'), {
     id: 'unit-converter',
     name: 'Unit Converter',
-    description: 'Length, area (with Indian land units), volume, mass, temperature, pressure, energy, power, flow, data and more.',
-    keywords: ['convert units', 'metric', 'imperial', 'celsius', 'psi', 'btu', 'horsepower', 'acre', 'guntha', 'tola'],
-    covers: ['Unit converter', 'Temperature converter'],
+    description:
+      'Over 1,250 units in 119 quantities, from length and pressure to viscosity, radiation dose, lab results, Indian land units, yarn counts, paper weights and gold purity. Type “5 bigha (UP) in acres” or pick units; see the value in every unit at once.',
+    keywords: [
+      'convert units',
+      'metric',
+      'imperial',
+      'celsius',
+      'psi',
+      'btu',
+      'horsepower',
+      'acre',
+      'bigha',
+      'guntha',
+      'tola',
+      'lakh',
+      'crore',
+      'viscosity',
+      'flow rate',
+      'torque',
+      'mmol/L',
+      'mg/dL',
+      'gsm',
+      'tex',
+      'denier',
+      'karat',
+      'sievert',
+      'decibel',
+    ],
+    covers: ['Unit converter', 'Temperature converter', 'Engineering ToolBox unit converters', 'convertunits.com'],
   }),
   text('math', {
     id: 'date-calculator',
@@ -1082,6 +1108,14 @@ export const TOOLS: readonly ToolEntry[] = [
     keywords: ['edge blend', 'projection mapping', 'multi projector', 'overlap', 'warp', 'panorama', 'dome'],
   }),
   /* ---------------------------------------------------- electrical -- */
+  other('electrical', 'custom', () => import('./custom/wire-gauge'), {
+    id: 'wire-gauge',
+    name: 'Wire Gauge Chart',
+    description:
+      'AWG, SWG and metric (IEC 60228) wire sizes side by side: diameter, area in mm² and kcmil, resistance at any temperature and mass for copper, aluminium and steel; find the closest size in each system.',
+    keywords: ['awg', 'swg', 'wire gauge', 'mm2', 'sq mm', 'kcmil', 'circular mil', 'wire size', 'conductor resistance', 'enamelled wire', 'gauge chart'],
+    covers: ['Engineering ToolBox AWG and SWG tables', 'Wire gauge converters'],
+  }),
   text('electrical', {
     id: 'power-converter',
     name: 'Power Converter (kW, kVA, Amps, hp)',
@@ -1219,6 +1253,44 @@ export const TOOLS: readonly ToolEntry[] = [
     keywords: ['solar panel', 'pv system', 'rooftop solar', 'string sizing', 'off grid', 'peak sun hours', 'mppt', 'kwp'],
   }),
   /* --------------------------------------------------- mechanical -- */
+  other('mechanical', 'custom', () => import('./custom/steam-tables'), {
+    id: 'steam-tables',
+    name: 'Steam Tables',
+    description:
+      'Water and steam properties from IAPWS-IF97: any state from pressure with temperature, enthalpy, entropy or dryness fraction; saturation tables; tables along one pressure. Density, enthalpy, entropy, heat capacity, speed of sound, viscosity, conductivity.',
+    keywords: ['steam table', 'iapws', 'if97', 'saturated steam', 'superheated steam', 'enthalpy', 'entropy', 'boiler', 'dryness fraction', 'quality', 'wet steam', 'bar g', 'kg/cm2'],
+    covers: ['Engineering ToolBox steam tables', 'Spirax Sarco steam tables', 'Saturated steam table'],
+  }),
+  other('mechanical', 'custom', () => import('./custom/beam-calculator'), {
+    id: 'beam-calculator',
+    name: 'Beam Calculator',
+    description:
+      'Reactions, shear force, bending moment, deflection and bending stress for simply supported, cantilever, fixed, propped and continuous beams under point, uniform and varying loads and moments, with diagrams.',
+    keywords: ['beam', 'deflection', 'bending moment', 'shear force', 'sfd', 'bmd', 'cantilever', 'simply supported', 'continuous beam', 'udl', 'reactions', 'structural'],
+    covers: ['Engineering ToolBox beam calculator', 'SkyCiv beam calculator', 'ClearCalcs beam'],
+  }),
+  other('mechanical', 'custom', () => import('./custom/section-properties'), {
+    id: 'section-properties',
+    name: 'Section Properties',
+    description:
+      'Area, centroid, second moments, elastic and plastic moduli, radii of gyration, principal axes, torsion constant and mass per metre for I-beams, channels, angles, tees, boxes, tubes, bars and rectangles.',
+    keywords: [
+      'moment of inertia',
+      'second moment of area',
+      'section modulus',
+      'plastic modulus',
+      'radius of gyration',
+      'centroid',
+      'i-beam',
+      'ismb',
+      'channel',
+      'angle',
+      'rhs',
+      'chs',
+      'steel section',
+    ],
+    covers: ['Engineering ToolBox area moment of inertia', 'Section property calculators'],
+  }),
   text('mechanical', {
     id: 'pump-sizing',
     name: 'Pump Sizing',
@@ -2030,6 +2102,34 @@ export const TOOLS: readonly ToolEntry[] = [
     covers: ['Omni Calculator Ecology and Weather'],
   }),
   other('calc', 'custom', () => import('./custom/calc-library'), {
+    id: 'calc-electronics',
+    name: 'Electronics Calculators',
+    description: 'Ohm’s law, voltage dividers, LED resistors, RC and LC circuits, reactance, 555 timers, op-amp gain and battery life.',
+    keywords: ['ohm', 'voltage divider', 'led resistor', 'rc time constant', 'resonance', '555', 'op amp', 'battery life', 'omni'],
+    covers: ['Omni Calculator Electronics'],
+  }),
+  other('calc', 'custom', () => import('./custom/calc-library'), {
+    id: 'calc-engineering',
+    name: 'Engineering Calculators',
+    description: 'Stress and strain, torque and power, gears and pulleys, springs, beam formulas, hydraulic cylinders, pipe flow, thermal expansion and bolt torque.',
+    keywords: ['stress', 'strain', 'torque', 'gear ratio', 'pulley', 'spring', 'beam', 'hydraulic', 'bolt torque', 'omni'],
+    covers: ['Omni Calculator Engineering'],
+  }),
+  other('calc', 'custom', () => import('./custom/calc-library'), {
+    id: 'calc-heat',
+    name: 'Heat and Combustion Calculators',
+    description: 'Insulated pipe heat loss and insulation thickness, pipe expansion loops, heat exchanger LMTD, combustion air, flue gas loss, fuel use, hot air balloon lift and buoyancy.',
+    keywords: ['pipe insulation', 'heat loss', 'expansion loop', 'lmtd', 'heat exchanger', 'air fuel ratio', 'excess air', 'flue gas loss', 'siegert', 'calorific value', 'buoyancy'],
+    covers: ['Engineering ToolBox heat loss and combustion calculators'],
+  }),
+  other('calc', 'custom', () => import('./custom/calc-library'), {
+    id: 'calc-acoustics',
+    name: 'Sound and Acoustics Calculators',
+    description: 'Add decibels, sound level at a distance, sound power to pressure, reverberation time (Sabine, Eyring), wavelength, A and C weighting, noise dose and the mass law.',
+    keywords: ['decibel', 'db addition', 'sound pressure level', 'sound power', 'rt60', 'reverberation', 'a weighting', 'noise dose', 'mass law', 'acoustics'],
+    covers: ['Engineering ToolBox acoustics calculators'],
+  }),
+  other('calc', 'custom', () => import('./custom/calc-library'), {
     id: 'calc-other',
     name: 'Other Calculators',
     description: 'Download time, video size, print size, aspect ratio, typing and reading speed, storage and inverter backup.',
@@ -2110,7 +2210,7 @@ export const NOT_INCLUDED: readonly { name: string; reason: string }[] = [
   },
   {
     name: 'Omni Calculator: most of its 3,700 calculators',
-    reason: 'The library covers about 170 of the most used ones across Omni’s 14 categories, each solvable for any value; niche ones can be built in the Math Evaluator.',
+    reason: 'The library covers about 220 of the most used ones in 18 categories, each solvable for any value; niche ones can be built in the Math Evaluator.',
   },
   { name: 'Omni Calculator: currency and live-price calculators', reason: 'They need exchange rates and prices from the internet; Benchtop’s calculators work offline.' },
   { name: 'Pantone colour lookup', reason: 'Pantone colour data is proprietary; Colour Converter covers RGB, HSL, HSV, CMYK and Lab.' },

@@ -1,4 +1,5 @@
 /** Every calculator in the library. */
+import { ACOUSTICS } from './library/acoustics';
 import { BIOLOGY } from './library/biology';
 import { CHEMISTRY } from './library/chemistry';
 import { CONSTRUCTION } from './library/construction';
@@ -10,6 +11,7 @@ import { EVERYDAY } from './library/everyday';
 import { FINANCE } from './library/finance';
 import { FOOD } from './library/food';
 import { HEALTH } from './library/health';
+import { HEAT } from './library/heat';
 import { MATH } from './library/math';
 import { OTHER } from './library/other';
 import { PHYSICS } from './library/physics';
@@ -33,6 +35,8 @@ export const CALCULATORS: readonly Calculator[] = [
   ...ECOLOGY,
   ...ELECTRONICS,
   ...ENGINEERING,
+  ...HEAT,
+  ...ACOUSTICS,
   ...OTHER,
 ];
 

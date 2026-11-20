@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.2.0 (2026-11-20)
+
+Unit conversion for every trade and science, steam tables, a beam calculator and more engineering references, bringing the total to 307 tools and 221 calculators.
+
+- **Unit Converter, rebuilt:** 1,261 units in 119 quantities, grouped as everyday; mechanics and materials; fluids, gases and flow; heat, fuel and energy use; electricity and magnetism; light, sound and radiation; chemistry and water; health (lab results); and trades and industries. Among them: Indian land units by state (bigha, biswa, katha, guntha, cent, ground, kanal, marla), lakh and crore, tola, masha and ratti, gold karats and fineness, yarn counts (tex, denier, Ne), paper weights, crop yields in quintals per hectare, gas at normal and standard conditions and MMSCMD, viscosity, permeability, radioactivity and dose, blood glucose, cholesterol and HbA1c. Type a question such as “5 bigha (UP) in acres”, “2 lakh sq ft to acres” or “5.4 mmol/L glucose in mg/dL”, type in either box, and see the value in every unit of the quantity at once, with international or Indian digit grouping.
+- **Steam Tables (IAPWS-IF97):** the state from pressure with temperature, enthalpy, entropy or dryness fraction, or saturation at a pressure or temperature, with gauge pressures in bar, kgf/cm² or psi; density, enthalpy, entropy, heat capacities, speed of sound, viscosity, thermal conductivity and surface tension; saturation tables and tables along one pressure to copy or save as CSV. The results match every verification table in the IAPWS releases.
+- **Beam Calculator:** any span on pinned, roller and fixed supports, including overhangs and continuous beams, under point, uniform and varying loads and moments; reactions, shear, bending moment, deflection and bending stress with diagrams. The section is typed in or built from a shape, optionally with the beam’s own weight. Checked against the textbook formulas.
+- **Section Properties:** area, centroid, second moments, elastic and plastic moduli, radii of gyration, principal axes of angles, torsion constant, and mass and surface per metre of I-beams, channels, angles, tees, boxes, tubes, bars and rectangles, with a scale drawing; results in mm, cm (as steel tables use) or inches.
+- **Wire Gauge Chart:** AWG, SWG and metric (IEC 60228) sizes side by side with diameter, area, resistance at any temperature and mass for copper, aluminium and steel, and the closest size in each system.
+- **Calculators:** a Heat and combustion group (insulated pipe heat loss and the thickness for a surface temperature, pipe expansion loops, heat exchanger LMTD, combustion air, flue gas loss and efficiency, fuel use, hot air balloon lift, buoyancy) and a Sound and acoustics group (adding decibels, level at a distance, sound power to pressure, reverberation time, wavelength, A and C weighting, noise dose, the mass law); crown moulding and sloped-box saw angles under Construction. The Electronics and Engineering groups now have their own entries in the sidebar and search.
+- Fixed: the Windows installer build failed because the build script turned file URLs into paths that Windows cannot open.
+
 ## 3.1.0 (2026-11-18)
 
 17 new tools, bringing the total to 299; every CyberChef operation in the Recipe tool; Hindi text recognition and transcription; a command line; and a round of refinements across the app.

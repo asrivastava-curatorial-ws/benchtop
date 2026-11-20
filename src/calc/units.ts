@@ -78,6 +78,16 @@ export const DIMENSIONS = {
   /** Second moment of area, for beam bending. */
   inertia: [u('m⁴', 1), u('cm⁴', 1e-8), u('mm⁴', 1e-12), u('in⁴', 4.162314256e-7)],
   viscosity: [u('Pa·s', 1), u('mPa·s', 1e-3), u('cP', 1e-3), u('P', 0.1)],
+  /** Thermal conductivity of materials and insulation. */
+  conductivity: [u('W/(m·K)', 1), u('mW/(m·K)', 1e-3), u('BTU/(h·ft·°F)', 1.730734666), u('kcal/(h·m·°C)', 1.163)],
+  /** Heat transfer coefficients and U-values. */
+  htc: [u('W/(m²·K)', 1), u('BTU/(h·ft²·°F)', 5.678263341), u('kcal/(h·m²·°C)', 1.163)],
+  /** Heat flow per length of pipe or cable. */
+  linearpower: [u('W/m', 1), u('kW/m', 1000), u('BTU/(h·ft)', 0.9615170684), u('kcal/(h·m)', 1.163)],
+  /** Energy per mass: calorific values. */
+  specificenergy: [u('J/kg', 1), u('kJ/kg', 1000), u('MJ/kg', 1e6), u('kcal/kg', 4186.8), u('BTU/lb', 2326), u('kWh/kg', 3.6e6)],
+  /** Thermal expansion coefficients. */
+  expansion: [u('1/K', 1), u('ppm/K', 1e-6, 'ppm/K (µm/m·K)'), u('1/°F', 1.8), u('ppm/°F', 1.8e-6)],
 } as const satisfies Record<string, readonly Unit[]>;
 
 export type Dimension = keyof typeof DIMENSIONS;

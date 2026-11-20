@@ -14,6 +14,7 @@ const PAGES = [
   '/#/tool/image-resize',
   '/#/tool/recipe',
   '/#/tool/calc-finance',
+  '/#/tool/unit-converter',
   '/#/tool/pdf-organise',
   '/#/tool/hash',
   '/#/tool/gradient',

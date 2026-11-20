@@ -41,7 +41,16 @@ The AI tools run in a second copy of the program started as `benchtop --ai-worke
 
 ## The calculator library
 
-`src/calc/` holds about 170 calculators as data: variables with dimensions and units (`units.ts`) and equations written as text (`library/*.ts`). `solver.ts` parses the equations with math.js and solves each one that has a single unknown, numerically (secant steps, then a bracketing search from 10⁻⁴⁰ to 10⁴⁰), repeating until nothing changes, so any field can be the result. When typed values contradict each other, the oldest gives way. `engine.ts` converts between the units on screen and the units in the formulas. `report.ts` encodes a calculation into a link (`#/tool/<id>?calc=…&s=…`, validated when read) and draws the PDF report.
+`src/calc/` holds about 220 calculators as data: variables with dimensions and units (`units.ts`) and equations written as text (`library/*.ts`). `solver.ts` parses the equations with math.js and solves each one that has a single unknown, numerically (secant steps, then a bracketing search from 10⁻⁴⁰ to 10⁴⁰), repeating until nothing changes, so any field can be the result. When typed values contradict each other, the oldest gives way. `engine.ts` converts between the units on screen and the units in the formulas. `report.ts` encodes a calculation into a link (`#/tool/<id>?calc=…&s=…`, validated when read) and draws the PDF report.
+
+## Engineering references
+
+Pure functions under `src/lib`, with the bespoke tools that use them:
+
+- `lib/units/`: the unit catalogue (`catalog-common.ts`, `catalog-science.ts`, `catalog-trade.ts`). Every quantity has a base unit and each unit reaches it linearly, with an offset (temperatures), as a reciprocal (fuel economy, yarn counts) or through a function pair (decibels, slopes, hydrometer scales). `index.ts` converts, searches and reads questions such as “2 lakh sq ft to acres”; the Unit Converter (`tools/custom/unit-converter.tsx`) is its interface.
+- `lib/steam/if97.ts`: IAPWS-IF97 regions 1 to 5 with the published coefficients. Region 3 is solved for density along an isotherm (the polynomial in δ is precomputed per temperature, so a root scan and bisection cost little), and enthalpy and entropy inputs are inverted by bisection on temperature on the correct side of the saturation line. Viscosity, thermal conductivity (with the industrial critical enhancement) and surface tension follow the IAPWS releases. `tests/unit/steam.test.ts` checks every verification table.
+- `lib/beam/`: `sections.ts` builds shapes from rectangles and circles (parallel-axis theorem, plastic neutral axis by bisection, thin-wall torsion constants); `beam.ts` assembles Euler–Bernoulli beam elements with nodes at every support and load boundary into a banded system, so nodal deflections are exact, and takes shear and moment from statics with the computed reactions.
+- `lib/wire-gauge.ts`: AWG from its defining formula, the BS 3737 SWG table and IEC 60228 sizes.
 
 ## Safety boundaries
 

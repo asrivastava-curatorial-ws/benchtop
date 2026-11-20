@@ -17,6 +17,8 @@ export const CALC_CATEGORIES = [
   { id: 'ecology', name: 'Ecology and weather', blurb: 'Carbon footprints, rainwater, dew point, wind chill and heat index' },
   { id: 'electronics', name: 'Electronics', blurb: 'Ohm’s law, dividers, LEDs, RC and LC circuits, reactance, 555 timers, op-amps and batteries' },
   { id: 'engineering', name: 'Engineering', blurb: 'Beams, stress and strain, torque and power, gears, pulleys, springs, cylinders and pipe flow' },
+  { id: 'heat', name: 'Heat and combustion', blurb: 'Insulation heat loss, pipe expansion loops, LMTD, combustion air, flue-gas loss, fuel use, buoyancy and balloons' },
+  { id: 'acoustics', name: 'Sound and acoustics', blurb: 'Adding decibels, distance loss, sound power, reverberation time, wavelength, A-weighting, noise dose and the mass law' },
   { id: 'other', name: 'Other', blurb: 'Downloads, screens, printing, typing, reading and video files' },
 ] as const;
 

@@ -1,5 +1,5 @@
 /**
- * The calculator library: about 170 calculators in 14 categories.  Every
+ * The calculator library: about 220 calculators in 18 categories.  Every
  * field can be typed or left empty; empty fields are worked out from the rest,
  * so each calculator also runs backwards (the rate from an EMI, the height
  * from a BMI).  The most recently typed values win when they disagree.

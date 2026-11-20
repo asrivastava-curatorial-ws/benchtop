@@ -1,6 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import preact from '@preact/preset-vite';
 import { defineConfig, type Plugin } from 'vite';
 import { collectCrates, collectLicenses, renderNotice } from './scripts/licenses.mjs';
@@ -56,7 +57,7 @@ function ocrAssets(): Plugin {
       ...['tesseract-core-lstm.wasm.js', 'tesseract-core-simd-lstm.wasm.js'].map((name) => [join(core, name), `public/tesseract/core/${name}`] as [string, string]),
     ];
     for (const [from, to] of files) {
-      const target = new URL(to, import.meta.url).pathname;
+      const target = fileURLToPath(new URL(to, import.meta.url));
       if (existsSync(target) && statSync(target).size === statSync(from).size) continue;
       mkdirSync(dirname(target), { recursive: true });
       copyFileSync(from, target);

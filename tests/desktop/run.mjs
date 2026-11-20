@@ -81,8 +81,16 @@ try {
 
   await check('the window opens on the home page with every tool listed', async () => {
     await driver.wait(async () => (await driver.getTitle()).includes('Benchtop'), 20_000);
-    const links = await driver.findElements(By.css('a[href^="#/tool/"]'));
-    if (links.length < 125) throw new Error(`only ${links.length} tool links`);
+    // The title is in index.html, so wait for the app itself to draw the tool list.
+    let count = 0;
+    await driver
+      .wait(async () => {
+        count = (await driver.findElements(By.css('a[href^="#/tool/"]'))).length;
+        return count >= 125;
+      }, 20_000)
+      .catch(() => {
+        throw new Error(`only ${count} tool links`);
+      });
   });
 
   await check('the content security policy is in place and blocks the network', async () => {
@@ -294,6 +302,18 @@ try {
   await check('the calculator library solves in the web view', async () => {
     await open('calc-finance');
     await driver.wait(async () => /8,?678\.23/.test(await driver.executeScript("return document.querySelector('[data-testid=calc-field-payment] input')?.value ?? ''")), 20_000, 'no EMI');
+  });
+
+  await check('units convert with Indian digit grouping, and steam properties solve (IAPWS-IF97)', async () => {
+    await open('unit-converter');
+    const ask = await driver.findElement(By.css('[data-testid=uc-ask]'));
+    await ask.clear();
+    await ask.sendKeys('5 bigha (UP) in acres');
+    await driver.wait(async () => /3\.0991736 acre/.test(await driver.findElement(By.css('[data-testid=uc-ask-answer]')).getText()), 10_000, 'no answer');
+    const lakh = await driver.executeScript("return (100000).toLocaleString('en-IN')");
+    if (lakh !== '1,00,000') throw new Error(`Indian grouping gave ${lakh}`);
+    await open('steam-tables');
+    await driver.wait(async () => /2943\.22/.test(await driver.findElement(By.css('[data-testid=st-table]')).getText()), 10_000, 'no steam properties');
   });
 
   await check("a recipe bakes in its own worker, including an operation from CyberChef's code", async () => {

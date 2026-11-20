@@ -167,7 +167,6 @@ export const textToolLoaders = {
   'random-generator': () => import('./random-generator'),
   'mock-data': () => import('./mock-data'),
   'color-harmonies': () => import('./color-harmonies'),
-  'unit-converter': () => import('./unit-converter'),
   // calcpanel: electrical
   'power-converter': () => import('./power-converter'),
   'pf-correction': () => import('./pf-correction'),

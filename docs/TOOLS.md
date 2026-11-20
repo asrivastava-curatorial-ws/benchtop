@@ -2,7 +2,7 @@
 
 <!-- Generated from src/tools/registry.ts by tests/unit/docs.test.ts. Do not edit by hand. -->
 
-Benchtop has 299 tools. All of them work without a network connection except the 10 in Online checks, which contact only the hosts you enter, when you press Check, and only in the desktop app. The AI tools download their models once, when you first choose one (or import them from a folder), and then work offline too.
+Benchtop has 307 tools. All of them work without a network connection except the 10 in Online checks, which contact only the hosts you enter, when you press Check, and only in the desktop app. The AI tools download their models once, when you first choose one (or import them from a folder), and then work offline too.
 
 ## Format and minify
 
@@ -324,7 +324,7 @@ Benchtop has 299 tools. All of them work without a network connection except the
 | ETA Calculator | When will a job finish? Time left and finish time from progress so far. | ETA calculator |
 | Benchmark Statistics | Mean, median, spread and relative speed for benchmark runs, as a Markdown table. | Benchmark builder |
 | Stopwatch and Timer | Stopwatch with laps, countdown timer and Pomodoro cycles, with a sound when time is up. | Chronometer |
-| Unit Converter | Length, area (with Indian land units), volume, mass, temperature, pressure, energy, power, flow, data and more. | Unit converter, Temperature converter |
+| Unit Converter | Over 1,250 units in 119 quantities, from length and pressure to viscosity, radiation dose, lab results, Indian land units, yarn counts, paper weights and gold purity. Type “5 bigha (UP) in acres” or pick units; see the value in every unit at once. | Unit converter, Temperature converter, Engineering ToolBox unit converters, convertunits.com |
 | Date Calculator | Days, weeks, months and working days between dates, or a date plus or minus days, workdays, months or years. | Date calculator, Days between dates |
 | Time Sheet Calculator | Total hours worked from start and end times with breaks, overtime and pay. | Time sheet calculator |
 | Coordinates Converter | Convert latitude and longitude between decimal, DMS, UTM, geohash and Plus Codes, and measure distance and bearing. | Coordinates converter |
@@ -347,6 +347,10 @@ Benchtop has 299 tools. All of them work without a network connection except the
 | Food Calculators | Recipe scaling, calories from macros, pizza value, coffee and rice ratios, baking pans and brines. | Omni Calculator Food |
 | Biology Calculators | Growth and generation time, Hardy–Weinberg, DNA concentration, Beer–Lambert, centrifuge g-force and more. | Omni Calculator Biology |
 | Ecology and Weather Calculators | Car and electricity CO₂, rainwater harvesting, solar output, dew point, heat index and wind chill. | Omni Calculator Ecology and Weather |
+| Electronics Calculators | Ohm’s law, voltage dividers, LED resistors, RC and LC circuits, reactance, 555 timers, op-amp gain and battery life. | Omni Calculator Electronics |
+| Engineering Calculators | Stress and strain, torque and power, gears and pulleys, springs, beam formulas, hydraulic cylinders, pipe flow, thermal expansion and bolt torque. | Omni Calculator Engineering |
+| Heat and Combustion Calculators | Insulated pipe heat loss and insulation thickness, pipe expansion loops, heat exchanger LMTD, combustion air, flue gas loss, fuel use, hot air balloon lift and buoyancy. | Engineering ToolBox heat loss and combustion calculators |
+| Sound and Acoustics Calculators | Add decibels, sound level at a distance, sound power to pressure, reverberation time (Sabine, Eyring), wavelength, A and C weighting, noise dose and the mass law. | Engineering ToolBox acoustics calculators |
 | Other Calculators | Download time, video size, print size, aspect ratio, typing and reading speed, storage and inverter backup. | Omni Calculator Other |
 
 ## Projection and AV
@@ -361,6 +365,7 @@ Benchtop has 299 tools. All of them work without a network connection except the
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
+| Wire Gauge Chart | AWG, SWG and metric (IEC 60228) wire sizes side by side: diameter, area in mm² and kcmil, resistance at any temperature and mass for copper, aluminium and steel; find the closest size in each system. | Engineering ToolBox AWG and SWG tables, Wire gauge converters |
 | Power Converter (kW, kVA, Amps, hp) | Convert between kW, kVA, kVAR, line current and motor horsepower for single-phase, three-phase and DC supplies. | kVA to Amps Calculator, kW to kVA Calculator, 3-Phase Power Calculator |
 | Power Factor Correction | Capacitor kVAR to raise the power factor, the next standard bank size, capacitance per phase and the current and losses saved. |  |
 | Cable Size and Voltage Drop | Cable size for current and voltage drop to IEC 60364 (mm²) or NEC (AWG), with temperature and grouping factors. | Cable Size Calculator |
@@ -392,6 +397,9 @@ Benchtop has 299 tools. All of them work without a network connection except the
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
+| Steam Tables | Water and steam properties from IAPWS-IF97: any state from pressure with temperature, enthalpy, entropy or dryness fraction; saturation tables; tables along one pressure. Density, enthalpy, entropy, heat capacity, speed of sound, viscosity, conductivity. | Engineering ToolBox steam tables, Spirax Sarco steam tables, Saturated steam table |
+| Beam Calculator | Reactions, shear force, bending moment, deflection and bending stress for simply supported, cantilever, fixed, propped and continuous beams under point, uniform and varying loads and moments, with diagrams. | Engineering ToolBox beam calculator, SkyCiv beam calculator, ClearCalcs beam |
+| Section Properties | Area, centroid, second moments, elastic and plastic moduli, radii of gyration, principal axes, torsion constant and mass per metre for I-beams, channels, angles, tees, boxes, tubes, bars and rectangles. | Engineering ToolBox area moment of inertia, Section property calculators |
 | Pump Sizing | Total dynamic head, motor power, running cost and NPSH available for a water pumping system. |  |
 | Pipe Flow and Pressure Drop | Velocity, Reynolds number, friction factor and pressure drop in a pipe by Darcy–Weisbach. |  |
 | Valve Cv and Kv | Size a control valve: Kv and Cv from flow and pressure drop, or flow from a valve rating, for liquids and gases. |  |
@@ -435,7 +443,7 @@ Benchtop has 299 tools. All of them work without a network connection except the
 
 ## Coverage of the original web tools
 
-338 web tools map onto Benchtop tools:
+354 web tools map onto Benchtop tools:
 
 | Web tool | Benchtop tool |
 | --- | --- |
@@ -485,6 +493,7 @@ Benchtop has 299 tools. All of them work without a network connection except the
 | Chart maker | Chart Maker |
 | Chronometer | Stopwatch and Timer |
 | Circuit Breaker Size Calculator | Circuit Breaker Size |
+| ClearCalcs beam | Beam Calculator |
 | CNAME lookup | DNS Lookup |
 | Code for Email | Email Link Builder |
 | Color Blindness Simulator | Colour Blindness Simulator |
@@ -492,6 +501,7 @@ Benchtop has 299 tools. All of them work without a network connection except the
 | Color scheme generator | Colour Harmonies |
 | Color Shades Generator | Colour Shades |
 | Color Swapper | Colour Replacer |
+| convertunits.com | Unit Converter |
 | ConvertX | File Converter |
 | Coordinates converter | Coordinates Converter |
 | Credit card validator | Card Number Validator |
@@ -543,6 +553,13 @@ Benchtop has 299 tools. All of them work without a network connection except the
 | Emoji picker | Emoji Picker |
 | Encoding converter | Text Encoding Converter |
 | Encrypt / decrypt text | Text Encryption (CryptoJS) |
+| Engineering ToolBox acoustics calculators | Sound and Acoustics Calculators |
+| Engineering ToolBox area moment of inertia | Section Properties |
+| Engineering ToolBox AWG and SWG tables | Wire Gauge Chart |
+| Engineering ToolBox beam calculator | Beam Calculator |
+| Engineering ToolBox heat loss and combustion calculators | Heat and Combustion Calculators |
+| Engineering ToolBox steam tables | Steam Tables |
+| Engineering ToolBox unit converters | Unit Converter |
 | ETA calculator | ETA Calculator |
 | Excel to CSV | Table Converter |
 | Factory Load Calculator | Load and Energy Cost |
@@ -637,6 +654,8 @@ Benchtop has 299 tools. All of them work without a network connection except the
 | Omni Calculator Construction | Construction Calculators |
 | Omni Calculator Conversion | Conversion Calculators |
 | Omni Calculator Ecology and Weather | Ecology and Weather Calculators |
+| Omni Calculator Electronics | Electronics Calculators |
+| Omni Calculator Engineering | Engineering Calculators |
 | Omni Calculator Everyday Life | Everyday Life Calculators |
 | Omni Calculator Finance | Finance Calculators |
 | Omni Calculator Food | Food Calculators |
@@ -684,10 +703,13 @@ Benchtop has 299 tools. All of them work without a network connection except the
 | robots.txt Generator | robots.txt Generator |
 | Roman numeral converter | Roman Numerals |
 | ROT13 Encoder/Decoder | ROT13 and Caesar |
+| Saturated steam table | Steam Tables |
 | SCSS to CSS | SCSS and Less to CSS |
+| Section property calculators | Section Properties |
 | SHA-1 Hash Generator | Hash and HMAC |
 | SHA-512 Hash Generator | Hash and HMAC |
 | Shadcn Theme Generator | shadcn/ui Theme |
+| SkyCiv beam calculator | Beam Calculator |
 | Smallpdf and iLovePDF form filling | PDF Form Filler |
 | Smallpdf eSign | PDF Signer |
 | Snagit and Greenshot editors | Image Annotator |
@@ -720,6 +742,7 @@ Benchtop has 299 tools. All of them work without a network connection except the
 | SnapOtter Watermark | Image Watermark |
 | SnapOtter ZIP tools | ZIP and Archives |
 | SPF checker | Email DNS Check |
+| Spirax Sarco steam tables | Steam Tables |
 | SSL checker | SSL Certificate Checker |
 | SSL expiry checker | SSL Certificate Checker |
 | String obfuscator | String Obfuscator |
@@ -765,6 +788,7 @@ Benchtop has 299 tools. All of them work without a network connection except the
 | What is my IP | IP Lookup |
 | WHOIS lookup | Domain WHOIS and Expiry |
 | WiFi QR code generator | QR Code Generator |
+| Wire gauge converters | Wire Gauge Chart |
 | WireGuard config generators | WireGuard Config Generator |
 | Word compare | Diff Checker |
 | Word to text | Document to Text |
@@ -789,7 +813,7 @@ Benchtop has 299 tools. All of them work without a network connection except the
 - **Code formatters for C, Go and Python (freecodeformat)**: Each would add a compiler-sized WebAssembly download; use the language’s own formatter (clang-format, gofmt, ruff format).
 - **Games and astrology calculators (CalcPanel)**: Outside the scope of a developer and engineering toolbox. Health and sports calculators are in the calculator library.
 - **Medicine dose calculators (Omni Calculator: drug dosage, IV drip rate, insulin, paediatric doses)**: A wrong dose can cause serious harm, and safe dosing depends on the product label and a clinician’s judgement, so these are deliberately left out.
-- **Omni Calculator: most of its 3,700 calculators**: The library covers about 170 of the most used ones across Omni’s 14 categories, each solvable for any value; niche ones can be built in the Math Evaluator.
+- **Omni Calculator: most of its 3,700 calculators**: The library covers about 220 of the most used ones in 18 categories, each solvable for any value; niche ones can be built in the Math Evaluator.
 - **Omni Calculator: currency and live-price calculators**: They need exchange rates and prices from the internet; Benchtop’s calculators work offline.
 - **Pantone colour lookup**: Pantone colour data is proprietary; Colour Converter covers RGB, HSL, HSV, CMYK and Lab.
 - **CyberChef: Automated Validation Test Op**: An internal helper of CyberChef’s own test suite; every other CyberChef operation is in the Recipe tool.

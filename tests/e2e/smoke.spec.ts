@@ -448,6 +448,88 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
     await expect(page.getByTestId('cert-output')).toHaveCount(2, { timeout: 30_000 });
     await expect(page.getByTestId('cert-output').first()).toContainText('BEGIN CERTIFICATE');
   },
+  'unit-converter': async (page) => {
+    const ask = page.getByTestId('uc-ask');
+    await ask.fill('5 bigha (UP) in acres');
+    await expect(page.getByTestId('uc-ask-answer')).toContainText('= 3.0991736 acre');
+    await ask.press('Enter');
+    await expect(page.getByTestId('uc-to-unit')).toHaveValue('acre');
+    await expect(page.getByTestId('uc-result')).toHaveText('5 bigha (UP) = 3.0991736 acre');
+    await expect(page.getByTestId('uc-table')).toContainText('guntha');
+    // Typing on the right converts backwards.
+    await page.getByTestId('uc-to-value').fill('1');
+    await expect(page.getByTestId('uc-from-value')).toHaveValue('1.6133333');
+    // Indian digit grouping in the table: 100 bigha (UP) is 27 lakh square feet.
+    await page.getByTestId('uc-from-value').fill('100');
+    await page.getByRole('radio', { name: '12,34,567' }).click();
+    await expect(page.getByTestId('uc-table').locator('tr', { hasText: 'square foot' })).toContainText('27,00,000');
+    // Counting words, temperatures and search.
+    await ask.fill('2 lakh sq ft to acres');
+    await expect(page.getByTestId('uc-ask-answer')).toContainText('4.5913682 acre');
+    await ask.fill('-40 C in F');
+    await expect(page.getByTestId('uc-ask-answer')).toContainText('= -40 °F');
+    await page.getByTestId('uc-search').fill('tola');
+    await page.getByTestId('uc-list').getByRole('button').first().click();
+    await expect(page.locator('#uc-title')).toHaveText('Mass and weight');
+    await expect(page.getByTestId('uc-from-unit')).toHaveValue('tola');
+  },
+  'steam-tables': async (page) => {
+    // 10 bar and 250 °C: superheated, h = 2943.22 kJ/kg (IAPWS-IF97).
+    await expect(page.getByTestId('st-summary')).toHaveText('Superheated steam');
+    await expect(page.getByTestId('st-table').locator('tr', { hasText: 'Specific enthalpy' })).toContainText('2943.22');
+    // Saturation at 10 bar gauge: 184.12 °C.
+    await page.getByTestId('st-known').selectOption('satP');
+    await page.getByTestId('st-p-unit').selectOption('barg');
+    await expect(page.getByTestId('st-table').locator('tr', { hasText: 'Temperature' })).toContainText('184.123');
+    await expect(page.getByTestId('st-table').locator('tr', { hasText: 'Specific enthalpy' })).toContainText('2780.71');
+    await page.getByTestId('st-p').fill('900');
+    await expect(page.getByTestId('st-error')).toContainText('22.064 MPa');
+    await page.getByRole('radio', { name: 'Saturation table' }).click();
+    await expect(page.getByTestId('st-grid').locator('tbody tr')).toHaveCount(38);
+    await page.getByRole('radio', { name: 'Table at one pressure' }).click();
+    await expect(page.getByTestId('st-grid').locator('tbody tr')).toHaveCount(19);
+    await expect(page.getByTestId('st-grid')).toContainText('Compressed (subcooled) liquid');
+    await expect(page.getByTestId('st-grid')).toContainText('Superheated steam');
+  },
+  'beam-calculator': async (page) => {
+    // 6 m simply supported, 10 kN/m everywhere and 20 kN at 2 m: reactions 43.33 and 36.67 kN.
+    const results = page.getByTestId('bm-results');
+    await expect(results.locator('tr').first()).toContainText('43.33 kN up');
+    await expect(results.locator('tr').nth(1)).toContainText('36.67 kN up');
+    await expect(page.getByTestId('bm-diagrams').locator('svg')).toHaveCount(4);
+    // A cantilever with a 20 kN end load: PL³/3EI with I typed in.
+    await page.getByTestId('bm-preset').selectOption('cantilever');
+    await page.getByTestId('bm-section').selectOption('manual');
+    await page.getByTestId('bm-I').fill('5000');
+    await page.getByRole('button', { name: 'Remove load 1' }).click();
+    await page.getByLabel('Load 1 position').fill('6');
+    // δ = 20e3·6³/(3·200e9·5000e-8) = 0.144 m.
+    await expect(results).toContainText('144 mm down at 6 m');
+    await expect(results).toContainText('120 kN·m anticlockwise');
+    await page.getByTestId('bm-length').fill('0');
+    await expect(page.getByTestId('bm-error')).toBeVisible();
+  },
+  'section-properties': async (page) => {
+    const table = page.getByTestId('sp-table');
+    await expect(table.locator('tr', { hasText: 'Second moment about x' })).toContainText('5,065.8');
+    await expect(table.locator('tr', { hasText: 'Mass per metre' })).toContainText('36.718');
+    await page.getByTestId('sp-shape').selectOption('angle');
+    await expect(table.locator('tr', { hasText: 'Major axis from x' })).toContainText('45');
+    await page.getByTestId('sp-t').fill('80');
+    await expect(page.getByTestId('sp-error')).toBeVisible();
+  },
+  'wire-gauge': async (page) => {
+    // AWG 12 copper: 2.053 mm, 3.309 mm², 5.211 Ω/km at 20 °C; closest metric size 4 mm².
+    const found = page.getByTestId('wg-found');
+    await expect(found).toContainText('5.211 Ω/km');
+    await expect(found).toContainText('4 mm²');
+    await expect(page.getByTestId('wg-chart').locator('tr.is-to')).toContainText('12');
+    await page.getByTestId('wg-known').selectOption('metric');
+    await page.getByTestId('wg-value').fill('2.5');
+    await expect(found).toContainText('AWG 13');
+    await page.getByTestId('wg-value').fill('3');
+    await expect(page.getByTestId('wg-error')).toBeVisible();
+  },
   'time-zones': async (page) => {
     await expect(page.getByTestId('tz-table')).toContainText('Asia/Kolkata');
     await expect(page.getByTestId('tz-table').locator('tr')).toHaveCount(4);

@@ -1,6 +1,6 @@
 [package]
 name = "benchtop"
-version = "3.1.0"
+version = "3.2.0"
 description = "Benchtop: an open-source desktop toolbox of developer and engineering utilities"
 license = "MIT"
 edition = "2021"
