@@ -24,6 +24,12 @@ export interface Settings {
   readonly sidebarHidden: boolean;
   /** Let the tools in the "Online checks" category contact the hosts the user enters (desktop app only). */
   readonly allowNetwork: boolean;
+  /** Desktop app: an icon in the system tray; closing the window then keeps Benchtop running. */
+  readonly trayIcon: boolean;
+  /** Desktop app: global shortcut for the quick launcher, such as "Ctrl+Alt+Space"; empty for none. */
+  readonly quickKey: string;
+  /** Desktop app: keep a clipboard history in memory while Benchtop runs. */
+  readonly clipboardHistory: boolean;
   readonly toolOptions: Readonly<Record<string, Values>>;
 }
 
@@ -37,6 +43,9 @@ export const DEFAULT_SETTINGS: Settings = {
   collapsed: [],
   sidebarHidden: false,
   allowNetwork: true,
+  trayIcon: false,
+  quickKey: '',
+  clipboardHistory: false,
   toolOptions: {},
 };
 
@@ -65,6 +74,9 @@ export function sanitizeSettings(raw: unknown): Settings {
     collapsed: strings(source.collapsed, []),
     sidebarHidden: typeof source.sidebarHidden === 'boolean' ? source.sidebarHidden : false,
     allowNetwork: typeof source.allowNetwork === 'boolean' ? source.allowNetwork : DEFAULT_SETTINGS.allowNetwork,
+    trayIcon: source.trayIcon === true,
+    quickKey: typeof source.quickKey === 'string' ? source.quickKey.slice(0, 60) : '',
+    clipboardHistory: source.clipboardHistory === true,
     toolOptions,
   };
 }

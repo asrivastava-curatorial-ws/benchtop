@@ -1,6 +1,6 @@
 [package]
 name = "benchtop"
-version = "3.2.0"
+version = "4.1.0"
 description = "Benchtop: an open-source desktop toolbox of developer and engineering utilities"
 license = "MIT"
 edition = "2021"
@@ -16,8 +16,9 @@ crate-type = ["rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-clipboard-manager = "2"
+tauri-plugin-global-shortcut = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-window-state = "2"
 percent-encoding = "2"
@@ -33,7 +34,15 @@ reqwest = { version = "0.13", default-features = false, features = ["rustls-no-p
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 rustls-platform-verifier = "0.7"
-hyper-util = { version = "0.1", default-features = false, features = ["client-proxy", "client-proxy-system"] }
+hyper-util = { version = "0.1", default-features = false, features = ["client-proxy", "client-proxy-system", "server", "tokio", "http1"] }
+# Mock API and file servers, and the gRPC client (HTTP/2 with trailers).
+hyper = { version = "1", features = ["server", "client", "http1", "http2"] }
+http-body-util = "0.1"
+bytes = "1"
+protox = "0.9"
+prost-reflect = { version = "0.16", features = ["serde"] }
+prost = "0.14"
+prost-types = "0.14"
 http = "1"
 hickory-proto = { version = "0.26", default-features = false, features = ["std", "dnssec-ring"] }
 hickory-resolver = { version = "0.26", default-features = false, features = ["system-config", "tokio"] }
@@ -56,6 +65,16 @@ dirs = "7"
 serialport = { version = "4", default-features = false }
 bzip2 = { version = "0.5", default-features = false, features = ["libbz2-rs-sys"] }
 which = "7"
+# Web pages to PDF: the DevTools protocol of an installed Chrome, Edge, Chromium or Brave (local WebSocket).
+tokio-tungstenite = { version = "0.27", default-features = false, features = ["connect", "handshake", "__rustls-tls"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+# Website copier: rewrites links in copied pages to point at the local copies.
+lol_html = "2"
+encoding_rs = "0.8"
+# Files and folders tools: walking folders, fast checksums, deleting to the system's trash.
+walkdir = "2"
+blake3 = { version = "1", default-features = false, features = ["std"] }
+trash = "5"
 
 [target.'cfg(unix)'.dependencies]
 # The command line exits quietly when its output pipe closes (benchtop models | head).
@@ -65,7 +84,12 @@ libc = "0.2"
 ort = { version = "=2.0.0-rc.15", default-features = false, features = ["coreml"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+# The tray icon's AppIndicator library is looked for before use (desk.rs).
+libloading = "0.8"
 ort = { version = "=2.0.0-rc.15", default-features = false, features = ["cuda"] }
+# Printing a page to PDF with the system web view when no Chromium browser is installed.
+webkit2gtk = "2.0"
+gtk = "0.18"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 ort = { version = "=2.0.0-rc.15", default-features = false, features = ["directml"] }

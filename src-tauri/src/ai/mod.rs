@@ -7,6 +7,7 @@ pub mod image_ops;
 pub mod protocol;
 pub mod speech;
 pub mod store;
+pub mod tts;
 pub mod worker;
 
 #[cfg(test)]
@@ -236,6 +237,25 @@ pub(crate) fn build_request(
                     .ok_or("Choose the file again; this one is no longer available.")?;
                 object.insert("path".into(), json!(path));
             }
+        }
+        "speak" => {
+            let path = model_path(
+                &state.store,
+                if model.is_empty() {
+                    "piper-en_US-lessac-medium"
+                } else {
+                    model
+                },
+                &[Kind::Voice],
+            )?;
+            object.insert(
+                "model".into(),
+                json!(path.parent().map(|p| p.to_path_buf()).unwrap_or_default()),
+            );
+            let espeak = crate::convert::find_program("espeak").ok_or(
+                "Piper voices need eSpeak NG to turn text into speech sounds. Install it (Linux: sudo apt install espeak-ng; macOS: brew install espeak-ng; Windows: the espeak-ng .msi from github.com/espeak-ng/espeak-ng/releases) and try again.",
+            )?;
+            object.insert("espeak".into(), json!(espeak));
         }
         "probe" => {}
         other => return Err(format!("Unknown AI operation \"{other}\".")),

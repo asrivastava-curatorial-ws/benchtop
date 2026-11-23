@@ -8,7 +8,7 @@
  */
 import type { ComponentChildren, ComponentType } from 'preact';
 
-export type Lang = 'text' | 'json' | 'javascript' | 'typescript' | 'jsx' | 'html' | 'css' | 'xml' | 'markdown' | 'yaml';
+export type Lang = 'text' | 'json' | 'javascript' | 'typescript' | 'jsx' | 'html' | 'css' | 'xml' | 'markdown' | 'yaml' | 'sql' | 'cpp' | 'python';
 
 /* ----------------------------------------------------------------------------
  * Option definitions (declarative form controls)
@@ -19,6 +19,8 @@ export type Values = Record<string, unknown>;
 export interface Choice {
   readonly value: string;
   readonly label: string;
+  /** Choices sharing a group are listed together under that heading (select only). */
+  readonly group?: string;
 }
 
 interface OptionBase {
@@ -337,6 +339,12 @@ export type CategoryId =
   | 'energy'
   | 'mechanical'
   | 'hvac'
+  | 'mobile'
+  | 'print'
+  | 'docs'
+  | 'files'
+  | 'science'
+  | 'electronics'
   | 'misc';
 
 export interface ToolEntry {

@@ -1,11 +1,14 @@
 /** A CodeMirror 6 editor wrapped as a controlled component. */
 
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+import { cpp } from '@codemirror/lang-cpp';
 import { css } from '@codemirror/lang-css';
 import { html } from '@codemirror/lang-html';
 import { javascript } from '@codemirror/lang-javascript';
 import { json } from '@codemirror/lang-json';
 import { markdown } from '@codemirror/lang-markdown';
+import { python } from '@codemirror/lang-python';
+import { sql } from '@codemirror/lang-sql';
 import { xml } from '@codemirror/lang-xml';
 import { yaml } from '@codemirror/lang-yaml';
 import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from '@codemirror/language';
@@ -23,7 +26,7 @@ import {
   placeholder as placeholderExtension,
 } from '@codemirror/view';
 import { tags as t } from '@lezer/highlight';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import type { Lang } from '../tools/types';
 
 function languageExtension(language: Lang): Extension {
@@ -46,6 +49,12 @@ function languageExtension(language: Lang): Extension {
       return markdown();
     case 'yaml':
       return yaml();
+    case 'sql':
+      return sql();
+    case 'cpp':
+      return cpp();
+    case 'python':
+      return python();
     default:
       return [];
   }
@@ -107,9 +116,13 @@ export interface CodeEditorProps {
   /** 1-based line to mark as the location of an error. */
   readonly errorLine?: number;
   readonly testId?: string;
+  /** Extra extensions, fixed when the editor is created. */
+  readonly extensions?: Extension;
+  /** Receives the editor view, for toolbars that insert text at the cursor. */
+  readonly viewRef?: { current: EditorView | null };
 }
 
-export function CodeEditor({ value, onChange, language = 'text', readOnly = false, placeholder = '', wrap = false, label, errorLine, testId }: CodeEditorProps) {
+export function CodeEditor({ value, onChange, language = 'text', readOnly = false, placeholder = '', wrap = false, label, errorLine, testId, extensions, viewRef }: CodeEditorProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const handler = useRef(onChange);
@@ -144,6 +157,7 @@ export function CodeEditor({ value, onChange, language = 'text', readOnly = fals
           parts.wrap.of(wrap ? EditorView.lineWrapping : []),
           parts.error.of([]),
           parts.placeholder.of(placeholder ? placeholderExtension(placeholder) : []),
+          extensions ?? [],
           EditorView.updateListener.of((update) => {
             if (!update.docChanged) return;
             const text = update.state.doc.toString();
@@ -154,13 +168,18 @@ export function CodeEditor({ value, onChange, language = 'text', readOnly = fals
       }),
     });
     view.current = created;
+    if (viewRef) viewRef.current = created;
     return () => {
       created.destroy();
       view.current = null;
+      if (viewRef) viewRef.current = null;
     };
   }, []);
 
-  useEffect(() => {
+  // A layout effect runs as soon as the render is committed.  A plain effect can still be
+  // pending when the next keystroke re-renders the parent; Preact then runs it with the old
+  // value, which undoes the keystroke, and the two values can chase each other for ever.
+  useLayoutEffect(() => {
     const editor = view.current;
     if (!editor || value === known.current) return;
     known.current = value;

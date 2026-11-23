@@ -123,3 +123,8 @@ declare module 'imagetracerjs' {
 }
 
 declare module 'regenerator-runtime/runtime';
+
+declare module 'xkcd-colors' {
+  export const colors: readonly { readonly name: string; readonly clean_name: string; readonly hex: string; readonly rgb: readonly number[] }[];
+  export function get_color(name: string, format?: 'hex' | 'rgb' | 'rgbf'): string | number[];
+}

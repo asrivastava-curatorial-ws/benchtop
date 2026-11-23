@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { APP_NAME } from '../brand';
 import { isDesktop, openReleasePage, pickFile, readTextFile, saveFile } from '../platform';
+import { DEFAULT_QUICK_KEY, type DeskInfo, deskInfo, setQuickKey, setTray, watchClipboard } from '../platform/desk';
 import { networkStatus } from '../platform/net';
 import { NOT_INCLUDED, TOOLS } from '../tools/registry';
 import { attempt, notify } from '../ui/toast';
@@ -16,6 +17,89 @@ function Suspended() {
     void import('../tools/custom/_ai').then((module) => setPanel(() => module.AiModelsPanel));
   }, []);
   return Panel ? <Panel /> : <p class="tone-muted">Loading…</p>;
+}
+
+/** Tray icon, quick-launch shortcut and clipboard history: each applies at once and is remembered. */
+function DesktopExtras() {
+  const tray = useSettings((s) => s.trayIcon);
+  const quickKey = useSettings((s) => s.quickKey);
+  const clipboard = useSettings((s) => s.clipboardHistory);
+  const [info, setInfo] = useState<DeskInfo | null>(null);
+  const [key, setKey] = useState(quickKey || DEFAULT_QUICK_KEY);
+  useEffect(() => {
+    void deskInfo().then(setInfo, () => undefined);
+  }, []);
+  const toggle = (id: string, label: string, help: string, checked: boolean, disabled: boolean, change: (on: boolean) => void) => (
+    <div class="settings-row">
+      <label for={id}>
+        {label}
+        <small>{help}</small>
+      </label>
+      <label class="toggle" for={id}>
+        <input id={id} type="checkbox" role="switch" aria-checked={checked} checked={checked} disabled={disabled} onChange={(event) => change(event.currentTarget.checked)} />
+        <span class="toggle-track" aria-hidden="true" />
+      </label>
+    </div>
+  );
+  const applyKey = (accelerator: string) =>
+    void attempt(async () => {
+      await setQuickKey(accelerator);
+      updateSettings({ quickKey: accelerator });
+      if (accelerator) notify(`Press ${accelerator.replace('CommandOrControl', 'Ctrl')} anywhere to open the quick launcher.`);
+    });
+  return (
+    <section class="settings-group">
+      <h2>Desktop</h2>
+      {toggle(
+        'setting-tray',
+        'Icon in the system tray',
+        info && !info.tray_supported
+          ? 'Install libayatana-appindicator3-1 (Debian, Ubuntu) or libayatana-appindicator-gtk3 (Fedora) to show a tray icon.'
+          : 'Closing the window then keeps Benchtop running, so the shortcut and the clipboard history keep working. Quit from the tray menu.',
+        tray,
+        info !== null && !info.tray_supported,
+        (on) =>
+          void attempt(async () => {
+            await setTray(on);
+            updateSettings({ trayIcon: on });
+          }),
+      )}
+      {toggle(
+        'setting-quick',
+        'Quick launcher shortcut',
+        'Opens Benchtop with the tool finder from any program. X11 and Windows; Wayland desktops may not allow global shortcuts.',
+        quickKey !== '',
+        false,
+        (on) => applyKey(on ? key : ''),
+      )}
+      {quickKey !== '' && (
+        <div class="settings-row">
+          <label for="setting-quick-key">
+            Shortcut
+            <small>For example Ctrl+Alt+Space, Super+Shift+B or F9. CommandOrControl is Ctrl, or Cmd on a Mac.</small>
+          </label>
+          <span class="settings-inline">
+            <input id="setting-quick-key" class="input mono" value={key} onInput={(event) => setKey(event.currentTarget.value)} />
+            <button type="button" class="button" disabled={key.trim() === '' || key === quickKey} onClick={() => applyKey(key.trim())}>
+              Use
+            </button>
+          </span>
+        </div>
+      )}
+      {toggle(
+        'setting-clipboard',
+        'Clipboard history',
+        'Keeps the last 200 pieces of text you copy, in memory only, while Benchtop runs. Open them with the Clipboard History tool. Off until you turn it on.',
+        clipboard,
+        false,
+        (on) =>
+          void attempt(async () => {
+            await watchClipboard(on);
+            updateSettings({ clipboardHistory: on });
+          }),
+      )}
+    </section>
+  );
 }
 
 function Licenses() {
@@ -169,6 +253,8 @@ export function SettingsView() {
           </label>
         </div>
       </section>
+
+      {isDesktop && <DesktopExtras />}
 
       {isDesktop && (
         <section class="settings-group" id="ai-models">

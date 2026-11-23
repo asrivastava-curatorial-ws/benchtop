@@ -120,7 +120,7 @@ pub fn staging_dir() -> PathBuf {
 }
 
 /// Creates `folder` (and its parents) readable by this user only, where the system has such permissions.
-fn create_private_dir(folder: &std::path::Path) -> std::io::Result<()> {
+pub(crate) fn create_private_dir(folder: &std::path::Path) -> std::io::Result<()> {
     let mut builder = std::fs::DirBuilder::new();
     builder.recursive(true);
     #[cfg(unix)]
@@ -272,4 +272,31 @@ mod tests {
         assert_eq!(picked.path(&a), Some(PathBuf::from("/tmp/a.mp4")));
         assert_eq!(picked.path("nope"), None);
     }
+}
+
+/// The largest file that can be read by path (files pasted from a file manager into a note).
+const MAX_LOCAL_FILE: u64 = 1024 * 1024 * 1024;
+
+/// Reads a regular file by its absolute path: a file the person copied in their
+/// file manager and pasted into a note.  Folders, devices and relative paths are refused.
+#[tauri::command]
+pub fn read_local_file(path: String) -> Result<tauri::ipc::Response, String> {
+    let path = std::path::PathBuf::from(&path);
+    if !path.is_absolute() {
+        return Err("Only files given by their full path can be read.".into());
+    }
+    let meta =
+        std::fs::metadata(&path).map_err(|e| format!("Could not read {}: {e}", path.display()))?;
+    if !meta.is_file() {
+        return Err(format!("{} is not a file.", path.display()));
+    }
+    if meta.len() > MAX_LOCAL_FILE {
+        return Err(format!(
+            "{} is larger than 1 GB, too large to keep in a note.",
+            path.display()
+        ));
+    }
+    let bytes =
+        std::fs::read(&path).map_err(|e| format!("Could not read {}: {e}", path.display()))?;
+    Ok(tauri::ipc::Response::new(bytes))
 }

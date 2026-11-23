@@ -323,3 +323,94 @@ fn worker_answers_requests_over_the_pipe_protocol() {
     assert!(mask.width() > 0 && mask.height() > 0);
     assert_eq!(replies[2].header["type"], "error");
 }
+
+/// Speaks with Piper voices (voice-en, voice-hi: voice.onnx and voice.onnx.json)
+/// and hears the result back with Whisper (whisper/), when eSpeak NG is installed.
+#[test]
+fn speaks_with_piper_voices_and_whisper_hears_them() {
+    let Some(dir) = folder() else { return };
+    let Ok(espeak) = which::which("espeak-ng") else {
+        return;
+    };
+    if !dir.join("voice-en/voice.onnx").is_file() || !dir.join("whisper/encoder.onnx").is_file() {
+        return;
+    }
+    let mut engine = engine(&dir);
+    let mut sink = Vec::new();
+    let mut reply = Reply::new(&mut sink);
+    let spoken = super::tts::speak(
+        &mut engine,
+        &dir.join("voice-en"),
+        &espeak,
+        &json!({"text": "Welcome to the museum. This gallery tells the story of electricity, from the first batteries to power stations."}),
+        &mut reply,
+    )
+    .expect("speech");
+    let seconds = spoken.header["seconds"].as_f64().unwrap();
+    assert!(seconds > 4.0 && seconds < 15.0, "{seconds}");
+    let models = SpeechModels {
+        encoder: dir.join("whisper/encoder.onnx"),
+        decoder: dir.join("whisper/decoder.onnx"),
+        tokens: dir.join("whisper/tokens.txt"),
+        vad: None,
+    };
+    let heard = speech::transcribe(
+        &mut engine,
+        &models,
+        speech::Source::Bytes(&spoken.attachments[0], "speech.wav".into()),
+        &json!({"language": "en"}),
+        &mut reply,
+    )
+    .expect("transcription");
+    let text = joined(&heard).to_lowercase();
+    eprintln!("heard: {text}");
+    assert!(text.contains("museum"), "{text}");
+    assert!(text.contains("electricity"), "{text}");
+    // Faster speech is shorter.
+    let fast = super::tts::speak(
+        &mut engine,
+        &dir.join("voice-en"),
+        &espeak,
+        &json!({"text": "Welcome to the museum.", "rate": 1.5}),
+        &mut reply,
+    )
+    .unwrap();
+    let normal = super::tts::speak(
+        &mut engine,
+        &dir.join("voice-en"),
+        &espeak,
+        &json!({"text": "Welcome to the museum."}),
+        &mut reply,
+    )
+    .unwrap();
+    assert!(
+        fast.header["seconds"].as_f64().unwrap() < normal.header["seconds"].as_f64().unwrap() * 0.8
+    );
+    if dir.join("voice-hi/voice.onnx").is_file() {
+        let hindi = super::tts::speak(
+            &mut engine,
+            &dir.join("voice-hi"),
+            &espeak,
+            &json!({"text": "नमस्ते, संग्रहालय में आपका स्वागत है।"}),
+            &mut reply,
+        )
+        .expect("Hindi speech");
+        let heard = speech::transcribe(
+            &mut engine,
+            &models,
+            speech::Source::Bytes(&hindi.attachments[0], "hindi.wav".into()),
+            &json!({"language": "hi"}),
+            &mut reply,
+        )
+        .expect("Hindi transcription");
+        let text = joined(&heard);
+        eprintln!("heard (Hindi): {text}");
+        // Whisper base often writes Hindi speech in Urdu script; either way the words should be there.
+        assert!(
+            ["नमस्ते", "स्वागत", "आप", "نمست", "آپ"]
+                .iter()
+                .any(|w| text.contains(w)),
+            "{text}"
+        );
+    }
+}

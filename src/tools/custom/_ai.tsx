@@ -386,6 +386,7 @@ export function AiModelsPanel() {
     ['eraser', 'Object eraser'],
     ['speech', 'Speech recognition'],
     ['vad', 'Speech detection'],
+    ['voice', 'Voices for text to speech (Piper; each voice has its own licence, shown on its card)'],
   ];
   const used = status.items.filter((i) => i.installed).reduce((s, i) => s + i.download.size, 0);
   return (

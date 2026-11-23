@@ -14,7 +14,7 @@ use ort::session::Session;
 use serde_json::{json, Value};
 
 use super::protocol::{read_frame, write_frame, Frame};
-use super::{image_ops, speech};
+use super::{image_ops, speech, tts};
 
 static ENVIRONMENT: OnceLock<Result<(PathBuf, ort::environment::Environment), String>> =
     OnceLock::new();
@@ -247,6 +247,13 @@ pub(crate) fn handle(
             };
             speech::transcribe(engine, &models, source, &options, reply)
         }
+        "speak" => tts::speak(
+            engine,
+            &model.ok_or("Choose a voice.")?,
+            &path_option(header, "espeak").ok_or("eSpeak NG is not installed.")?,
+            &options,
+            reply,
+        ),
         other => Err(format!("Unknown AI operation \"{other}\".")),
     }
     .map(|mut result| {

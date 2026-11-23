@@ -85,11 +85,15 @@ const drawn = new WeakMap<PDFFont, Map<number, readonly number[]>>();
 
 /** Embeds Benchtop Sans (whole, so every shaped glyph is present) and prepares HarfBuzz for it. */
 export async function embedUnicodeFont(doc: PDFDocument, bold = false): Promise<PDFFont> {
+  return embedFontBytes(doc, await fontBytes(bold ? 'BenchtopSans-Bold.ttf' : 'BenchtopSans-Regular.ttf'));
+}
+
+/** Embeds any TrueType or OpenType font (for scripts Benchtop Sans lacks, such as Kannada) with HarfBuzz shaping. */
+export async function embedFontBytes(doc: PDFDocument, bytes: Uint8Array): Promise<PDFFont> {
   // pdf-lib still measures with fontkit in places; its Indic code needs the regenerator runtime.
   await import('regenerator-runtime/runtime');
   const [{ default: fontkit }, hb] = await Promise.all([import('@pdf-lib/fontkit'), import('harfbuzzjs')]);
   doc.registerFontkit(fontkit);
-  const bytes = await fontBytes(bold ? 'BenchtopSans-Bold.ttf' : 'BenchtopSans-Regular.ttf');
   const font = await doc.embedFont(bytes, { subset: false });
   const face = new hb.Face(new hb.Blob(bytes), 0);
   const hbFont = new hb.Font(face);

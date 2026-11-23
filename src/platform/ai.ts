@@ -7,7 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { isDesktop } from './index';
 
-export type ModelKind = 'runtime' | 'gpuRuntime' | 'background' | 'upscale' | 'faces' | 'eraser' | 'speech' | 'vad';
+export type ModelKind = 'runtime' | 'gpuRuntime' | 'background' | 'upscale' | 'faces' | 'eraser' | 'speech' | 'vad' | 'voice';
 
 export interface ModelItem {
   readonly id: string;
@@ -102,7 +102,7 @@ export async function cancelJob(): Promise<void> {
 }
 
 export interface JobRequest {
-  readonly op: 'background' | 'upscale' | 'faces' | 'erase' | 'transcribe' | 'probe';
+  readonly op: 'background' | 'upscale' | 'faces' | 'erase' | 'transcribe' | 'speak' | 'probe';
   readonly model?: string;
   readonly options?: Record<string, unknown>;
   /** File name, so the worker can recognise the audio format. */

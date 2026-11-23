@@ -1,6 +1,6 @@
 /** Reads text from pictures and scanned PDFs with Tesseract (English and Hindi), offline, and can make a searchable PDF. */
 
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { useIncomingFiles } from '../../app/handoff';
 import { formatBytes } from '../../lib/bytes';
 import { errorMessage } from '../../lib/errors';
@@ -52,6 +52,23 @@ function Ocr({ toolId }: { toolId: string }) {
     setSources((list) => [...list, ...accepted.map((file) => ({ name: file.name, kind: /\.pdf$/i.test(file.name) || file.type === 'application/pdf' ? ('pdf' as const) : ('image' as const), file }))]);
   };
   useIncomingFiles(add);
+  // A screenshot on the clipboard (Print Screen, Win+Shift+S, Shift+Ctrl+PrtSc) is read straight from a paste.
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('input, textarea, [contenteditable="true"], .cm-editor')) return;
+      const images = Array.from(event.clipboardData?.items ?? [])
+        .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+        .map((item) => item.getAsFile())
+        .filter((file): file is File => file !== null);
+      if (images.length === 0) return;
+      event.preventDefault();
+      const stamp = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+      add(images.map((file, i) => new File([file], `screenshot-${stamp}${images.length > 1 ? `-${i + 1}` : ''}.png`, { type: file.type })));
+    };
+    document.addEventListener('paste', onPaste);
+    return () => document.removeEventListener('paste', onPaste);
+  }, []);
 
   const go = async () => {
     cancelled.current = false;
@@ -192,7 +209,7 @@ function Ocr({ toolId }: { toolId: string }) {
           <button type="button" class="button" onClick={() => attempt(async () => add(await pickFiles('image/*,.pdf,application/pdf')))}>
             Add pictures or PDFs
           </button>
-          <span class="dropzone-hint">or drop them here</span>
+          <span class="dropzone-hint">or drop them here, or paste a screenshot (Ctrl+V)</span>
         </div>
         {sources.length > 0 && (
           <ul class="file-list" data-testid="ocr-files">

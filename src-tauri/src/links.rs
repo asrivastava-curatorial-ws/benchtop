@@ -1,7 +1,8 @@
 //! The project's releases on GitHub: which one is newest (for `benchtop version
-//! --check`) and opening the releases page in the system's web browser.  Only
-//! that fixed address, and one release's page under it, can be opened, so the
-//! app cannot be used to launch arbitrary links.
+//! --check`) and opening the releases page in the system's web browser; and
+//! opening the web and e-mail links people keep in their notes.  Only http,
+//! https and mailto addresses are passed to the system's opener, so the app
+//! cannot be used to launch files or programs.
 
 use std::process::Command;
 
@@ -59,9 +60,28 @@ pub(crate) fn newest_release(list: &Value) -> Option<(String, String)> {
         .map(|((major, minor, patch), page)| (format!("{major}.{minor}.{patch}"), page))
 }
 
+/// Web and e-mail links from the user's own notes; nothing else (no files, no programs).
+pub(crate) fn checked_link(raw: &str) -> Result<String, String> {
+    let url = url::Url::parse(raw.trim()).map_err(|_| "That is not a web address.".to_string())?;
+    match url.scheme() {
+        "http" | "https" if url.host_str().is_some_and(|h| !h.is_empty()) => Ok(url.to_string()),
+        "mailto" => Ok(url.to_string()),
+        _ => Err("Only web (http, https) and e-mail links can be opened.".to_string()),
+    }
+}
+
+/// Opens a link from a note in the system's web browser or mail program.
+#[tauri::command]
+pub fn open_link(url: String) -> Result<(), String> {
+    launch(&checked_link(&url)?)
+}
+
 #[tauri::command]
 pub fn open_release_page(tag: Option<String>) -> Result<(), String> {
-    let url = release_url(tag.as_deref())?;
+    launch(&release_url(tag.as_deref())?)
+}
+
+fn launch(url: &str) -> Result<(), String> {
     let program = if cfg!(target_os = "macos") {
         "open"
     } else if cfg!(target_os = "windows") {
@@ -70,7 +90,7 @@ pub fn open_release_page(tag: Option<String>) -> Result<(), String> {
         "xdg-open"
     };
     let mut child = Command::new(program)
-        .arg(&url)
+        .arg(url)
         .spawn()
         .map_err(|error| format!("Could not open the web browser: {error}"))?;
     // Collect the launcher's exit status so it does not linger as a zombie process.
@@ -84,6 +104,19 @@ pub fn open_release_page(tag: Option<String>) -> Result<(), String> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn note_links_are_web_or_mail_only() {
+        assert_eq!(
+            checked_link(" https://example.org/a ").unwrap(),
+            "https://example.org/a"
+        );
+        assert!(checked_link("mailto:curator@example.org").is_ok());
+        assert!(checked_link("file:///etc/passwd").is_err());
+        assert!(checked_link("javascript:alert(1)").is_err());
+        assert!(checked_link("/usr/bin/xterm").is_err());
+        assert!(checked_link("https://").is_err());
+    }
 
     #[test]
     fn only_release_pages_can_be_opened() {

@@ -2,7 +2,7 @@
 
 <!-- Generated from src/tools/registry.ts by tests/unit/docs.test.ts. Do not edit by hand. -->
 
-Benchtop has 307 tools. All of them work without a network connection except the 10 in Online checks, which contact only the hosts you enter, when you press Check, and only in the desktop app. The AI tools download their models once, when you first choose one (or import them from a folder), and then work offline too.
+Benchtop has 387 tools. All of them work without a network connection except the 11 in Online checks and Web Page to PDF, which contact only the hosts you enter, when you ask, and only in the desktop app. Video Dubbing translates through the AI server address you give it, usually one on this computer. The AI tools download their models and voices once, when you first choose one (or import them from a folder), and then work offline too.
 
 ## Format and minify
 
@@ -32,13 +32,13 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | HTML to Markdown | Convert HTML to Markdown, including tables and strikethrough. | HTML to Markdown Converter |
 | cURL to Code | Convert a curl command into JavaScript fetch(), Python requests, PHP, Go, Java, C#, Rust or PowerShell code. | cURL to Fetch Converter, cURL to Code Converter |
 | SVG to React | Turn SVG markup into a React component (JSX or TSX). | SVG to React Component Converter |
+| HTML to JSX | Turn HTML into JSX for React or Preact: class and for renamed, inline styles as objects, SVG attributes in camelCase, void tags closed, comments wrapped, form fields given default values, optionally as a component. | HTML to JSX, transform.tools HTML to JSX |
 | CSS to Tailwind | Translate CSS rules into Tailwind v4 utility classes. | CSS to Tailwind Converter |
 | Number to Words | Spell out numbers, ordinals and money, in international or Indian numbering. | Number to Words Converter |
 | Unix Timestamp | Convert epoch timestamps to dates in any time zone, and back. | Unix Timestamp Converter |
 | Number Base Converter | Convert numbers between binary, octal, decimal, hex and any base up to 36. | Base Converter, Hex to Decimal Converter |
 | Binary Calculator | Arithmetic and bitwise operations on binary, decimal or hex numbers. | Binary Calculator |
 | PX ↔ REM | Convert between pixels and rem, with a reference table. | PX to REM Converter |
-| Android Pixel Calculator | Convert between dp, px, sp, in, mm and pt for any screen density. | Android Pixel Calculator |
 | TOML ↔ JSON | Convert TOML (Cargo.toml, pyproject.toml) to JSON and back, keeping dates and big integers. |  |
 | INI ↔ JSON | Convert INI and .cfg files to JSON and back, with sections and optional typed values. |  |
 | .env ↔ JSON | Convert dotenv files to JSON and back, handling quotes, escapes, export and multi-line values. |  |
@@ -47,7 +47,7 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Roman Numerals | Convert numbers to Roman numerals and back, with strict validation. | Roman numeral converter |
 | Table Converter | Turn CSV, TSV, spreadsheet pastes, Excel files, Markdown, HTML tables, JSON or SQL INSERTs into any of those, or ASCII and LaTeX tables. | Table converter, Excel to CSV, CSV to SQL, CSV to HTML |
 | Document to Text | Extract the text of PDF, Word, Excel, PowerPoint and OpenDocument files. | PDF to text, Word to text |
-| JSON to Code | Generate typed classes from a JSON sample for C#, Java, Go, Python, Rust, Kotlin, Swift, Dart or PHP. | JSON to C#, JSON to Java, JSON to Go, JSON to Python |
+| JSON to Code | Generate typed classes, schemas and tables from a JSON sample: C#, Java, Go, Python dataclasses or Pydantic, Rust, Kotlin, Swift, Dart, PHP, Zod, Mongoose, GraphQL, Protocol Buffers, and MySQL, PostgreSQL or SQLite tables with the rows inserted. | JSON to C#, JSON to Java, JSON to Go, JSON to Python, JSON to Zod Schema, JSON to Mongoose, JSON to MySQL, JSON to GraphQL, JSON to Protobuf |
 | XSLT Transformer | Apply an XSLT 1.0 stylesheet to XML and see the result. | XSLT transform |
 | BBCode ↔ HTML | Convert forum BBCode to HTML and back, with a preview. | BBCode to HTML, HTML to BBCode |
 
@@ -58,6 +58,9 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Regex Tester | Test JavaScript regular expressions with highlighted matches, capture groups and replacement preview. |  |
 | JSONPath and jq | Query JSON with JSONPath expressions or real jq 1.8 filters and see the result instantly. |  |
 | JSON Schema Validator | Validate JSON against a JSON Schema (drafts 4, 7, 2019-09 and 2020-12) and list every error with its location. |  |
+| Data Playground (SQL) | Query CSV, JSON, Parquet, Excel, Avro, Arrow and SQLite files together with SQL (DuckDB), chart the results and export CSV, JSON or Parquet. | DuckDB shell, CSV SQL tools |
+| Parquet and Avro Viewer | Open a Parquet or Avro file to see its schema, row groups, compression, metadata and rows; save the rows as CSV or JSON. | Parquet viewers, Avro viewers |
+| JSON Diff | Compare two JSON documents by structure: added, removed and changed values with their paths, as a list or an RFC 6902 JSON Patch. | JSON diff checkers |
 | JSON Viewer | Explore JSON as a collapsible tree and see the path of any value. | JSON viewer |
 | Regex Cheat Sheet and Code | Regular expression syntax at a glance, and ready-to-use code for a pattern in JavaScript, Python, Go, Java, C#, PHP, Rust or grep. | Regex cheatsheet, Regex code generator |
 | IBAN Validator | Check IBAN check digits and lengths by country, and format them for print. | IBAN validator and parser |
@@ -94,7 +97,8 @@ Benchtop has 307 tools. All of them work without a network connection except the
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
-| Hash and HMAC | MD5, SHA-1, SHA-2, SHA-3, Keccak, BLAKE2/3, RIPEMD-160, xxHash, CRC and more for text or files, with HMAC and checksum comparison. | SHA-1 Hash Generator, SHA-512 Hash Generator, MD5 hash generator, Hash text, NTLM hash, BLAKE3 hash, Keccak-256 |
+| Hash and HMAC | MD5, SHA-1, SHA-2, SHA-3, Keccak, BLAKE2/3, RIPEMD-160, xxHash, CRC and more for text or files, with HMAC, checksum comparison and the Subresource Integrity value for script and link tags. | SHA-1 Hash Generator, SHA-384 Hash Generator, SHA-512 Hash Generator, MD5 hash generator, Hash text, NTLM hash, BLAKE3 hash, Keccak-256, Subresource Integrity Generator |
+| Hash Identifier | Guess what made a hash: MD5, SHA, NTLM and other digests by length, and bcrypt, Argon2, scrypt, crypt(3), Django, WordPress and LDAP password hashes by their prefix. | Hash Identifier, hashID |
 | AES Encryption | Encrypt and decrypt with a password (AES-256-GCM, or OpenSSL-compatible CBC). | AES encryption and decryption |
 | Htpasswd Generator | Create and check password entries for Apache and nginx basic auth. | Htpasswd Generator |
 | Password Generator | Generate strong passwords or word passphrases from the system random source, with their entropy. |  |
@@ -140,6 +144,9 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Sort Lines | Sort lines alphabetically, naturally, by number or length, shuffle them and remove duplicates. |  |
 | Slug Generator | Turn titles into URL slugs, with or without accents and non-Latin scripts. |  |
 | Unicode Inspector | Reveal invisible, look-alike and direction-changing characters, and clean them out of text. |  |
+| Pitman Shorthand | Write English in Pitman’s shorthand (New Era theory): strokes, vowel signs and positions worked out from the pronunciation, with a stroke chart. Save as SVG. |  |
+| Braille Translator | English (UEB uncontracted) and Hindi or Marathi (Bharati Braille) to braille characters or Braille ASCII for embossers, with a to-scale dot drawing for signs. | Braille translators (grade 1) |
+| IPA and Shavian | Write English in the International Phonetic Alphabet, in Shavian letters or in ARPAbet, from the CMU Pronouncing Dictionary. | toPhonetics, Shavian transliterators |
 | List Converter | Trim, dedupe, sort, shuffle, quote, prefix and join lists, or turn them into SQL IN clauses. | List converter |
 | ASCII Art Text | Big FIGlet lettering in twenty fonts, optionally wrapped as a code comment. | ASCII art text generator |
 | String Obfuscator | Mask the middle of secrets, tokens or IDs so they can be shared safely. | String obfuscator |
@@ -150,6 +157,7 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Text Cleaner | Trim, collapse spaces, drop empty lines, strip HTML, straighten quotes, remove accents or emoji, number lines and filter lines. | Remove extra spaces, Strip HTML tags, Add line numbers |
 | Text Repeater | Repeat text any number of times, with separators and numbering. | Text repeater |
 | Fancy Text Styles | Bold, italic, script, double-struck, circled, full-width, small caps and upside-down Unicode text. | Unicode text styles |
+| Clipboard History | The text you copied while Benchtop runs, newest first: search it, copy a piece again or send it to a tool. Kept in memory only, and off until you turn it on. Desktop app. | Ditto, CopyQ, Windows clipboard history |
 
 ## Web and network
 
@@ -164,6 +172,13 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Security Headers | Build a Content-Security-Policy, HSTS and other security headers for nginx, Apache, Caddy, Express or Netlify. |  |
 | Web Server Config | Generate nginx, Apache or Caddy configuration for a static site, a single-page app or a reverse proxy. |  |
 | WireGuard Config Generator | Make a WireGuard server and client configurations with fresh keys, preshared keys, NAT rules and QR codes for phones. | WireGuard config generators |
+| Mock API Server and Webhook Catcher | Run a local mock API (routes with templated JSON answers, delays and status codes, or made from an OpenAPI file), or catch and inspect the webhooks a service sends. Desktop app. | json-server, Mockoon, webhook.site, RequestBin |
+| WebSocket and SSE Client | Connect to WebSocket servers (ws:// and wss://, with headers and subprotocols) or server-sent event streams; send messages and watch every one that arrives. Desktop app. | Postman WebSocket, websocat, piesocket tester |
+| gRPC Client | Call gRPC services from .proto files or server reflection: requests as JSON, unary and streaming calls, metadata, TLS. Desktop app. | grpcurl, BloomRPC, Postman gRPC |
+| LAN Scanner | Find the devices on your network with their names, makers, open ports and a guess at what each one is; then check the ports of one, open its web page or wake it. Desktop app. | Angry IP Scanner, Advanced IP Scanner, Fing, MAC address lookup |
+| Wake-on-LAN | Switch on computers over the network with a magic packet, from a saved list of names and MAC addresses. Desktop app. | WakeOnLAN apps, wakeonlan command |
+| LAN Speed Test | Measure the speed and latency of Wi-Fi or cable between this computer and a phone (in its browser, from a QR code) or another computer. Nothing goes over the internet. Desktop app. | iperf3, LAN Speed Test, OpenSpeedTest |
+| LAN File Sharing | Share a folder with phones and computers on the same network through their browser, with a QR code, optional uploads and a password. Desktop app. | python -m http.server, Send Anywhere (local), Snapdrop, miniserve |
 | Link Unwrapper | Recover the real address behind Outlook Safe Links, Proofpoint, Google, Facebook and other redirects, and strip tracking parameters. | Outlook Safelink decoder, Redirect link decoder |
 | IP Address Converter | IPv4 and IPv6 in decimal, hex, binary and mapped forms; IP ranges to CIDR blocks; random IPv6 ULA prefixes. | IPv4 address converter, IPv4 range expander, IPv6 ULA generator |
 | MAC Address Lookup | Find the manufacturer of a MAC address from the bundled IEEE registry, and generate random or prefixed addresses. | MAC address lookup, MAC address generator |
@@ -182,13 +197,18 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Port Checker | See which TCP ports on a host accept connections from this computer, using presets or your own list and ranges. | Open port checker |
 | Broken Link Checker | Fetch a page and test every link, image, script and stylesheet on it; broken and redirected ones first. | Broken link checker |
 | HTTP Request | Send GET, POST, PUT or DELETE requests with headers and a body, and inspect the status, timing, headers and response. | Online REST client |
+| Website Copier | Copy a website into a folder to browse offline, like HTTrack: pages, pictures, styles and scripts, with links rewritten, within the limits you set. | HTTrack, wget --mirror, SiteSucker |
 
 ## DevOps and config
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
 | Chmod Calculator | Convert Unix permissions between checkboxes, octal (755) and rwx, with ready chmod commands. |  |
+| Config File Generator | Ready-to-edit files filled in from your project details: GitHub Actions, GitLab CI, Jenkins, CircleCI, Azure and Bitbucket pipelines; Dockerfiles and Compose; Kubernetes, Helm and Istio; Prometheus, Grafana, Traefik, systemd and Ansible; AWS, Google Cloud and Azure; Schema.org, sitemaps, service workers and CORS; package.json, tsconfig, linters and bundlers; database connection strings. | GitHub Actions Generator, GitLab CI Pipeline Generator, Jenkins Pipeline Generator, CircleCI Config Generator, Azure Pipeline Generator, Dockerfile Generator, Kubernetes YAML generators, Helm Chart Generator, Kustomize Configuration Generator, Istio config generators, Prometheus Config Generator, Grafana Dashboard Generator, Traefik Config Generator, Ansible Playbook Generator, AWS IAM Policy Generator, S3 Bucket Policy Generator, CloudFormation Template Generator, ECS Task Definition Generator, Lambda Config Generator, Cloud Run Config Generator, Cloud Build Config Generator, Azure Bicep Generator, Terraform AWS Module Generator, Sitemap XML Generator, Hreflang Generator, Schema.org Generator, FAQ Schema Generator, Breadcrumb Schema Generator, Service Worker Generator, CORS Policy Generator, .htaccess Generator, Package.json Generator, ESLint Config Generator, Babel Config Generator, Webpack Config Generator, Vite Config Generator, Rollup Config Generator, Jest Config Generator, PostCSS Config Generator, Changelog Generator, Connection String Builder |
 | docker run to Compose | Convert docker run commands into a compose.yaml file, with named volumes and networks. |  |
+| Kubernetes, Compose, Terraform and Dockerfile Checker | Review Kubernetes manifests, Docker Compose files, Terraform and Dockerfiles for risky or fragile settings: root and privileged containers, unpinned images, missing limits and probes, secrets in plain text, resources open to the internet, bloated image layers. | kube-score, kube-linter, tfsec, checkov, hadolint, Dockerfile Validator |
+| Log Viewer | Open log files of any size (they are read in pieces), filter lines by text or regular expression, show only errors or warnings, and expand JSON lines. | glogg / klogg, lnav, LogExpert |
+| Patch Viewer | Read git diff output, .patch and .diff files and format-patch mails file by file, side by side, with the commit message and line counts. | diff2html, GitHub diff view |
 | .gitignore Generator | Build a .gitignore from templates for languages, frameworks, editors and operating systems. |  |
 | Semver Checker | Sort version numbers and test them against npm-style ranges such as ^1.2 or &gt;=2 &lt;3. |  |
 
@@ -196,6 +216,7 @@ Benchtop has 307 tools. All of them work without a network connection except the
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
+| CSS Specificity Calculator | See which selector wins: IDs, classes and types counted the way browsers do, including :is(), :not(), :has(), :where() and :nth-child(… of …). | CSS Specificity Calculator |
 | SCSS and Less to CSS | Compile SCSS, indented Sass or Less to plain or minified CSS. | SCSS to CSS, LESS to CSS |
 | Gradient Generator | Linear, radial and conic gradients as CSS, SVG, Canvas, SwiftUI, Android XML or PNG. | CSS Gradient Generator, CSS Gradient, Gradient Generator, Gradient Image |
 | Mesh Gradient | Soft multi-point gradients as CSS, SVG or PNG. | Mesh Gradient Generator |
@@ -231,6 +252,8 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Tailwind Colours | Browse the Tailwind v4 palette, copy any shade, or match a hex value. | Tailwind Colors |
 | shadcn/ui Theme | Generate accessible light and dark theme variables from one colour. | Shadcn Theme Generator |
 | Colour Blindness Simulator | See an image as people with common colour vision deficiencies do. | Color Blindness Simulator |
+| Colour Names | Name any colour from the 148 CSS names and the 949 names of the xkcd colour survey, or find colours by name. | Name That Color, Color name finders |
+| Palette Library | Free-to-use palettes with their sources and licences: colour-blind safe sets, ColorBrewer, viridis, editor themes and design systems; copy as CSS, Sass, JSON or GIMP. | Coolors palettes (curated), ColorBrewer |
 
 ## Images and SVG
 
@@ -244,7 +267,7 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Image Filter | Adjust brightness, contrast, saturation, blur and more, or go greyscale. | Image Filter, Image Grayscale |
 | Colour Replacer | Replace or swap colours in an image, with tolerance and soft edges. | Color Swapper, PNG Color Replacer |
 | Image Fade | Fade an image to transparent evenly, along a line or from a point. | Image Fade Effect Generator |
-| Image Colour Picker | Pick colours from an image and extract its palette. | Image Color Picker/Palette |
+| Image Colour Picker | Pick colours from an image, or from anywhere on the screen where the browser offers an eyedropper (Chrome, Edge), and extract an image’s palette. | Image Color Picker/Palette |
 | Favicon and ICO | Make multi-size .ico files, PNG icons and the HTML tags for them. | Favicon Generator, PNG to ICO Converter, ICO Transparency Creator |
 | SVG to PNG | Rasterise SVG at any scale, with or without a background. | SVG to PNG Converter |
 | SVG Viewer | Preview SVG safely and see its size, viewBox and tidy source. | SVG Viewer |
@@ -259,6 +282,38 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Image to SVG (Trace) | Trace logos, icons and drawings into scalable SVG shapes, with presets for logos, artwork and line art. | SnapOtter Vectorize |
 | GIF Maker | Make an animated GIF from pictures, with frame timing, size, colours and back-and-forth play. | SnapOtter GIF maker |
 | Duplicate Picture Finder | Find identical and look-alike pictures among hundreds of files with a perceptual hash, and save a report. | SnapOtter Duplicate finder |
+| Image Stitcher | Join pictures side by side, one above another or in a grid, matched in height or width, with gaps, a border and any background. | Image combiner sites, PhotoJoiner |
+| Image Splitter | Cut a picture into equal tiles: a seamless panorama carousel, a 3 × 3 profile grid or any rows and columns, saved together as a ZIP. | Pine Tools image splitter, Instagram grid makers |
+| Social Media Sizer | Fit a picture to the exact size for Instagram, WhatsApp, Facebook, X, LinkedIn or YouTube, by cropping around what matters or on a blurred or coloured matte. | Social image resizers, No-crop apps |
+| Perspective Fix | Straighten a page, poster, label or whiteboard photographed at an angle by dragging its four corners, with an option to brighten the paper. | Document scanner apps (manual corners) |
+| Dither and Halftone | Turn photos into dithered pixel art (Floyd–Steinberg, Atkinson, Bayer) in retro palettes, or into newspaper and comic halftone dots in one ink or CMYK. | ditherit, Halftone generators |
+| Paste Image | Paste a screenshot or copied picture and save it as PNG, JPEG, WebP or AVIF, or copy it as a data URL. | Paste-to-file sites |
+
+## Mobile app design
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| App Icon Maker | Every launcher icon from one picture or a few letters: Android adaptive, round, themed and notification icons, iOS light, dark and tinted, KaiOS and the web, in one ZIP. | Android Asset Studio launcher icons, appicon.co, IconKitchen |
+| Store Graphics Maker | Captioned screenshots and banners in the sizes the App Store, Google Play and KaiStore ask for, with an optional phone frame. | AppLaunchpad, Previewed, App Mockup |
+| Material Theme Builder | Material 3 light and dark colour schemes from one colour or a picture, with contrast levels and custom colours, for Android XML, Jetpack Compose, Flutter and CSS. | Material Theme Builder |
+| SVG, VectorDrawable and Compose | Turn SVG into an Android vector drawable or Jetpack Compose ImageVector code, or a vector drawable back into SVG, with gradients, groups and clip paths. | svg2vector, Android Studio Vector Asset import, SVG to Compose |
+| Nine-patch Maker | Mark what stretches in a button or bubble picture and save an Android .9.png for each density, edit an existing one, or get CSS border-image settings. | draw9patch, Android Asset Studio nine-patch generator |
+| Screen Size and Density | Pixel density, physical size, dp, points and CSS pixels, smallest width and Material window classes for iPhones, iPads, Pixels, KaiOS phones or any screen. | Screen size calculators, ios-resolution.com, screensiz.es |
+| Android Pixel Calculator | Convert between dp, px, sp, in, mm and pt for any screen density. | Android Pixel Calculator |
+| KaiOS Manifest Maker | Write manifest.webapp for KaiOS 2.5 and manifest.webmanifest for KaiOS 3, with languages and permissions, checked against the KaiStore limits. | KaiOS Manifest Convertor |
+| Android Button Maker | Design a button and get the shape-drawable XML. | Android Button Maker |
+
+## Print and typography
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Booklet and Zine Imposer | Lay out a PDF for printing as a folded booklet (with sections and creep), an eight-page mini zine from one sheet, several pages per sheet, or repeated cards. | Booklet printing dialogs, Bookbinder, Create Booklet |
+| PDF Print Preflight | Check a PDF before it goes to the press: page sizes, bleed, unembedded fonts, picture resolution, RGB and spot colours, transparency and PDF/X. | Acrobat Preflight (basic checks), online print-ready PDF checkers |
+| Paper Sizes | A, B and C sizes, SRA press sheets, Letter and Legal, photo prints, cards, and Indian sizes such as Foolscap, Crown and Demy, in mm, inches, points or pixels, with sheet weight and copies per sheet. | papersizes.org |
+| Font File Explorer | Open a TTF, OTF, WOFF or WOFF2 file to see its licence and embedding rights, metrics, variable axes, OpenType features, languages and every character, and get its @font-face rule. | Wakamai Fondue, FontDrop |
+| Glyph Browser | Browse Unicode blocks, from Latin and Devanagari to Brahmi and hieroglyphs, in any font; copy characters and their HTML, CSS, JavaScript and Python codes. | Character Map, unicode-table.com |
+| Type Scale | A harmonious set of font sizes from a body size and a ratio, fixed or growing with the screen (clamp), as CSS variables, Tailwind or Sass. | typescale.com, Utopia fluid type calculator |
+| Large Type | Show a few words as large as the screen allows, for a Wi-Fi password, a desk sign or a message across the room; full screen in one click. | macOS Large Type, bigtext tools |
 
 ## AI image and speech
 
@@ -270,6 +325,8 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Object Eraser | Paint over people, wires or text in a photo and fill the gap from the surroundings. | SnapOtter Object Eraser |
 | Text Recognition (OCR) | Read English and Hindi text from pictures and scanned PDFs, and make scans searchable. Works offline, also in a browser. | SnapOtter OCR, Optical Character Recognition |
 | Transcription and Subtitles | Turn speech in English, Hindi and 97 other languages into text, SRT or WebVTT subtitles with Whisper, on this computer; can translate into English. | SnapOtter Transcription |
+| Text to Speech | Read text aloud with Piper voices in English, Hindi, Malayalam and Nepali, on this computer, and save it as WAV. | Piper, online text-to-speech sites |
+| Video Dubbing | Turn a video into another language: transcribe its speech, translate the lines with IndicTrans2 (set up on this computer in one click), another local AI server or by hand, voice them with Piper at the right times, and save subtitles, the voice-over or the video with its new soundtrack. | Media Localiser, online video translators |
 | AI Models | Download, import or remove the AI engine and models the AI tools use, and see their licences and sizes. |  |
 
 ## PDF
@@ -284,6 +341,28 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | PDF Passwords and Compression | Add or remove PDF passwords (AES-256), optimise losslessly, or shrink pictures. Uses qpdf and Ghostscript. | SnapOtter PDF protect, SnapOtter PDF unlock, SnapOtter PDF compress |
 | PDF Form Filler | Fill in PDF forms, or write text, ticks and dates anywhere on scanned and printed-style forms, in English or Hindi; can lock the answers. | Adobe Fill & Sign (filling), Smallpdf and iLovePDF form filling |
 | PDF Signer | Sign PDFs with a drawn, typed or scanned signature, and digitally with a .p12 or .pfx certificate (or a self-signed one made here). | Adobe Fill & Sign (signing), DocuSign-style self signing, Smallpdf eSign |
+| PDF Crop | Crop the margins of PDF pages, all or some, by millimetres or by finding the white space, optionally changing the paper size too. | Smallpdf and iLovePDF crop |
+
+## Documents and notes
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Sheet Music Writer | Write music in ABC notation or with a piano keyboard, see it engraved as you type, play it, transpose it, and save it as ABC, SVG, MIDI, WAV or PDF. | abcjs editor, Noteflight (basic), MuseScore (simple scores) |
+| Notes | Notes with text, checklists, Markdown and maths, code, links and any files: paste or drop pictures, videos, audio, PDFs and 3D models. Copies are kept in the note, so it stays whole when the originals go. Share as .bnote files. | Evernote, OneNote, Notion (pages), Google Keep |
+| Markdown Editor | Write Markdown with a live preview, maths ($…$), tables, task lists and embedded pictures; save as a web page, PDF, Word document or EPUB e-book. | Typora, StackEdit, Dillinger, Pandoc (Markdown export) |
+| Equation Editor (LaTeX) | Type LaTeX or pick symbols to build equations, chemistry included; save them as SVG or PNG, or copy MathML for Word and web pages. | CodeCogs Equation Editor, Mathcha, LaTeX to image converters |
+| Certificates, Badges and Labels | Mail merge from a spreadsheet: certificates, ID cards, name badges and address labels with photos, logos, QR codes and barcodes, saved as one print-ready PDF. | Certifier, Canva bulk create, Avery Design & Print, Word mail merge |
+| Web Page to PDF | Paste web addresses and save the pages as PDFs, made by the browser installed on this computer (Chrome, Edge, Chromium or Brave). Desktop app; uses the network. | PDFCrowd, web2pdfconvert, Print Friendly & PDF |
+
+## Files and folders
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Bulk Rename | Rename many files at once with a name pattern, numbers, dates, find and replace (regular expressions too), letter case and extensions; preview first, undo after. | Bulk Rename Utility, Advanced Renamer, PowerRename |
+| Duplicate File Finder | Find files with identical contents (any type: photos, videos, documents) across folders, see the space they waste, and move extra copies to the trash. | dupeGuru, fdupes, Czkawka |
+| Disk Usage | See what fills a folder or drive: a map of folder sizes to click through, the largest files and the space used by each file type. | WinDirStat, Baobab (Disk Usage Analyzer), ncdu |
+| Folder Compare | Compare two folders file by file (by contents, with checksums), list what differs or is missing, and copy files across. | Meld (folders), WinMerge (folders), FreeFileSync (compare) |
+| File Pipeline | Run a chain of text tools and plugins over many files at once (format, minify, convert, clean up) and save every result in one ZIP. Pipelines save as files to reuse. | Batch file processing, Bulk text conversion |
 
 ## Diagrams and viewers
 
@@ -308,6 +387,9 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Audio Toolkit | Convert, trim, join, even out loudness, fade, remove silence and noise, change speed, and draw waveforms. Uses FFmpeg. | SnapOtter Audio tools |
 | ZIP and Archives | Open ZIP (also with a password), TAR and .gz files, preview and save what is inside, or make a ZIP. | SnapOtter ZIP tools |
 | CSV Merge and Split | Merge CSV files by column name, with an optional source column and duplicate removal, or split one by rows or by a column. | SnapOtter CSV tools |
+| Media Info | Everything about a video or audio file: container, length, bit rates, every stream’s codec, resolution, frame rate, colour and HDR, audio channels, subtitles, chapters and tags. Uses FFprobe. | MediaInfo |
+| Screen and Voice Recorder | Record the screen, a window or a browser tab with your voice, or just the microphone, and save the recording; nothing is uploaded. | Online screen recorders, Voice recorder sites |
+| Subtitle Studio | Fix and convert subtitles: SRT, WebVTT, SBV and ASS; shift or re-time for another frame rate, wrap lines, end overlaps, and flag subtitles too fast to read. | Subtitle Edit (basic fixes), Online subtitle converters |
 
 ## Recipe (CyberChef)
 
@@ -320,6 +402,11 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Tool | What it does | Replaces |
 | --- | --- | --- |
 | Math Evaluator | Calculate with variables, units, matrices and functions, line by line (math.js). | Math evaluator |
+| Scientific Calculator | A full scientific keypad with degrees or radians, memory, powers, roots, logarithms, factorials and a history you can reuse; type or click. | Calculator apps, Online scientific calculators |
+| Graphing Calculator | Plot up to six functions of x, pan and zoom, trace values under the pointer and see where each crosses zero; save the graph as PNG. | Desmos (basic plotting), GeoGebra graphing (basic) |
+| Matrix Calculator | Define matrices and evaluate expressions: inverse, determinant, products, solving Ax = b, eigenvalues, reduced row echelon form, rank, null space and singular values. | Matrix calculators |
+| Statistics | Descriptive statistics, correlation, linear regression, t-tests and one-way ANOVA on CSV columns, with p-values and charts. | Statistics calculators |
+| Algebra Solver | Solve polynomial equations of any degree (complex roots included), simplify, expand, differentiate and evaluate expressions, with LaTeX. | Symbolab (basic), Mathway (basic) |
 | Percentage Calculator | Percent of, percentage change, increase, decrease and GST in one place. | Percentage calculator |
 | ETA Calculator | When will a job finish? Time left and finish time from progress so far. | ETA calculator |
 | Benchmark Statistics | Mean, median, spread and relative speed for benchmark runs, as a Markdown table. | Benchmark builder |
@@ -329,6 +416,26 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Time Sheet Calculator | Total hours worked from start and end times with breaks, overtime and pay. | Time sheet calculator |
 | Coordinates Converter | Convert latitude and longitude between decimal, DMS, UTM, geohash and Plus Codes, and measure distance and bearing. | Coordinates converter |
 | Time Zone Planner | See one time in many places and find meeting hours that fall in everyone’s working day, with daylight saving handled. | timeanddate.com meeting planner, World Time Buddy |
+
+## Science and maps
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Periodic Table | All 118 elements with their properties, electron shells and stable isotopes; colour the table by category, by state of matter at any temperature, or by a property such as electronegativity or density. | Ptable, RSC Periodic Table, PubChem Periodic Table |
+| Molar Mass Calculator | Molar mass and percentage composition of a chemical formula, with brackets and hydrates (Ca(OH)2, K4[Fe(CN)6], CuSO4·5H2O); grams to moles. | Omni Molar Mass Calculator, WebQC molar mass |
+| Sunrise, Sun and Moon | Sunrise, sunset, solar noon, day length, twilight, golden hour, moonrise, moon phase, equinoxes and solstices for any place and date, with sun path diagrams and a whole year as CSV. | timeanddate.com sun calculator, SunCalc, Omni Sunrise Calculator |
+| Star Chart | The night sky over any place at any time: 5,000 stars, constellations, the planets, the Moon and Messier objects, with a clock to run the sky forward and a red night view. | Stellarium (basic sky view), online planispheres, Sky charts |
+| Molecule Viewer | Type a SMILES string or open a PDB, XYZ, Molfile, SDF or MOL2 file to see the molecule drawn in 2D and turning in 3D, with its formula, mass and drug-likeness numbers; click atoms to measure bonds and angles. | Jmol, MolView, PubChem 3D viewer |
+| Map Viewer (GeoJSON, KML, GPX) | See GeoJSON, TopoJSON, KML, KMZ, GPX, TCX and CSV point files on an offline map, with lengths, areas, track distance, climb, time and height profiles; save as GeoJSON, KML, GPX or CSV. | geojson.io, GPX viewers, KML to GPX converters, mapshaper (viewing) |
+
+## Electronics and circuits
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Circuit Simulator | Draw circuits and run them: resistors, capacitors, diodes, LEDs, transistors, op-amps, the 555, logic gates, flip-flops, counters, displays, relays and motors, with meters and an oscilloscope; Arduino Uno and ESP32 boards run real firmware (the ESP32 in the desktop app); SPICE export. | Falstad Circuit Simulator, Logisim (basic logic), Tinkercad Circuits, Wokwi (Uno and ESP32), SimulIDE, PICSimLab (ESP32) |
+| Filter Designer | Design Butterworth, Chebyshev and Bessel low-pass, high-pass, band-pass and band-stop filters as op-amp stages with part values and schematics, LC ladders, or digital IIR and FIR filters with C and Python code; gain, phase and step plots. | Analog Devices Filter Wizard, TI Filter Design Tool, Okawa filter calculators, scipy.signal.butter |
+| Serial Plotter | Plot the numbers an Arduino, ESP32 or other board prints on a serial port, live, in the Arduino Serial Plotter format with named values; pause, zoom the window and save as CSV. | Arduino Serial Plotter, SerialPlot, BetterSerialPlotter |
+| Smith Chart | Plot a load on a Smith chart with its reflection, VSWR, return loss and mismatch loss; see it move along a line; and get every two-element L matching network with part values. | Smith V4, online Smith chart tools, L-network calculators |
 
 ## Calculator library
 
@@ -360,6 +467,7 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Projector Calculator | Throw distance, image size, lens shift and mounting height, screen brightness in foot-lamberts and nits, and seating distance, with a side-view drawing. | ProjectorCentral projection calculator |
 | Screen Size Calculator | Width, height and diagonal for any aspect ratio, and equivalent sizes in other shapes at the same height, width or area. | ProjectorCentral screen size calculator |
 | Projector Edge Blending | Plan a grid of overlapping projectors: total resolution, canvas size, overlap in pixels, spacing, throw and brightness. |  |
+| Timecode Calculator | Add and subtract SMPTE timecodes and convert between timecode, frames and real time at 23.976 to 60 fps, drop-frame included. | Timecode calculators |
 
 ## Electrical and power
 
@@ -435,34 +543,58 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Device Information | Screen, pixel ratio, window size, languages, time zone, CPU and display preferences of this computer. | Device information |
 | Keycode Info | Press a key to see its key, code, keyCode, location and modifiers, with a ready event handler. | Keycode info |
 | HTML Editor (WYSIWYG) | Write formatted text and copy it as clean HTML or Markdown. | HTML WYSIWYG editor |
+| Plugins | Add your own text tools as single JavaScript files (WebAssembly inside works too). They run sandboxed, without network or storage access, and can be steps in the File Pipeline. | Custom scripts |
 | HTML Playground | Try HTML and CSS, with Bootstrap 5 available offline and a resizable preview. | Bootstrap Code Editor |
+| Scratchpad | Quick notes kept on this computer: several notes, search, word count, date stamps, copy and save as Markdown. | Online notepads |
+| Tailwind Cheat Sheet | Search Tailwind CSS v4 utilities by class or by CSS: layout, flex and grid, spacing, sizing, type, borders, effects, motion and variants. | Tailwind cheat sheet sites |
 | Command Cheat Sheet | Equivalent terminal commands for Linux, Windows cmd and PowerShell. | Basic Commands - Ubuntu/Windows |
-| Android Button Maker | Design a button and get the shape-drawable XML. | Android Button Maker |
 | Payment Fee Calculator | Work out card processing fees, or what to charge to receive a set amount. | Stripe Fee Calculator |
 | CAC Calculator | Customer acquisition cost, payback period and LTV:CAC. | Customer Acquisition Cost (CAC) Calculator |
 
 ## Coverage of the original web tools
 
-354 web tools map onto Benchtop tools:
+590 web tools map onto Benchtop tools:
 
 | Web tool | Benchtop tool |
 | --- | --- |
+| .htaccess Generator | Config File Generator |
 | 3-Phase Power Calculator | Power Converter (kW, kVA, Amps, hp) |
+| abcjs editor | Sheet Music Writer |
+| Acrobat Preflight (basic checks) | PDF Print Preflight |
 | Add line numbers | Text Cleaner |
 | Adobe Fill & Sign (filling) | PDF Form Filler |
 | Adobe Fill & Sign (signing) | PDF Signer |
+| Advanced IP Scanner | LAN Scanner |
+| Advanced Renamer | Bulk Rename |
 | AES encryption and decryption | AES Encryption |
+| Analog Devices Filter Wizard | Filter Designer |
+| Android Asset Studio launcher icons | App Icon Maker |
+| Android Asset Studio nine-patch generator | Nine-patch Maker |
 | Android Button Maker | Android Button Maker |
 | Android Pixel Calculator | Android Pixel Calculator |
+| Android Studio Vector Asset import | SVG, VectorDrawable and Compose |
+| Angry IP Scanner | LAN Scanner |
 | Animation | Animation |
+| Ansible Playbook Generator | Config File Generator |
+| App Mockup | Store Graphics Maker |
+| appicon.co | App Icon Maker |
+| AppLaunchpad | Store Graphics Maker |
 | Arduino Serial Monitor | Serial Monitor |
+| Arduino Serial Plotter | Serial Plotter |
 | Argon2 hash | Password Hashing |
 | ASCII art text generator | ASCII Art Text |
 | ASCII to Text Converter | ASCII ↔ Text |
 | ASN lookup | IP Lookup |
+| Avery Design & Print | Certificates, Badges and Labels |
 | AVIF Converter | Image Converter |
+| Avro viewers | Parquet and Avro Viewer |
+| AWS IAM Policy Generator | Config File Generator |
+| Azure Bicep Generator | Config File Generator |
+| Azure Pipeline Generator | Config File Generator |
+| Babel Config Generator | Config File Generator |
 | Background | Background |
 | Background Generator | Background Patterns |
+| Baobab (Disk Usage Analyzer) | Disk Usage |
 | Barcode Generator | Barcode Generator |
 | Base 32 Decoder | Base32 |
 | Base 62 Encoder | Base62 |
@@ -472,38 +604,66 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Base64 encode and decode | Base64 |
 | Basic auth generator | Basic Auth Header |
 | Basic Commands - Ubuntu/Windows | Command Cheat Sheet |
+| Batch file processing | File Pipeline |
 | BBCode to HTML | BBCode ↔ HTML |
 | Bcrypt | Password Hashing |
 | Benchmark builder | Benchmark Statistics |
+| BetterSerialPlotter | Serial Plotter |
+| bigtext tools | Large Type |
 | BIMI checker | Email DNS Check |
 | Binary Calculator | Binary Calculator |
 | Binary Translator | Binary ↔ Text |
 | BIP39 passphrase generator | BIP39 Mnemonic |
 | BLAKE3 hash | Hash and HMAC |
 | Blob Generator | Blob Generator |
+| BloomRPC | gRPC Client |
+| Bookbinder | Booklet and Zine Imposer |
+| Booklet printing dialogs | Booklet and Zine Imposer |
 | Bootstrap Build (Bootstrap 5 theme editor) | Bootstrap Theme Builder |
 | Bootstrap Code Editor | HTML Playground |
 | Border | Border |
 | Border Radius | Border Radius |
 | Box Shadow | Box Shadow |
+| Braille translators (grade 1) | Braille Translator |
+| Breadcrumb Schema Generator | Config File Generator |
 | Broken link checker | Broken Link Checker |
+| Bulk Rename Utility | Bulk Rename |
+| Bulk text conversion | File Pipeline |
 | Cable Size Calculator | Cable Size and Voltage Drop |
+| Calculator apps | Scientific Calculator |
+| Canva bulk create | Certificates, Badges and Labels |
 | Carbon | Code Screenshot |
 | Case Converter | Case Converter |
+| Certifier | Certificates, Badges and Labels |
+| Changelog Generator | Config File Generator |
+| Character Map | Glyph Browser |
 | Chart maker | Chart Maker |
+| checkov | Kubernetes, Compose, Terraform and Dockerfile Checker |
 | Chronometer | Stopwatch and Timer |
+| CircleCI Config Generator | Config File Generator |
 | Circuit Breaker Size Calculator | Circuit Breaker Size |
 | ClearCalcs beam | Beam Calculator |
+| Cloud Build Config Generator | Config File Generator |
+| Cloud Run Config Generator | Config File Generator |
+| CloudFormation Template Generator | Config File Generator |
 | CNAME lookup | DNS Lookup |
 | Code for Email | Email Link Builder |
+| CodeCogs Equation Editor | Equation Editor (LaTeX) |
 | Color Blindness Simulator | Colour Blindness Simulator |
 | Color Contrast Checker | Contrast Checker |
+| Color name finders | Colour Names |
 | Color scheme generator | Colour Harmonies |
 | Color Shades Generator | Colour Shades |
 | Color Swapper | Colour Replacer |
+| ColorBrewer | Palette Library |
+| Connection String Builder | Config File Generator |
 | convertunits.com | Unit Converter |
 | ConvertX | File Converter |
+| Coolors palettes (curated) | Palette Library |
 | Coordinates converter | Coordinates Converter |
+| CopyQ | Clipboard History |
+| CORS Policy Generator | Config File Generator |
+| Create Booklet | Booklet and Zine Imposer |
 | Credit card validator | Card Number Validator |
 | Cron Expression Generator | Cron Expression |
 | CSS Animation Kit | Animation |
@@ -518,34 +678,50 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | CSS Media Query | Media Query |
 | CSS minify and beautify | CSS Formatter |
 | CSS selector tester | XPath and CSS Selector Tester |
+| CSS Specificity Calculator | CSS Specificity Calculator |
 | CSS Text Shadow Generator | Text Shadow |
 | CSS to Tailwind Converter | CSS to Tailwind |
+| CSV SQL tools | Data Playground (SQL) |
 | CSV to HTML | Table Converter |
 | CSV to JSON Converter | CSV to JSON |
 | CSV to SQL | Table Converter |
 | Cubic Bezier Generator | Cubic Bezier |
 | cURL to Code Converter | cURL to Code |
 | cURL to Fetch Converter | cURL to Code |
+| Custom scripts | Plugins |
 | Customer Acquisition Cost (CAC) Calculator | CAC Calculator |
 | CyberChef | Recipe |
+| Czkawka | Duplicate File Finder |
 | Date calculator | Date Calculator |
 | Days between dates | Date Calculator |
 | DB Browser for SQLite (browsing) | SQLite Browser |
 | dbdiagram.io (from SQL) | SQL to ER Diagram |
+| Desmos (basic plotting) | Graphing Calculator |
 | Device information | Device Information |
 | Diff Checker | Diff Checker |
+| diff2html | Patch Viewer |
 | Digi-Key and Mouser code calculators | Resistor and Capacitor Codes |
+| Dillinger | Markdown Editor |
+| ditherit | Dither and Halftone |
+| Ditto | Clipboard History |
 | DKIM checker | Email DNS Check |
 | DMARC checker | Email DNS Check |
 | DNS lookup | DNS Lookup |
 | DNS propagation checker | DNS Propagation |
 | DNSSEC check | DNS Lookup |
+| Dockerfile Generator | Config File Generator |
+| Dockerfile Validator | Kubernetes, Compose, Terraform and Dockerfile Checker |
+| Document scanner apps (manual corners) | Perspective Fix |
 | DocuSign-style self signing | PDF Signer |
 | Domain age checker | Domain WHOIS and Expiry |
 | Domain expiry checker | Domain WHOIS and Expiry |
 | Domain to IP | IP Lookup |
+| draw9patch | Nine-patch Maker |
 | drawSQL | SQL to ER Diagram |
+| DuckDB shell | Data Playground (SQL) |
+| dupeGuru | Duplicate File Finder |
 | Duplicate Line Remover | Duplicate Line Remover |
+| ECS Task Definition Generator | Config File Generator |
 | Edotor | Graphviz (DOT) Viewer |
 | Email extractor | Extract from Text |
 | Email header analyzer | Email Header Analyzer |
@@ -560,34 +736,62 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Engineering ToolBox heat loss and combustion calculators | Heat and Combustion Calculators |
 | Engineering ToolBox steam tables | Steam Tables |
 | Engineering ToolBox unit converters | Unit Converter |
+| ESLint Config Generator | Config File Generator |
 | ETA calculator | ETA Calculator |
+| Evernote | Notes |
 | Excel to CSV | Table Converter |
 | Factory Load Calculator | Load and Energy Cost |
+| Falstad Circuit Simulator | Circuit Simulator |
+| FAQ Schema Generator | Config File Generator |
 | Favicon Generator | Favicon and ICO |
+| fdupes | Duplicate File Finder |
+| Fing | LAN Scanner |
 | Flexbox layout Generator | Flexbox |
+| FontDrop | Font File Explorer |
+| FreeFileSync (compare) | Folder Compare |
+| GeoGebra graphing (basic) | Graphing Calculator |
+| geojson.io | Map Viewer (GeoJSON, KML, GPX) |
+| GitHub Actions Generator | Config File Generator |
+| GitHub diff view | Patch Viewer |
+| GitLab CI Pipeline Generator | Config File Generator |
 | Glassmorphism Generator | Glassmorphism |
+| glogg / klogg | Log Viewer |
 | Google HAR Analyzer | HAR Viewer |
+| Google Keep | Notes |
+| GPX viewers | Map Viewer (GeoJSON, KML, GPX) |
 | Gradient Generator | Gradient Generator |
 | Gradient Image | Gradient Generator |
+| Grafana Dashboard Generator | Config File Generator |
 | GraphvizOnline | Graphviz (DOT) Viewer |
 | Grid layout Generator | Grid |
+| grpcurl | gRPC Client |
 | Gzip compress / decompress | Gzip Compress |
+| hadolint | Kubernetes, Compose, Terraform and Dockerfile Checker |
+| Halftone generators | Dither and Halftone |
+| Hash Identifier | Hash Identifier |
 | Hash text | Hash and HMAC |
+| hashID | Hash Identifier |
+| Helm Chart Generator | Config File Generator |
 | Hex Decoder | Hex ↔ Text |
 | Hex to Decimal Converter | Number Base Converter |
 | HexEd.it (viewing) | Hex Viewer |
+| Hreflang Generator | Config File Generator |
 | HTML Encoder / Decoder | HTML Entities |
 | HTML Formatter | HTML Formatter |
 | HTML to BBCode | BBCode ↔ HTML |
+| HTML to JSX | HTML to JSX |
 | HTML to Markdown Converter | HTML to Markdown |
 | HTML WYSIWYG editor | HTML Editor (WYSIWYG) |
 | Htpasswd Generator | Htpasswd Generator |
 | HTTP headers checker | Website Status |
 | HTTP status checker | Website Status |
+| HTTrack | Website Copier |
 | IBAN validator and parser | IBAN Validator |
 | ICO Transparency Creator | Favicon and ICO |
+| IconKitchen | App Icon Maker |
 | Image Base64 | Image to Base64 |
 | Image Color Picker/Palette | Image Colour Picker |
+| Image combiner sites | Image Stitcher |
 | Image Compress | Image Converter |
 | Image Crop | Image Crop |
 | Image Fade Effect Generator | Image Fade |
@@ -596,58 +800,105 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Image Grayscale | Image Filter |
 | Image Resize | Image Resize |
 | Image Rotate | Image Rotate |
+| Instagram grid makers | Image Splitter |
+| ios-resolution.com | Screen Size and Density |
 | IP WHOIS | IP Lookup |
+| iperf3 | LAN Speed Test |
 | IPv4 address converter | IP Address Converter |
 | IPv4 range expander | IP Address Converter |
 | IPv6 ULA generator | IP Address Converter |
+| Istio config generators | Config File Generator |
 | JavaScript encode and decode | JavaScript Minifier |
 | JavaScript Formatter | JavaScript Formatter |
+| Jenkins Pipeline Generator | Config File Generator |
+| Jest Config Generator | Config File Generator |
+| Jmol | Molecule Viewer |
 | JSON diff | Diff Checker |
+| JSON diff checkers | JSON Diff |
 | JSON Formatter | JSON Formatter |
 | JSON to C# | JSON to Code |
 | JSON to CSV Converter | JSON to CSV |
 | JSON to Go | JSON to Code |
+| JSON to GraphQL | JSON to Code |
 | JSON to Java | JSON to Code |
+| JSON to Mongoose | JSON to Code |
+| JSON to MySQL | JSON to Code |
+| JSON to Protobuf | JSON to Code |
 | JSON to Python | JSON to Code |
 | JSON to query string | Data Format Converter |
 | JSON to TypeScript Converter | JSON to TypeScript |
 | JSON to XML | Data Format Converter |
+| JSON to Zod Schema | JSON to Code |
 | JSON viewer | JSON Viewer |
+| json-server | Mock API Server and Webhook Catcher |
 | JWT Decoder | JWT Decoder |
 | JWT Encoder | JWT Encoder |
 | jwt.io debugger | JWT Decoder |
 | jwt.io encoder | JWT Encoder |
+| KaiOS Manifest Convertor | KaiOS Manifest Maker |
 | Keccak-256 | Hash and HMAC |
 | Keycode info | Keycode Info |
+| KML to GPX converters | Map Viewer (GeoJSON, KML, GPX) |
+| kube-linter | Kubernetes, Compose, Terraform and Dockerfile Checker |
+| kube-score | Kubernetes, Compose, Terraform and Dockerfile Checker |
+| Kubernetes YAML generators | Config File Generator |
+| Kustomize Configuration Generator | Config File Generator |
 | kVA to Amps Calculator | Power Converter (kW, kVA, Amps, hp) |
 | kW to kVA Calculator | Power Converter (kW, kVA, Amps, hp) |
+| L-network calculators | Smith Chart |
+| Lambda Config Generator | Config File Generator |
+| LAN Speed Test | LAN Speed Test |
+| LaTeX to image converters | Equation Editor (LaTeX) |
 | LESS to CSS | SCSS and Less to CSS |
 | List converter | List Converter |
 | List randomizer | Random Generator |
 | llms.txt Generator | llms.txt Generator |
+| lnav | Log Viewer |
 | Load Factor Calculator | Load and Energy Cost |
+| LogExpert | Log Viewer |
+| Logisim (basic logic) | Circuit Simulator |
 | MAC address generator | MAC Address Lookup |
+| MAC address lookup | LAN Scanner |
 | MAC address lookup | MAC Address Lookup |
+| macOS Large Type | Large Type |
+| mapshaper (viewing) | Map Viewer (GeoJSON, KML, GPX) |
 | Markdown to HTML Converter | Markdown to HTML |
+| Material Theme Builder | Material Theme Builder |
 | Math evaluator | Math Evaluator |
+| Mathcha | Equation Editor (LaTeX) |
+| Mathway (basic) | Algebra Solver |
+| Matrix calculators | Matrix Calculator |
 | Matrix Transform | Transform |
 | MD5 hash generator | Hash and HMAC |
+| Media Localiser | Video Dubbing |
+| MediaInfo | Media Info |
+| Meld (folders) | Folder Compare |
 | Mermaid Live Editor | Mermaid Diagram Editor |
 | Mesh Gradient Generator | Mesh Gradient |
 | Minify JS | JavaScript Minifier |
+| miniserve | LAN File Sharing |
 | Mock data generator | Mock Data Generator |
+| Mockoon | Mock API Server and Webhook Catcher |
+| MolView | Molecule Viewer |
 | MongoDB ObjectId generator | UUID and ID Generator |
 | Morse Code Translator | Morse Code |
 | Motor FLA Calculator | Motor Current and Torque |
 | MTA-STS checker | Email DNS Check |
+| MuseScore (simple scores) | Sheet Music Writer |
 | MX lookup | DNS Lookup |
 | MX lookup | Email DNS Check |
+| Name That Color | Colour Names |
 | Nano ID generator | UUID and ID Generator |
 | NC Viewer | 3D Model and G-code Viewer |
+| ncdu | Disk Usage |
+| No-crop apps | Social Media Sizer |
+| Noteflight (basic) | Sheet Music Writer |
+| Notion (pages) | Notes |
 | NS lookup | DNS Lookup |
 | NTLM hash | Hash and HMAC |
 | Number to Words Converter | Number to Words |
 | Numeronym generator | Numeronym Generator |
+| Okawa filter calculators | Filter Designer |
 | OKLCH Converter | Colour Converter |
 | Omni Calculator Biology | Biology Calculators |
 | Omni Calculator Chemistry | Chemistry Calculators |
@@ -665,27 +916,62 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Omni Calculator Physics | Physics Calculators |
 | Omni Calculator Sports | Sports Calculators |
 | Omni Calculator Statistics | Statistics Calculators |
+| Omni Molar Mass Calculator | Molar Mass Calculator |
+| Omni Sunrise Calculator | Sunrise, Sun and Moon |
+| OneNote | Notes |
 | online CSR and certificate generators | Certificate Maker |
 | online CSV SQL tools | SQLite Browser |
+| Online notepads | Scratchpad |
+| online planispheres | Star Chart |
+| online print-ready PDF checkers | PDF Print Preflight |
 | Online REST client | HTTP Request |
+| Online scientific calculators | Scientific Calculator |
+| Online screen recorders | Screen and Voice Recorder |
 | online screenshot annotators | Image Annotator |
+| online Smith chart tools | Smith Chart |
+| Online subtitle converters | Subtitle Studio |
+| online text-to-speech sites | Text to Speech |
+| online video translators | Video Dubbing |
 | online Web Serial terminals | Serial Monitor |
 | Open graph meta generator | Meta Tag Generator |
 | Open port checker | Port Checker |
+| OpenSpeedTest | LAN Speed Test |
 | Optical Character Recognition | Text Recognition (OCR) |
 | Outlook Safelink decoder | Link Unwrapper |
+| Package.json Generator | Config File Generator |
+| Pandoc (Markdown export) | Markdown Editor |
+| papersizes.org | Paper Sizes |
+| Parquet viewers | Parquet and Avro Viewer |
 | Password strength analyser | Password Strength |
+| Paste-to-file sites | Paste Image |
 | PDF compare | Diff Checker |
 | PDF signature checker | PDF Signature Checker |
 | PDF to text | Document to Text |
+| PDFCrowd | Web Page to PDF |
 | Percentage calculator | Percentage Calculator |
 | Phone parser and formatter | Phone Number Parser |
+| PhotoJoiner | Image Stitcher |
+| PICSimLab (ESP32) | Circuit Simulator |
+| piesocket tester | WebSocket and SSE Client |
+| Pine Tools image splitter | Image Splitter |
+| Piper | Text to Speech |
 | PNG Color Replacer | Colour Replacer |
 | PNG to ICO Converter | Favicon and ICO |
 | PNG to WebP Converter | Image Converter |
+| PostCSS Config Generator | Config File Generator |
+| Postman gRPC | gRPC Client |
+| Postman WebSocket | WebSocket and SSE Client |
+| PowerRename | Bulk Rename |
+| Previewed | Store Graphics Maker |
+| Print Friendly & PDF | Web Page to PDF |
 | ProjectorCentral projection calculator | Projector Calculator |
 | ProjectorCentral screen size calculator | Screen Size Calculator |
+| Prometheus Config Generator | Config File Generator |
+| Ptable | Periodic Table |
+| PubChem 3D viewer | Molecule Viewer |
+| PubChem Periodic Table | Periodic Table |
 | PX to REM Converter | PX ↔ REM |
+| python -m http.server | LAN File Sharing |
 | QR code generator | QR Code Generator |
 | Random number generator | Random Generator |
 | Random port generator | Random Generator |
@@ -699,20 +985,40 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | Regex code generator | Regex Cheat Sheet and Code |
 | Remove extra spaces | Text Cleaner |
 | Remove Line Breaks | Remove Line Breaks |
+| RequestBin | Mock API Server and Webhook Catcher |
 | Reverse DNS | DNS Lookup |
 | robots.txt Generator | robots.txt Generator |
+| Rollup Config Generator | Config File Generator |
 | Roman numeral converter | Roman Numerals |
 | ROT13 Encoder/Decoder | ROT13 and Caesar |
+| RSC Periodic Table | Periodic Table |
+| S3 Bucket Policy Generator | Config File Generator |
 | Saturated steam table | Steam Tables |
+| Schema.org Generator | Config File Generator |
+| scipy.signal.butter | Filter Designer |
+| Screen size calculators | Screen Size and Density |
+| screensiz.es | Screen Size and Density |
 | SCSS to CSS | SCSS and Less to CSS |
 | Section property calculators | Section Properties |
+| Send Anywhere (local) | LAN File Sharing |
+| SerialPlot | Serial Plotter |
+| Service Worker Generator | Config File Generator |
 | SHA-1 Hash Generator | Hash and HMAC |
+| SHA-384 Hash Generator | Hash and HMAC |
 | SHA-512 Hash Generator | Hash and HMAC |
 | Shadcn Theme Generator | shadcn/ui Theme |
+| Shavian transliterators | IPA and Shavian |
+| SimulIDE | Circuit Simulator |
+| Sitemap XML Generator | Config File Generator |
+| SiteSucker | Website Copier |
+| Sky charts | Star Chart |
 | SkyCiv beam calculator | Beam Calculator |
+| Smallpdf and iLovePDF crop | PDF Crop |
 | Smallpdf and iLovePDF form filling | PDF Form Filler |
 | Smallpdf eSign | PDF Signer |
+| Smith V4 | Smith Chart |
 | Snagit and Greenshot editors | Image Annotator |
+| Snapdrop | LAN File Sharing |
 | SnapOtter Audio tools | Audio Toolkit |
 | SnapOtter Background Remover | Background Remover |
 | SnapOtter CSV tools | CSV Merge and Split |
@@ -741,56 +1047,96 @@ Benchtop has 307 tools. All of them work without a network connection except the
 | SnapOtter Video tools | Video Toolkit |
 | SnapOtter Watermark | Image Watermark |
 | SnapOtter ZIP tools | ZIP and Archives |
+| Social image resizers | Social Media Sizer |
 | SPF checker | Email DNS Check |
 | Spirax Sarco steam tables | Steam Tables |
 | SSL checker | SSL Certificate Checker |
 | SSL expiry checker | SSL Certificate Checker |
+| StackEdit | Markdown Editor |
+| Statistics calculators | Statistics |
+| Stellarium (basic sky view) | Star Chart |
 | String obfuscator | String Obfuscator |
 | Strip HTML tags | Text Cleaner |
 | Stripe Fee Calculator | Payment Fee Calculator |
+| Subresource Integrity Generator | Hash and HMAC |
+| Subtitle Edit (basic fixes) | Subtitle Studio |
 | Sunburst Generator | Sunburst Generator |
+| SunCalc | Sunrise, Sun and Moon |
 | SVG Background Remover | SVG Background Remover |
 | SVG Minifier | SVG Minifier |
 | SVG placeholder generator | Placeholder Image |
+| SVG to Compose | SVG, VectorDrawable and Compose |
 | SVG to PNG Converter | SVG to PNG |
 | SVG to React Component Converter | SVG to React |
 | SVG Viewer | SVG Viewer |
+| svg2vector | SVG, VectorDrawable and Compose |
 | Swagger Editor (viewing) | OpenAPI Viewer |
+| Symbolab (basic) | Algebra Solver |
 | Syntax highlighter | Syntax Highlighter |
 | Table converter | Table Converter |
+| Tailwind cheat sheet sites | Tailwind Cheat Sheet |
 | Tailwind Colors | Tailwind Colours |
 | Temperature converter | Unit Converter |
+| Terraform AWS Module Generator | Config File Generator |
 | Text Compare | Diff Checker |
 | Text repeater | Text Repeater |
 | Text Reverser | Text Reverser |
 | Text Shadow | Text Shadow |
 | Text to NATO alphabet | NATO Phonetic Alphabet |
+| tfsec | Kubernetes, Compose, Terraform and Dockerfile Checker |
+| TI Filter Design Tool | Filter Designer |
 | Time sheet calculator | Time Sheet Calculator |
 | timeanddate.com meeting planner | Time Zone Planner |
+| timeanddate.com sun calculator | Sunrise, Sun and Moon |
+| Timecode calculators | Timecode Calculator |
+| Tinkercad Circuits | Circuit Simulator |
 | TLS checker | SSL Certificate Checker |
 | TOML to YAML | Data Format Converter |
+| toPhonetics | IPA and Shavian |
+| Traefik Config Generator | Config File Generator |
+| transform.tools HTML to JSX | HTML to JSX |
 | Transformer Calculator | Transformer Size |
 | Transformer Size Calculator | Transformer Size |
 | Transition | Transition |
 | TXT lookup | DNS Lookup |
+| typescale.com | Type Scale |
+| Typora | Markdown Editor |
 | ULID generator | UUID and ID Generator |
 | Unicode text styles | Fancy Text Styles |
+| unicode-table.com | Glyph Browser |
 | Unit converter | Unit Converter |
 | Unix Timestamp Converter | Unix Timestamp |
 | UPS Capacity Calculator | UPS Sizing and Runtime |
 | UPS Runtime Calculator | UPS Sizing and Runtime |
 | URL extractor | Extract from Text |
 | UTF-8 Decoder | UTF-8 Bytes |
+| Utopia fluid type calculator | Type Scale |
 | UUID & GUID Generator | UUID and ID Generator |
 | viewstl.com | 3D Model and G-code Viewer |
+| Vite Config Generator | Config File Generator |
+| Voice recorder sites | Screen and Voice Recorder |
+| Wakamai Fondue | Font File Explorer |
+| WakeOnLAN apps | Wake-on-LAN |
+| wakeonlan command | Wake-on-LAN |
 | Wave Generator | Wave Generator |
+| web2pdfconvert | Web Page to PDF |
+| webhook.site | Mock API Server and Webhook Catcher |
+| Webpack Config Generator | Config File Generator |
+| WebQC molar mass | Molar Mass Calculator |
 | Website down checker | Website Status |
+| websocat | WebSocket and SSE Client |
+| wget --mirror | Website Copier |
 | What is my IP | IP Lookup |
 | WHOIS lookup | Domain WHOIS and Expiry |
 | WiFi QR code generator | QR Code Generator |
+| WinDirStat | Disk Usage |
+| Windows clipboard history | Clipboard History |
+| WinMerge (folders) | Folder Compare |
 | Wire gauge converters | Wire Gauge Chart |
 | WireGuard config generators | WireGuard Config Generator |
+| Wokwi (Uno and ESP32) | Circuit Simulator |
 | Word compare | Diff Checker |
+| Word mail merge | Certificates, Badges and Labels |
 | Word to text | Document to Text |
 | World Time Buddy | Time Zone Planner |
 | XML diff | Diff Checker |

@@ -184,6 +184,30 @@ export function networkStatus(): { readonly ok: true } | { readonly ok: false; r
   return { ok: true };
 }
 
+/** Whether an address points at this computer (127.0.0.0/8, ::1 or localhost). */
+export function isLoopback(address: string): boolean {
+  try {
+    const host = new URL(address).hostname.replace(/^\[|\]$/g, '').toLowerCase();
+    return host === 'localhost' || host.endsWith('.localhost') || host === '::1' || /^127(\.\d{1,3}){3}$/.test(host);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The transport for a request to `address`.  A program on this computer (such as the
+ * IndicTrans2 or Ollama server for Video Dubbing) is not an online check, so it is
+ * allowed even with "Allow online checks" off; anything else goes through net().
+ */
+export function netFor(address: string): NetTransport {
+  if (override !== null) return override;
+  if (isLoopback(address)) {
+    if (!isDesktop) throw new ToolError('Talking to a program on this computer needs the Benchtop desktop app.');
+    return desktopTransport;
+  }
+  return net();
+}
+
 /** The transport to use, or a ToolError explaining why the network is not available. */
 export function net(): NetTransport {
   const status = networkStatus();

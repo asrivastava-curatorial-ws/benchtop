@@ -1,13 +1,16 @@
 /**
- * Serial Monitor: talk to Arduino, ESP32, GPS modules, PLCs and other devices on
- * a serial port, as text or hex, with timestamps and the DTR and RTS lines.  The
- * desktop app uses the operating system's serial ports; in a Chromium browser
- * the Web Serial API is used instead.
+ * Serial Monitor and Serial Plotter: talk to Arduino, ESP32, GPS modules, PLCs
+ * and other devices on a serial port, as text or hex, with timestamps and the
+ * DTR and RTS lines, or plot the numbers they print (Arduino Serial Plotter
+ * format).  The desktop app uses the operating system's serial ports; in a
+ * Chromium browser the Web Serial API is used instead.
  */
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { errorMessage } from '../../lib/errors';
+import { PlotBuffer } from '../../lib/plotter';
+import { CHART_COLORS, niceScale } from '../../lib/svg-chart';
 import { isDesktop, saveFile } from '../../platform';
 import { scrollRegion } from '../../ui/a11y';
 import { attempt, notify } from '../../ui/toast';
@@ -27,23 +30,25 @@ interface Settings {
   readonly parity: 'none' | 'even' | 'odd';
   readonly stopBits: number;
   readonly ending: 'none' | 'lf' | 'cr' | 'crlf';
-  readonly view: 'text' | 'hex';
+  readonly view: 'text' | 'hex' | 'plot';
   readonly stamps: boolean;
 }
 
 const BAUDS = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 74880, 115200, 230400, 250000, 460800, 500000, 921600, 1000000, 2000000];
 const ENDINGS = { none: '', lf: '\n', cr: '\r', crlf: '\r\n' } as const;
 
-const read = (s: Values | undefined): Settings => ({
-  port: typeof s?.port === 'string' ? s.port : '',
-  baud: typeof s?.baud === 'number' ? s.baud : 115200,
-  dataBits: typeof s?.dataBits === 'number' ? s.dataBits : 8,
-  parity: (['none', 'even', 'odd'] as const).find((p) => p === s?.parity) ?? 'none',
-  stopBits: s?.stopBits === 2 ? 2 : 1,
-  ending: (['none', 'lf', 'cr', 'crlf'] as const).find((p) => p === s?.ending) ?? 'lf',
-  view: s?.view === 'hex' ? 'hex' : 'text',
-  stamps: s?.stamps === true,
-});
+const readFor =
+  (toolId: string) =>
+  (s: Values | undefined): Settings => ({
+    port: typeof s?.port === 'string' ? s.port : '',
+    baud: typeof s?.baud === 'number' ? s.baud : 115200,
+    dataBits: typeof s?.dataBits === 'number' ? s.dataBits : 8,
+    parity: (['none', 'even', 'odd'] as const).find((p) => p === s?.parity) ?? 'none',
+    stopBits: s?.stopBits === 2 ? 2 : 1,
+    ending: (['none', 'lf', 'cr', 'crlf'] as const).find((p) => p === s?.ending) ?? 'lf',
+    view: s?.view === 'hex' ? 'hex' : s?.view === 'plot' || (s?.view === undefined && toolId === 'serial-plotter') ? 'plot' : 'text',
+    stamps: s?.stamps === true,
+  });
 
 interface Chunk {
   readonly at: number;
@@ -65,7 +70,7 @@ const webSerial = (): { requestPort(): Promise<WebSerialPort> } | undefined => (
 const MAX_LOG = 2_000_000;
 
 function SerialMonitor({ toolId }: { toolId: string }) {
-  const [s, set] = usePersistentState<Settings>(toolId, read, (v) => ({ ...v }));
+  const [s, set] = usePersistentState<Settings>(toolId, readFor(toolId), (v) => ({ ...v }));
   const [ports, setPorts] = useState<PortInfo[]>([]);
   const [open, setOpen] = useState(false);
   const [log, setLog] = useState<Chunk[]>([]);
@@ -77,7 +82,22 @@ function SerialMonitor({ toolId }: { toolId: string }) {
   const screen = useRef<HTMLPreElement>(null);
   const available = isDesktop || Boolean(webSerial());
 
-  const add = (bytes: Uint8Array, sent: boolean) =>
+  const plot = useRef(new PlotBuffer(2000));
+  const [plotVersion, setPlotVersion] = useState(0);
+  const plotFrame = useRef(0);
+
+  const add = (bytes: Uint8Array, sent: boolean) => {
+    if (!sent && plot.current.feed(bytes) > 0 && !plotFrame.current) {
+      // Redraw at most once a frame, however fast the lines arrive.
+      plotFrame.current = requestAnimationFrame(() => {
+        plotFrame.current = 0;
+        setPlotVersion((v) => v + 1);
+      });
+    }
+    addToLog(bytes, sent);
+  };
+
+  const addToLog = (bytes: Uint8Array, sent: boolean) =>
     setLog((list) => {
       const next = [...list, { at: Date.now(), bytes, sent }];
       let size = next.reduce((n, c) => n + c.bytes.length, 0);
@@ -278,27 +298,53 @@ function SerialMonitor({ toolId }: { toolId: string }) {
           choices={[
             { value: 'text', label: 'Text' },
             { value: 'hex', label: 'Hex' },
+            { value: 'plot', label: 'Plot' },
           ]}
         />
-        <label class="check">
-          <input type="checkbox" checked={s.stamps} onChange={(e) => set((v) => ({ ...v, stamps: e.currentTarget.checked }))} /> Timestamps
-        </label>
-        <button type="button" class="button button-small" onClick={() => setLog([])}>
-          Clear
-        </button>
-        <button
-          type="button"
-          class="button button-small"
-          disabled={!log.length}
-          onClick={() => attempt(async () => void (await saveFile(`serial-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.log`, render(), 'text/plain')))}
-        >
-          Save the log
-        </button>
+        {s.view !== 'plot' && (
+          <label class="check">
+            <input type="checkbox" checked={s.stamps} onChange={(e) => set((v) => ({ ...v, stamps: e.currentTarget.checked }))} /> Timestamps
+          </label>
+        )}
+        {s.view !== 'plot' && (
+          <>
+            <button type="button" class="button button-small" onClick={() => setLog([])}>
+              Clear
+            </button>
+            <button
+              type="button"
+              class="button button-small"
+              disabled={!log.length}
+              onClick={() => attempt(async () => void (await saveFile(`serial-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.log`, render(), 'text/plain')))}
+            >
+              Save the log
+            </button>
+          </>
+        )}
         <span class="tone-muted">{log.filter((c) => !c.sent).reduce((n, c) => n + c.bytes.length, 0)} bytes received</span>
       </div>
-      <pre class="serial-screen" {...scrollRegion('Received data')} ref={screen} data-testid="serial-screen" aria-live="polite">
-        {render()}
-      </pre>
+      {s.view === 'plot' ? (
+        <PlotView
+          buffer={plot.current}
+          version={plotVersion}
+          onDemo={() => {
+            const start = plot.current.total;
+            for (let i = 0; i < 400; i++) {
+              const t = (start + i) / 25;
+              plot.current.line(`sine:${(Math.sin(t) * 512 + 512).toFixed(1)} cosine:${(Math.cos(t * 0.5) * 300 + 512).toFixed(1)} noise:${(Math.random() * 120 + 100).toFixed(1)}`);
+            }
+            setPlotVersion((v) => v + 1);
+          }}
+          onClear={() => {
+            plot.current.clear();
+            setPlotVersion((v) => v + 1);
+          }}
+        />
+      ) : (
+        <pre class="serial-screen" {...scrollRegion('Received data')} ref={screen} data-testid="serial-screen" aria-live="polite">
+          {render()}
+        </pre>
+      )}
       <form
         class="control-row serial-send"
         onSubmit={(e) => {
@@ -320,6 +366,193 @@ function SerialMonitor({ toolId }: { toolId: string }) {
           Send
         </button>
       </form>
+    </div>
+  );
+}
+
+const WINDOWS = [200, 500, 1000, 2000, 5000];
+
+/** A live line chart of the numbers on the port, drawn on a canvas. */
+function PlotView({ buffer, version, onDemo, onClear }: { buffer: PlotBuffer; version: number; onDemo: () => void; onClear: () => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [paused, setPaused] = useState(false);
+  const [windowSize, setWindowSize] = useState(500);
+  const [fixed, setFixed] = useState<{ min: string; max: string }>({ min: '', max: '' });
+  const [frozen, setFrozen] = useState(0);
+  const shown = paused ? frozen : version;
+
+  useEffect(() => {
+    if (buffer.capacity < windowSize) buffer.capacity = Math.max(2000, windowSize);
+  }, [windowSize]);
+
+  useEffect(() => {
+    const el = canvas.current;
+    if (!el) return;
+    const draw = () => {
+      const ratio = window.devicePixelRatio || 1;
+      const width = el.clientWidth;
+      const height = el.clientHeight;
+      el.width = Math.round(width * ratio);
+      el.height = Math.round(height * ratio);
+      const g = el.getContext('2d');
+      if (!g) return;
+      g.setTransform(ratio, 0, 0, ratio, 0, 0);
+      const style = getComputedStyle(el);
+      const ink = style.getPropertyValue('--muted').trim() || '#666';
+      const grid = style.getPropertyValue('--line').trim() || '#ddd';
+      g.clearRect(0, 0, width, height);
+      const series = buffer.series().filter((sr) => !hidden.has(sr.name));
+      const count = Math.min(windowSize, buffer.length);
+      const left = 56;
+      const right = 10;
+      const top = 10;
+      const bottom = 22;
+      const visible = series.map((sr) => sr.values.slice(Math.max(0, sr.values.length - count)));
+      const finite = visible.flat().filter(Number.isFinite);
+      const fMin = Number.parseFloat(fixed.min);
+      const fMax = Number.parseFloat(fixed.max);
+      const lo = Number.isFinite(fMin) ? fMin : finite.length ? Math.min(...finite) : 0;
+      const hi = Number.isFinite(fMax) ? fMax : finite.length ? Math.max(...finite) : 1;
+      const scale = niceScale(lo, hi, false);
+      const yMin = Number.isFinite(fMin) ? fMin : scale.lo;
+      const yMax = Number.isFinite(fMax) ? fMax : scale.hi;
+      const py = (v: number) => top + (1 - (v - yMin) / (yMax - yMin || 1)) * (height - top - bottom);
+      const px = (i: number) => left + (i / Math.max(1, windowSize - 1)) * (width - left - right);
+      g.font = '11px system-ui, sans-serif';
+      g.textAlign = 'right';
+      g.textBaseline = 'middle';
+      g.lineWidth = 1;
+      for (const t of scale.ticks) {
+        if (t < yMin || t > yMax) continue;
+        g.strokeStyle = grid;
+        g.beginPath();
+        g.moveTo(left, py(t));
+        g.lineTo(width - right, py(t));
+        g.stroke();
+        g.fillStyle = ink;
+        g.fillText(String(Number(t.toPrecision(6))), left - 6, py(t));
+      }
+      g.textAlign = 'center';
+      g.textBaseline = 'top';
+      const first = buffer.total - count;
+      for (let i = 0; i <= 4; i++) {
+        const at = Math.round((i / 4) * (windowSize - 1));
+        g.fillText(String(Math.max(0, first + at - (windowSize - count))), px(at), height - bottom + 6);
+      }
+      visible.forEach((values, k) => {
+        const index = buffer.series().findIndex((sr) => sr.name === series[k]?.name);
+        g.strokeStyle = CHART_COLORS[index % CHART_COLORS.length] ?? '#0072B2';
+        g.lineWidth = 1.6;
+        g.beginPath();
+        let pen = false;
+        const offset = windowSize - values.length;
+        values.forEach((v, i) => {
+          if (!Number.isFinite(v)) {
+            pen = false;
+            return;
+          }
+          const x = px(offset + i);
+          const y = py(Math.min(yMax, Math.max(yMin, v)));
+          if (pen) g.lineTo(x, y);
+          else g.moveTo(x, y);
+          pen = true;
+        });
+        g.stroke();
+      });
+    };
+    draw();
+    const observer = new ResizeObserver(draw);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [shown, hidden, windowSize, fixed]);
+
+  const all = buffer.series();
+  return (
+    <div class="plot-view" data-testid="serial-plot">
+      <div class="control-row">
+        <label class="control control-inline">
+          <span class="control-label">Show the last</span>
+          <select class="input" value={windowSize} onChange={(e) => setWindowSize(Number(e.currentTarget.value))}>
+            {WINDOWS.map((w) => (
+              <option key={w} value={w}>
+                {w} points
+              </option>
+            ))}
+          </select>
+        </label>
+        <label class="control control-inline">
+          <span class="control-label">Y from</span>
+          <input class="input input-narrow" placeholder="auto" value={fixed.min} onInput={(e) => setFixed((f) => ({ ...f, min: e.currentTarget.value }))} />
+        </label>
+        <label class="control control-inline">
+          <span class="control-label">to</span>
+          <input class="input input-narrow" placeholder="auto" value={fixed.max} onInput={(e) => setFixed((f) => ({ ...f, max: e.currentTarget.value }))} />
+        </label>
+        <button
+          type="button"
+          class="button button-small"
+          aria-pressed={paused}
+          onClick={() => {
+            setFrozen(version);
+            setPaused((p) => !p);
+          }}
+          data-testid="plot-pause"
+        >
+          {paused ? 'Resume' : 'Pause'}
+        </button>
+        <button type="button" class="button button-small" onClick={onClear}>
+          Clear
+        </button>
+        <button
+          type="button"
+          class="button button-small"
+          disabled={buffer.length === 0}
+          onClick={() =>
+            attempt(async () => {
+              const outcome = await saveFile(`plot-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.csv`, buffer.csv(), 'text/csv');
+              if (outcome.saved) notify(`Saved to ${outcome.location}`);
+            })
+          }
+        >
+          Save as CSV
+        </button>
+        <button type="button" class="button button-small button-quiet" onClick={onDemo} data-testid="plot-demo">
+          Try with sample data
+        </button>
+      </div>
+      <canvas ref={canvas} class="plot-canvas" role="img" aria-label="Plot of the values received" />
+      {all.length === 0 ? (
+        <p class="control-help">
+          Print numbers from the device, one reading per line: <code>Serial.println(value);</code>, several separated by spaces or commas, or named as <code>temp:21.5,humidity:40</code>. A line of
+          words names the columns.
+        </p>
+      ) : (
+        <ul class="plot-legend" data-testid="plot-legend">
+          {all.map((sr, i) => (
+            <li key={sr.name}>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  checked={!hidden.has(sr.name)}
+                  onChange={(e) => {
+                    const on = e.currentTarget.checked;
+                    setHidden((h) => {
+                      const next = new Set(h);
+                      if (on) next.delete(sr.name);
+                      else next.add(sr.name);
+                      return next;
+                    });
+                  }}
+                />
+                <span class="plot-swatch" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                {sr.name}
+                <span class="plot-latest">{buffer.latest(sr.name) ?? ''}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

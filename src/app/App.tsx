@@ -1,12 +1,13 @@
 import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
 import { APP_NAME } from '../brand';
+import { onDeskRequests, setQuickKey, setTray, watchClipboard } from '../platform/desk';
 import { findTool } from '../tools/registry';
 import { Icon } from '../ui/icons';
 import { Toasts } from '../ui/toast';
 import { CommandPalette } from './CommandPalette';
 import { DropDialog } from './DropDialog';
 import { Home } from './Home';
-import { useRoute } from './router';
+import { navigate, useRoute } from './router';
 import { SettingsView } from './SettingsView';
 import { Sidebar } from './Sidebar';
 import { getSettings, updateSettings, useSettings } from './store';
@@ -19,14 +20,32 @@ export function App() {
   const [dropped, setDropped] = useState<File[] | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  // Desktop extras the user turned on (tray icon, quick-launch shortcut, clipboard history) and their requests.
+  useEffect(() => {
+    const settings = getSettings();
+    const failed = (what: string) => (error: unknown) => console.warn(`${what}: ${error instanceof Error ? error.message : String(error)}`);
+    if (settings.trayIcon) setTray(true).catch(failed('Tray icon'));
+    if (settings.quickKey) setQuickKey(settings.quickKey).catch(failed('Quick launcher shortcut'));
+    if (settings.clipboardHistory) watchClipboard(true).catch(failed('Clipboard history'));
+    const stop = onDeskRequests(
+      () => setPalette(true),
+      (id) => navigate(`#/tool/${id}`),
+    );
+    return () => void stop.then((unlisten) => unlisten());
+  }, []);
+
   // Registered during the first render (not after paint) so a shortcut pressed as the window opens is not lost.
   useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      // An editor that used the key (Ctrl+B for bold, Ctrl+K for a link) keeps it.
+      if (event.defaultPrevented) return;
       const modifier = event.ctrlKey || event.metaKey;
+      const target = event.target instanceof Element ? event.target : null;
+      const richText = target?.closest('[contenteditable=""], [contenteditable="true"], .cm-editor') !== null && target !== null;
       if (modifier && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setPalette((open) => !open);
-      } else if (modifier && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'b') {
+      } else if (modifier && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'b' && !richText) {
         event.preventDefault();
         updateSettings({ sidebarHidden: !getSettings().sidebarHidden });
       }

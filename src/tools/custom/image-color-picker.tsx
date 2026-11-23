@@ -18,6 +18,8 @@ interface Picked {
 }
 
 const LOUPE = 11;
+/** The browser's own eyedropper picks a colour anywhere on screen, where the engine has one (Chrome, Edge). */
+const SCREEN_PICKER = typeof window !== 'undefined' && 'EyeDropper' in window;
 
 export function paletteExports(colours: readonly string[]) {
   const names = colours.map((_, i) => `color-${i + 1}`);
@@ -114,6 +116,27 @@ function ImageColorPicker() {
               </div>
             ))}
           </div>
+          {SCREEN_PICKER && (
+            <button
+              type="button"
+              class="button button-small"
+              onClick={() =>
+                attempt(async () => {
+                  try {
+                    const { sRGBHex } = await new (window as unknown as { EyeDropper: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper().open();
+                    const hex = sRGBHex.startsWith('#') ? sRGBHex.toUpperCase() : sRGBHex;
+                    setPicked((list) => [...list, { hex, x: -1, y: -1 }]);
+                  } catch (error) {
+                    // Escape closes the picker without choosing; that is not an error.
+                    if (!(error instanceof DOMException && error.name === 'AbortError')) throw error;
+                  }
+                })
+              }
+              data-testid="pick-screen"
+            >
+              Pick from the screen
+            </button>
+          )}
           {picked.length > 0 && (
             <button type="button" class="button button-small button-quiet" onClick={() => setPicked([])}>
               Clear picked colours

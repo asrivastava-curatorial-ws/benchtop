@@ -239,6 +239,23 @@ class Decoder {
 
 const PRIMITIVES = new Set(['null', 'boolean', 'int', 'long', 'float', 'double', 'bytes', 'string']);
 
+/** The container's schema, codec and other metadata, without decoding the records. */
+export function readAvroMeta(bytes: Uint8Array): { schema: unknown; codec: string; meta: Record<string, string> } {
+  const r = new Reader(bytes);
+  const magic = r.take(4);
+  if (magic[0] !== 0x4f || magic[1] !== 0x62 || magic[2] !== 0x6a || magic[3] !== 1) throw new Error('not an Avro container');
+  const meta: Record<string, string> = {};
+  for (let count = r.long(); count !== 0; count = r.long()) {
+    if (count < 0) {
+      count = -count;
+      r.long();
+    }
+    for (let i = 0; i < count; i++) meta[r.string()] = new TextDecoder().decode(r.take(r.long()));
+  }
+  const schema = JSON.parse(meta['avro.schema'] ?? 'null') as unknown;
+  return { schema, codec: meta['avro.codec'] ?? 'null', meta };
+}
+
 export function readAvroContainer(bytes: Uint8Array): unknown[] {
   const r = new Reader(bytes);
   const magic = r.take(4);

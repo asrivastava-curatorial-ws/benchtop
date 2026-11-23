@@ -9,12 +9,23 @@
 //! cannot reach the network.
 
 mod ai;
+mod arduino;
+mod bulk;
 mod cli;
 mod convert;
+mod desk;
+mod esp32;
 mod files;
+mod grpc;
+mod indic;
+mod lan;
 mod links;
+mod mirror;
 mod net;
 mod serial;
+mod serve;
+mod webpdf;
+mod wsclient;
 
 /// Entry point for `benchtop --ai-worker` (see `ai/worker.rs`).
 pub fn ai_worker_main() {
@@ -130,6 +141,15 @@ pub fn run_with(route: Option<String>) {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+                        desk::quick_launch(app);
+                    }
+                })
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![
             save_file,
             net::net_http,
@@ -148,6 +168,7 @@ pub fn run_with(route: Option<String>) {
             ai::ai_cancel,
             convert::convert_programs,
             convert::convert_probe,
+            convert::convert_media_info,
             convert::convert_frame,
             convert::convert_run,
             convert::convert_cancel,
@@ -158,11 +179,82 @@ pub fn run_with(route: Option<String>) {
             serial::serial_write,
             serial::serial_signals,
             serial::serial_close,
-            links::open_release_page
+            links::open_release_page,
+            links::open_link,
+            files::read_local_file,
+            webpdf::pdf_engine,
+            webpdf::html_to_pdf,
+            webpdf::url_to_pdf,
+            mirror::mirror_run,
+            mirror::mirror_cancel,
+            bulk::bulk_list,
+            bulk::bulk_rename,
+            bulk::bulk_duplicates,
+            bulk::bulk_trash,
+            bulk::bulk_usage,
+            bulk::bulk_compare,
+            bulk::bulk_copy,
+            bulk::bulk_cancel,
+            serve::serve_start,
+            serve::serve_stop,
+            wsclient::ws_connect,
+            wsclient::ws_send,
+            wsclient::ws_close,
+            wsclient::sse_connect,
+            wsclient::sse_close,
+            grpc::grpc_compile,
+            grpc::grpc_reflect,
+            grpc::grpc_call,
+            esp32::esp32_info,
+            esp32::esp32_firmware,
+            esp32::esp32_start,
+            esp32::esp32_send,
+            esp32::esp32_stop,
+            esp32::esp32_forget,
+            arduino::arduino_info,
+            arduino::arduino_compile,
+            lan::lan_info,
+            lan::lan_scan,
+            lan::lan_cancel,
+            lan::lan_ports,
+            lan::lan_wake,
+            lan::lan_speed,
+            desk::desk_info,
+            desk::desk_tray,
+            desk::desk_shortcut,
+            desk::clip_watch,
+            desk::clip_list,
+            desk::clip_remove,
+            desk::clip_clear,
+            indic::indic_status,
+            indic::indic_size,
+            indic::indic_setup,
+            indic::indic_cancel,
+            indic::indic_start,
+            indic::indic_stop,
+            indic::indic_remove
         ])
         .manage(files::PickedFiles::default())
         .manage(convert::ConvertState::default())
         .manage(serial::SerialState::default())
+        .manage(mirror::MirrorState::default())
+        .manage(bulk::BulkState::default())
+        .manage(serve::ServeState::default())
+        .manage(wsclient::WsState::default())
+        .manage(grpc::GrpcState::default())
+        .manage(lan::LanState::default())
+        .manage(esp32::Esp32State::default())
+        .manage(desk::DeskState::default())
+        .manage(indic::IndicState::default())
+        .on_window_event(|window, event| {
+            // With the tray icon on, closing the window hides it; Quit is in the tray menu.
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" && window.state::<desk::DeskState>().keeps_running() {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .setup(move |app| {
             app.manage(ai::AiState::new(ai::models_root(app.handle())));
             let mut window =
@@ -190,8 +282,14 @@ pub fn run_with(route: Option<String>) {
                 .build()?;
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("Benchtop could not start");
+        .build(tauri::generate_context!())
+        .expect("Benchtop could not start")
+        .run(|app, event| {
+            // No translation server or setup outlives the app.
+            if let tauri::RunEvent::Exit = event {
+                indic::shutdown(app);
+            }
+        });
 }
 
 #[cfg(test)]

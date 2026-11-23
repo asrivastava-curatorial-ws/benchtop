@@ -8,7 +8,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { isDesktop } from './index';
 
-export type ProgramId = 'ffmpeg' | 'ffprobe' | 'libreoffice' | 'pandoc' | 'imagemagick' | 'inkscape' | 'calibre' | 'qpdf' | 'ghostscript';
+export type ProgramId = 'ffmpeg' | 'ffprobe' | 'libreoffice' | 'pandoc' | 'imagemagick' | 'inkscape' | 'calibre' | 'qpdf' | 'ghostscript' | 'espeak';
 
 export interface Programs {
   readonly programs: Readonly<Record<ProgramId, string | null>>;
@@ -81,6 +81,12 @@ export async function probeMedia(token: string): Promise<MediaInfo> {
   return invoke<MediaInfo>('convert_probe', { token });
 }
 
+/** ffprobe's full report (format, streams, chapters) for a chosen file. */
+export async function mediaReport(token: string): Promise<Record<string, unknown>> {
+  need('Media Info');
+  return invoke<Record<string, unknown>>('convert_media_info', { token });
+}
+
 /** One frame of a chosen video, as a PNG data URL at most `width` pixels wide (trim and crop previews). */
 export async function videoFrame(token: string, seconds: number, width = 960): Promise<string> {
   need();
@@ -123,6 +129,19 @@ export interface ProgramInfo {
 
 /** Install hints.  Every program here is free and open source. */
 export const PROGRAMS: Readonly<Record<Exclude<ProgramId, 'ffprobe'>, ProgramInfo>> = {
+  espeak: {
+    name: 'eSpeak NG',
+    use: 'speech sounds for the Piper voices',
+    homepage: 'https://github.com/espeak-ng/espeak-ng',
+    licence: 'GPL-3.0',
+    install: {
+      debian: 'sudo apt install espeak-ng',
+      fedora: 'sudo dnf install espeak-ng',
+      arch: 'sudo pacman -S espeak-ng',
+      macos: 'brew install espeak-ng',
+      windows: 'Download espeak-ng.msi from github.com/espeak-ng/espeak-ng/releases',
+    },
+  },
   ffmpeg: {
     name: 'FFmpeg',
     use: 'video and audio',

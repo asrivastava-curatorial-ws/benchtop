@@ -44,7 +44,8 @@ function contentSecurityPolicy(): Plugin {
 
 /**
  * Copies the Tesseract.js worker and its WebAssembly cores from node_modules
- * into public/tesseract, so OCR works offline from the app's own origin.  The
+ * into public/tesseract, so OCR works offline from the app's own origin, and
+ * OpenChemLib's torsion tables (for 3D molecules) into public/openchemlib.  The
  * English language data (tessdata_fast, Apache-2.0) is kept in the repository.
  */
 function ocrAssets(): Plugin {
@@ -55,6 +56,8 @@ function ocrAssets(): Plugin {
     const files: [string, string][] = [
       [worker, 'public/tesseract/worker.min.js'],
       ...['tesseract-core-lstm.wasm.js', 'tesseract-core-simd-lstm.wasm.js'].map((name) => [join(core, name), `public/tesseract/core/${name}`] as [string, string]),
+      // The package exports only its entry point, so the resources are found beside it.
+      [join(dirname(require.resolve('openchemlib')), 'resources.json'), 'public/openchemlib/resources.json'],
     ];
     for (const [from, to] of files) {
       const target = fileURLToPath(new URL(to, import.meta.url));

@@ -10,3 +10,8 @@ src-tauri/gen/schemas/
 # Copied from node_modules by vite.config.ts (ocrAssets) on every dev start and build.
 public/tesseract/worker.min.js
 public/tesseract/core/
+public/openchemlib/
+# Built by esp32-helper/ci-build.sh for the Linux installers (GPL; see esp32-helper/README.md).
+src-tauri/resources/esp32/benchtop-esp32*
+src-tauri/resources/esp32/*.bin
+__pycache__/

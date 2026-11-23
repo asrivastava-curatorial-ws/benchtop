@@ -210,6 +210,11 @@ export default defineTextTool({
       const match = digests.some((value) => normalise(value) === normalise(expected));
       fields.push(match ? { label: 'Comparison', value: 'Match — the checksum is identical', tone: 'ok' } : { label: 'Comparison', value: 'MISMATCH — the checksum differs', tone: 'bad' });
     }
+    // The integrity attribute for <script> and <link> tags (Subresource Integrity) takes a Base64 SHA-2 digest.
+    if (!key && ['sha256', 'sha384', 'sha512', 'all'].includes(o.algorithm)) {
+      const id = o.algorithm === 'all' ? 'sha384' : (o.algorithm as 'sha256' | 'sha384' | 'sha512');
+      fields.push({ label: 'Subresource Integrity', value: `${id}-${toBase64(ALGORITHMS[id].hash(data))}`, mono: true });
+    }
     const subject = ctx.file ? `${ctx.file.name} (${formatBytes(data.length)})` : formatBytes(data.length);
     const weak = !key && ['md5', 'sha1', 'md4', 'ntlm'].includes(o.algorithm);
     return {

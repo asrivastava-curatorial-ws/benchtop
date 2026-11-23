@@ -63,6 +63,25 @@ describe('calculator library', () => {
     }
   });
 
+  it('solves the popular additions correctly', () => {
+    expect(run('fixed-deposit', { deposit: 100000, rate: 7, years: 3 }).out('maturity')).toBeCloseTo(123143.9, 0);
+    expect(run('ppf', { yearly: 150000, rate: 7.1, years: 15 }).out('value')).toBeCloseTo(4068209, -3);
+    expect(run('egfr', { cr: 1, age: 50 }, { s: 0 }).out('egfr')).toBeCloseTo(68.6, 0);
+    const mix = run('concrete-mix', { V: 1 });
+    expect(mix.out('bags')).toBeCloseTo(8.07, 1);
+    expect(mix.out('sand')).toBeCloseTo(0.42, 2);
+    expect(run('rebar-weight', { d: 12, L: 1, n: 1 }).out('perM')).toBeCloseTo(0.889, 3);
+    expect(run('blood-alcohol', { mass: 70, drinks: 2, t: 1 }, { s: 0.68 }).out('bac')).toBeCloseTo(27, 0);
+    expect(run('diagnostic-test', { tp: 90, fp: 30, fn: 10, tn: 870 }).out('ppv')).toBeCloseTo(75, 6);
+    expect(run('doppler', { f: 440, vs: 72, vl: 0, c: 343 }).out('heard')).toBeCloseTo(467.2, 1);
+    expect(run('snells-law', { n1: 1, n2: 1.5, a1: 30 }).out('a2')).toBeCloseTo(19.47, 2);
+    const orbit = run('orbital-velocity', { M: 5.972e24, R: 6371, h: 400 });
+    expect(orbit.out('v', 'm/s')).toBeCloseTo(7672.6, 0);
+    expect(orbit.out('T')).toBeCloseTo(92.4, 1);
+    expect(run('percentage-change', { before: 80, after: 100 }).out('change')).toBeCloseTo(25, 9);
+    expect(run('loan-affordability', { emi: 25000, rate: 8.5, years: 20 }).out('loan')).toBeCloseTo(2880604, -3);
+  });
+
   it('every number variable can be shown in each unit of its dimension', () => {
     for (const c of CALCULATORS)
       for (const v of c.vars)

@@ -72,7 +72,7 @@ fn millis(since: Instant) -> f64 {
 }
 
 /// The text of an error and every error it wraps, without repeats.
-fn chain_message(error: &(dyn std::error::Error + 'static)) -> String {
+pub(crate) fn chain_message(error: &(dyn std::error::Error + 'static)) -> String {
     let mut parts: Vec<String> = Vec::new();
     let mut current: Option<&(dyn std::error::Error + 'static)> = Some(error);
     while let Some(err) = current {

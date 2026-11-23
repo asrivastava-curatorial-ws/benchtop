@@ -5,7 +5,7 @@
 import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { unzipSync } from 'fflate';
+import { strFromU8, unzipSync } from 'fflate';
 import { degrees, PDFDocument, StandardFonts } from 'pdf-lib';
 import { CALC_CATEGORIES } from '../../src/calc/types';
 import { TOOLS } from '../../src/tools/registry';
@@ -18,6 +18,11 @@ const QR_PNG = readFileSync(new URL('./fixtures/qr.png', import.meta.url));
 /** Black text on white: "Benchtop reads this text offline." */
 const OCR_PNG = readFileSync(new URL('./fixtures/ocr.png', import.meta.url));
 const OCR_HINDI_PNG = readFileSync(new URL('./fixtures/ocr-hindi.png', import.meta.url));
+const SANS_TTF = readFileSync(new URL('../../public/fonts/BenchtopSans-Regular.ttf', import.meta.url));
+/** Four rows of gallery figures written by hyparquet-writer. */
+const GALLERIES_PARQUET = readFileSync(new URL('./fixtures/galleries.parquet', import.meta.url));
+/** Three rows in the Arrow IPC file format, written by apache-arrow. */
+const CITIES_ARROW = readFileSync(new URL('./fixtures/cities.arrow', import.meta.url));
 
 /** A PDF whose pages say "Page N". */
 async function samplePdf(pages: number, rotate = 0): Promise<Buffer> {
@@ -126,6 +131,30 @@ const ONLINE_TARGETS: Record<string, readonly [string, string]> = {
 };
 
 const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>> = {
+  'file-pipeline': async (page) => {
+    await page.locator('#fp-preset').selectOption('Format JSON files');
+    await chooseFiles(page, page.getByTestId('fp-drop'), [
+      { name: 'galleries.json', mimeType: 'application/json', buffer: Buffer.from('{"b":1,"a":[2]}') },
+      { name: 'broken.json', mimeType: 'application/json', buffer: Buffer.from('{oops') },
+    ]);
+    await page.getByTestId('fp-run').click();
+    const results = page.getByTestId('fp-results');
+    await expect(results).toContainText('galleries.json');
+    await expect(results.locator('td.tone-bad')).toContainText('Step 1 (JSON Formatter)');
+    await expect.poll(() => editorText(page.getByTestId('fp-preview'))).toContain('"b": 1');
+    // One good result is saved as itself rather than in a ZIP.
+    const saved = await download(page, () => page.getByTestId('fp-save').click());
+    expect(JSON.parse(saved.toString())).toEqual({ b: 1, a: [2] });
+  },
+  plugins: async (page) => {
+    // The first visit opens the code view with the example plugin.
+    await expect(page.getByTestId('plugin-code')).toBeVisible();
+    await page.getByTestId('plugin-add').click();
+    await expect(page.getByTestId('plugin-run')).toBeEnabled();
+    await page.getByTestId('plugin-run').click();
+    await expect.poll(() => editorText(page.getByTestId('plugin-output'))).toContain('VITM/2023/0007');
+    await expect(page.getByTestId('plugin-info')).toHaveText('3 numbers');
+  },
   keycode: async (page, tool) => {
     await page.keyboard.press('q');
     await expect(tool).toHaveAttribute('data-state', 'done');
@@ -294,11 +323,14 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
     expect([...bytes.subarray(0, 4)]).toEqual(PNG);
   },
   'background-remover': desktopGate,
+  'clipboard-history': desktopGate,
   'image-upscaler': desktopGate,
   'face-blur': desktopGate,
   'object-eraser': desktopGate,
   transcribe: desktopGate,
   'ai-models': desktopGate,
+  'text-to-speech': desktopGate,
+  'video-dubbing': desktopGate,
   'file-converter': desktopGate,
   'video-tools': desktopGate,
   'audio-tools': desktopGate,
@@ -437,6 +469,17 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
   },
   'serial-monitor': async (page) => {
     await expect(page.getByTestId('tool')).toContainText(/Connect|desktop app/);
+  },
+  'serial-plotter': async (page) => {
+    const tool = page.getByTestId('tool');
+    await expect(tool).toContainText(/Connect|desktop app/);
+    if ((await page.getByTestId('serial-plot').count()) === 0) return;
+    await expect(tool).toContainText('Serial.println(value);');
+    await page.getByTestId('plot-demo').click();
+    await expect(page.getByTestId('plot-legend')).toContainText('sine');
+    await expect(page.getByTestId('plot-legend')).toContainText('cosine');
+    await page.getByTestId('plot-pause').click();
+    await expect(page.getByTestId('plot-pause')).toHaveText('Resume');
   },
   'wireguard-config': async (page) => {
     await expect(page.getByTestId('wg-config')).toHaveCount(4);
@@ -622,6 +665,526 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
     const csv = (await download(page, () => page.getByTestId('csv-save').click())).toString('utf8');
     expect(csv).toBe('id,name,city\r\n1,Asha,\r\n2,Ravi,Mysuru\r\n');
   },
+  'app-icons': async (page, tool) => {
+    await expect(tool).toHaveAttribute('data-state', 'done');
+    await expect(page.getByTestId('icon-previews').locator('canvas')).toHaveCount(13);
+    await page.getByTestId('icon-text').fill('Ga');
+    const zip = unzipSync(new Uint8Array(await download(page, () => page.getByTestId('icon-save').click())));
+    const width = (name: string) => {
+      const file = zip[name];
+      expect(file, name).toBeDefined();
+      expect([...(file as Uint8Array).subarray(0, 4)]).toEqual(PNG);
+      return Buffer.from(file as Uint8Array).readUInt32BE(16);
+    };
+    expect(width('android/res/mipmap-xxxhdpi/ic_launcher.png')).toBe(192);
+    expect(width('android/res/mipmap-xxxhdpi/ic_launcher_foreground.png')).toBe(432);
+    expect(width('android/res/mipmap-mdpi/ic_launcher_monochrome.png')).toBe(108);
+    expect(width('ios/AppIcon.appiconset/AppIcon-1024.png')).toBe(1024);
+    expect(width('kaios/icons/icon-56.png')).toBe(56);
+    expect(width('kaios/icons/icon-112.png')).toBe(112);
+    expect(width('web/icon-maskable-512.png')).toBe(512);
+    const xml = Buffer.from(zip['android/res/mipmap-anydpi-v26/ic_launcher.xml'] as Uint8Array).toString('utf8');
+    expect(xml).toContain('<monochrome android:drawable="@mipmap/ic_launcher_monochrome"');
+    const contents = JSON.parse(Buffer.from(zip['ios/AppIcon.appiconset/Contents.json'] as Uint8Array).toString('utf8'));
+    expect(contents.images).toHaveLength(3);
+  },
+  'store-graphics': async (page) => {
+    await chooseFiles(page, page.getByTestId('sg-drop'), [{ name: 'screen.png', mimeType: 'image/png', buffer: SAMPLE_PNG }]);
+    await page.getByTestId('sg-caption').fill('Plan your museum visit');
+    await expect(page.getByTestId('sg-results').locator('canvas')).toHaveCount(1);
+    const png = await download(page, () => page.getByTestId('sg-save').click());
+    expect([...png.subarray(0, 4)]).toEqual(PNG);
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1320, 2868]);
+    await page.getByTestId('sg-target').selectOption('kai-banner');
+    await page.getByTestId('sg-title').fill('Benchtop');
+    const jpeg = await download(page, () => page.getByTestId('sg-save').click());
+    expect([...jpeg.subarray(0, 3)]).toEqual([0xff, 0xd8, 0xff]);
+    expect(jpeg.length).toBeLessThan(100 * 1024);
+  },
+  'nine-patch': async (page, tool) => {
+    await chooseImage(page, page.getByTestId('dropzone'));
+    await expect(tool).toHaveAttribute('data-state', 'done');
+    await expect(page.getByTestId('np-samples').locator('canvas')).toHaveCount(3);
+    await page.getByTestId('np-sx-from-0').fill('100');
+    const png = await download(page, () => page.getByTestId('np-save').click());
+    expect([...png.subarray(0, 4)]).toEqual(PNG);
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([642, 402]);
+    const zip = unzipSync(new Uint8Array(await download(page, () => page.getByTestId('np-save-all').click())));
+    expect(Object.keys(zip).sort()).toEqual(['drawable-hdpi/sample.9.png', 'drawable-mdpi/sample.9.png', 'drawable-xhdpi/sample.9.png']);
+    expect(Buffer.from(zip['drawable-mdpi/sample.9.png'] as Uint8Array).readUInt32BE(16)).toBe(322);
+  },
+  'pdf-impose': async (page) => {
+    await chooseFiles(page, page.getByTestId('pdf-drop'), [await pdfFile('guide.pdf', 6)]);
+    await expect(page.getByTestId('impose-summary')).toContainText('6 pages on 2 sheets, 4 sides to print; 2 blanks added');
+    const booklet = await PDFDocument.load(await download(page, () => page.getByTestId('impose-save').click()));
+    expect(booklet.getPageCount()).toBe(4);
+    const [w, h] = [booklet.getPage(0).getWidth(), booklet.getPage(0).getHeight()];
+    expect(Math.round(w)).toBe(Math.round(595.28 * 2));
+    expect(Math.round(h)).toBe(842);
+    await page.getByRole('radio', { name: 'Mini zine' }).click();
+    await expect(page.getByTestId('impose-summary')).toContainText('6 pages on 1 sheet');
+    await page.getByRole('radio', { name: 'Pages per sheet' }).click();
+    await page.getByTestId('impose-cols').fill('2');
+    await expect(page.getByTestId('impose-summary')).toContainText('6 pages on 2 sheets');
+  },
+  'pdf-preflight': async (page, tool) => {
+    await chooseFiles(page, page.getByTestId('pdf-drop'), [await pdfFile('poster.pdf', 2)]);
+    await expect(tool).toHaveAttribute('data-state', 'done', { timeout: 30_000 });
+    const checks = page.getByTestId('pf-checks');
+    await expect(checks).toContainText('Every page is 210 × 297 mm (A4)');
+    await expect(checks).toContainText('not embedded: Helvetica');
+    await expect(checks).toContainText('No trim box');
+    await expect(checks).toContainText('No pictures are placed');
+  },
+  'pdf-crop': async (page) => {
+    await chooseFiles(page, page.getByTestId('pdf-drop'), [await pdfFile('scan.pdf', 2)]);
+    await expect(page.getByTestId('crop-box')).toBeVisible({ timeout: 30_000 });
+    for (const side of ['top', 'right', 'bottom', 'left']) await page.getByTestId(`crop-${side}`).fill('10');
+    const cropped = await PDFDocument.load(await download(page, () => page.getByTestId('crop-save').click()));
+    const box = cropped.getPage(0).getCropBox();
+    expect(Math.round(box.width)).toBe(Math.round(595.28 - (20 * 72) / 25.4));
+    expect(Math.round(box.x)).toBe(Math.round((10 * 72) / 25.4));
+  },
+  'font-explorer': async (page, tool) => {
+    await chooseFiles(page, page.getByTestId('font-drop'), [{ name: 'BenchtopSans-Regular.ttf', mimeType: 'font/ttf', buffer: SANS_TTF }]);
+    await expect(tool).toHaveAttribute('data-state', 'done', { timeout: 30_000 });
+    await expect(page.getByTestId('font-info')).toContainText('PostScript name');
+    await expect(page.getByTestId('font-glyphs').locator('button').first()).toBeVisible();
+    await page.getByTestId('font-sample').fill('नमस्ते');
+    await expect(page.getByTestId('font-preview')).toHaveText('नमस्ते');
+  },
+  'glyph-browser': async (page) => {
+    await page.getByTestId('glyph-find').fill('U+0905');
+    await page.getByTestId('glyph-find').press('Enter');
+    await expect(page.getByTestId('glyph-block')).toHaveValue('Devanagari');
+    await expect(page.getByTestId('glyph-detail')).toContainText('&#x905;');
+    await expect(page.getByTestId('glyph-detail')).toContainText('E0 A4 85');
+  },
+  'large-type': async (page) => {
+    await page.getByTestId('lt-input').fill('Gate 3');
+    await expect(page.getByTestId('lt-stage')).toContainText('Gate 3');
+    await expect.poll(async () => Number(await page.locator('.lt-text-out').getAttribute('data-size'))).toBeGreaterThan(60);
+  },
+  'image-stitch': async (page) => {
+    await chooseFiles(page, page.getByTestId('stitch-drop'), [
+      { name: 'one.png', mimeType: 'image/png', buffer: SAMPLE_PNG },
+      { name: 'two.png', mimeType: 'image/png', buffer: QR_PNG },
+    ]);
+    await expect(page.getByTestId('stitch-result').locator('canvas')).toBeVisible();
+    await expect(page.getByTestId('export-size')).toContainText(/\d/, { timeout: 30_000 });
+    const png = await download(page, () => page.getByTestId('export-save').click());
+    expect([...png.subarray(0, 4)]).toEqual(PNG);
+    // Matched heights: the sample is 640 × 400, so the result is 400 high.
+    expect(png.readUInt32BE(20)).toBe(400);
+  },
+  'perspective-fix': async (page) => {
+    await chooseImage(page, page.getByTestId('dropzone'));
+    await expect(page.getByTestId('px-result')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('px-corner-0').focus();
+    await page.keyboard.press('Shift+ArrowRight');
+    await expect(page.getByTestId('export-size')).toContainText(/\d/, { timeout: 30_000 });
+    const png = await download(page, () => page.getByTestId('export-save').click());
+    expect([...png.subarray(0, 4)]).toEqual(PNG);
+  },
+  'paste-image': async (page) => {
+    await chooseImage(page, page.getByTestId('dropzone'));
+    await expect(page.getByTestId('paste-facts')).toContainText('640 × 400 px');
+    await expect(page.getByTestId('paste-preview')).toBeVisible();
+  },
+  'media-info': desktopGate,
+  'screen-recorder': async (page) => {
+    await expect(page.getByTestId('rec-start')).toBeVisible();
+    await expect(page.getByTestId('rec-support')).not.toBeEmpty();
+  },
+  'data-playground': async (page, tool) => {
+    await page.getByTestId('dp-sample').click();
+    await expect(page.getByTestId('dp-results')).toContainText('Space Gallery', { timeout: 60_000 });
+    await expect(page.getByTestId('dp-results')).toContainText('1716');
+    await chooseFiles(page, page.getByTestId('dp-open'), [{ name: 'galleries-2.parquet', mimeType: 'application/octet-stream', buffer: GALLERIES_PARQUET }]);
+    await expect(page.getByTestId('dp-tables')).toContainText('galleries_2');
+    await expect(page.getByTestId('dp-results')).toContainText('Kids Science', { timeout: 30_000 });
+    await chooseFiles(page, page.getByTestId('dp-open'), [{ name: 'cities.arrow', mimeType: 'application/octet-stream', buffer: CITIES_ARROW }]);
+    await expect(page.getByTestId('dp-results')).toContainText('Hubballi', { timeout: 30_000 });
+    const parquet = await download(page, () => page.getByTestId('dp-parquet').click());
+    expect(parquet.subarray(0, 4).toString()).toBe('PAR1');
+    await expect(tool).toHaveAttribute('data-state', 'done');
+  },
+  'markdown-editor': async (page, tool) => {
+    await page.getByTestId('md-sample').click();
+    const preview = page.getByTestId('md-preview');
+    await expect(preview.locator('h1')).toHaveText('Engine Hall visitor guide');
+    await expect(preview.locator('img.md-math').first()).toBeVisible({ timeout: 30_000 });
+    await expect(preview.locator('table')).toContainText('Diesel');
+    await expect(page.getByTestId('md-status')).toContainText('words');
+    const html = await download(page, () => page.getByTestId('md-html').click());
+    expect(html.toString()).toContain('<!DOCTYPE html>');
+    expect(html.toString()).toContain('data:image/svg+xml;base64,');
+    const docx = await download(page, () => page.getByTestId('md-docx').click());
+    expect(docx.subarray(0, 2).toString()).toBe('PK');
+    const epub = await download(page, () => page.getByTestId('md-epub').click());
+    expect(epub.subarray(30, 58).toString()).toBe('mimetypeapplication/epub+zip');
+    await page
+      .getByTestId('md-picture')
+      .setInputFiles([{ name: 'dot.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') }]);
+    await expect(page.getByTestId('md-editor').locator('.cm-data-chip')).toContainText('picture png');
+    await expect(preview.locator('img[alt="dot"]')).toBeVisible();
+    await expect(tool).toHaveAttribute('data-state', 'done');
+  },
+  'equation-editor': async (page, tool) => {
+    await expect(page.getByTestId('eq-preview').locator('img')).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('eq-formulas').selectOption({ label: 'Photosynthesis' });
+    await expect(page.getByTestId('eq-preview').locator('img')).toBeVisible();
+    await page.getByRole('tab', { name: 'Greek' }).click();
+    await page.getByRole('button', { name: 'λ, lambda', exact: true }).click();
+    expect(await editorText(page.getByTestId('eq-tex'))).toContain('\\lambda');
+    const svg = await download(page, () => page.getByTestId('eq-save-svg').click());
+    expect(svg.toString()).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg"/);
+    await page.getByTestId('eq-tex').locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('\\frac{a}{');
+    await expect(page.getByTestId('eq-error')).toContainText('Missing close brace');
+    await expect(tool).toHaveAttribute('data-state', 'idle');
+  },
+  'mail-merge': async (page, tool) => {
+    await expect(page.getByTestId('mm-preview').locator('img')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('mm-record')).toContainText('Row 1 of 5');
+    await expect(page.getByTestId('mm-pages')).toContainText('5 cards on 5 pages');
+    const pdf = await PDFDocument.load(await download(page, () => page.getByTestId('mm-save').click()));
+    expect(pdf.getPageCount()).toBe(5);
+    const zip = await download(page, () => page.getByTestId('mm-zip').click());
+    expect(zip.subarray(0, 2).toString()).toBe('PK');
+    await page.getByTestId('mm-preset').selectOption('l7160');
+    await expect(page.getByTestId('mm-pages')).toContainText('5 cards on 1 page');
+    await page.getByRole('button', { name: /^Text: \{\{Name\}\}/ }).click();
+    await expect(page.getByTestId('mm-props')).toBeVisible();
+    await page.getByTestId('mm-text').fill('{{Name|upper}} {{Missing}}');
+    await expect(page.getByTestId('mm-missing')).toContainText('Missing');
+    await page
+      .getByTestId('mm-paste-use')
+      .waitFor({ state: 'detached' })
+      .catch(() => {});
+    await page.getByRole('button', { name: 'Paste rows' }).click();
+    await page.getByTestId('mm-paste').fill('Name\tAddress\tCity\tPIN\nAsha\t1 Kasturba Road\tBengaluru\t560001');
+    await page.getByTestId('mm-paste-use').click();
+    await expect(page.getByTestId('mm-record')).toContainText('Row 1 of 1');
+    const labels = await PDFDocument.load(await download(page, () => page.getByTestId('mm-save').click()));
+    expect(Math.round(labels.getPage(0).getHeight())).toBe(842);
+    await expect(tool).toHaveAttribute('data-state', 'done');
+  },
+  'web-to-pdf': async (page) => {
+    await page.getByTestId('wp-urls').fill('https://example.org/');
+    await expect(page.getByTestId('wp-save')).toBeDisabled();
+    await desktopGate(page);
+  },
+  notes: async (page, tool) => {
+    await expect(page.getByTestId('nt-saved')).toHaveText('Saved', { timeout: 15_000 });
+    await page.getByTestId('nt-title').fill('Engine Hall survey');
+    await page.getByTestId('nt-text').first().click();
+    await page.keyboard.type('Labels to replace in the steam gallery.');
+    // Pasting a picture and a video straight from the clipboard keeps copies in the note.
+    const paste = (name: string, type: string, b64: string) =>
+      page.evaluate(
+        ([n, t, data]) => {
+          const bytes = Uint8Array.from(atob(data as string), (c) => c.charCodeAt(0));
+          const transfer = new DataTransfer();
+          transfer.items.add(new File([bytes], n as string, { type: t as string }));
+          document.querySelector('[data-testid="nt-text"]')?.dispatchEvent(new ClipboardEvent('paste', { clipboardData: transfer, bubbles: true, cancelable: true }));
+        },
+        [name, type, b64],
+      );
+    await paste('label.png', 'image/png', SAMPLE_PNG.toString('base64'));
+    await expect(page.getByTestId('nt-file-image').locator('img')).toBeVisible({ timeout: 15_000 });
+    await paste('walkthrough.mp4', 'video/mp4', Buffer.from('not really a video').toString('base64'));
+    await expect(page.getByTestId('nt-file-video').locator('video')).toBeAttached();
+    await page.getByTestId('nt-files').setInputFiles([await pdfFile('floor-plan.pdf', 2)]);
+    await expect(page.getByTestId('nt-file-pdf').locator('img')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('nt-file-pdf')).toContainText('Page 1 of 2');
+    await page.getByTestId('nt-add-checklist').click();
+    await page.getByTestId('nt-check-text').first().fill('Order acrylic sheet');
+    await expect(page.getByTestId('nt-saved')).toHaveText('Saved', { timeout: 15_000 });
+    const bnote = await download(page, () => page.getByTestId('nt-export').selectOption('bnote'));
+    const entries = unzipSync(new Uint8Array(bnote));
+    const manifest = JSON.parse(strFromU8(entries['note.json'] as Uint8Array));
+    expect(manifest.note.title).toBe('Engine Hall survey');
+    expect(Object.keys(entries).filter((k) => k.startsWith('files/'))).toHaveLength(3);
+    // Kept between sessions, files included.
+    await page.reload();
+    await expect(page.getByTestId('nt-title')).toHaveValue('Engine Hall survey', { timeout: 15_000 });
+    await expect(page.getByTestId('nt-file-image').locator('img')).toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('nt-import').setInputFiles([{ name: 'survey.bnote', mimeType: 'application/vnd.benchtop.note+zip', buffer: bnote }]);
+    await expect(page.getByTestId('nt-items').locator('li')).toHaveCount(2);
+    await page.getByTestId('nt-search').fill('acrylic');
+    await expect(page.getByTestId('nt-items').locator('li')).toHaveCount(2);
+    await page.getByTestId('nt-search').fill('no such words');
+    await expect(page.getByTestId('nt-items')).toContainText('No note contains');
+    await expect(tool).toHaveAttribute('data-state', 'done');
+  },
+  'website-copier': async (page) => {
+    await page.getByTestId('wc-url').fill('https://example.org/');
+    await expect(page.getByTestId('wc-start')).toBeDisabled();
+    await desktopGate(page);
+  },
+  'bulk-rename': async (page) => desktopGate(page),
+  'duplicate-finder': async (page) => desktopGate(page),
+  'disk-usage': async (page) => desktopGate(page),
+  'folder-compare': async (page) => desktopGate(page),
+  'log-viewer': async (page, tool) => {
+    await page.getByTestId('lv-sample').click();
+    await expect(page.getByTestId('lv-info')).toContainText('13 lines');
+    await expect(page.getByTestId('lv-lines')).toContainText('Ticketing service starting');
+    await page.getByTestId('lv-level-info').click();
+    await page.getByTestId('lv-level-debug').click();
+    await page.getByTestId('lv-level-other').click();
+    await expect(page.getByTestId('lv-info')).toContainText('4 shown');
+    await page.getByTestId('lv-filter').fill('kiosk');
+    await expect(page.getByTestId('lv-info')).toContainText('1 shown');
+    await page.getByTestId('lv-lines').getByText('Kiosk 3 lost connection').click();
+    await expect(page.getByTestId('lv-detail')).toContainText('"kiosk": 3');
+    await expect(tool).toHaveAttribute('data-state', 'done');
+  },
+  'patch-viewer': async (page) => {
+    await expect(page.getByTestId('pv-stats')).toContainText('2 files');
+    await expect(page.getByTestId('pv-files')).toContainText('kiosk/queue.py');
+    await expect(page.getByTestId('pv-diff').getByTestId('diff')).toContainText('seats left');
+    await page.getByTestId('pv-files').getByText('kiosk/README.md').click();
+    await expect(page.getByTestId('pv-diff')).toContainText('every 30 seconds');
+  },
+  'mock-server': async (page) => {
+    await expect(page.getByTestId('mock-routes')).toContainText('/api/shows/:id');
+    await expect(page.getByTestId('mock-start')).toBeDisabled();
+    await desktopGate(page);
+  },
+  'websocket-client': async (page) => {
+    await expect(page.getByTestId('ws-connect')).toBeDisabled();
+    await desktopGate(page);
+  },
+  'grpc-client': async (page) => {
+    await expect(page.getByTestId('grpc-reflect')).toBeDisabled();
+    await desktopGate(page);
+  },
+  'periodic-table': async (page) => {
+    await expect(page.getByTestId('pt-detail')).toContainText('Carbon');
+    await page.getByTestId('pt-find').fill('gold');
+    await page.getByTestId('pt-find').press('Enter');
+    await expect(page.getByTestId('pt-detail')).toContainText('[Xe]6s1 4f14 5d10');
+    await expect(page.getByTestId('pt-detail')).toContainText('197Au');
+    await page.getByTestId('pt-colour').selectOption('state');
+    await page.getByTestId('pt-kelvin').fill('300');
+    await expect(page.getByTestId('pt-grid').getByRole('button', { name: 'Hg', exact: false }).first()).toHaveClass(/pt-liquid/);
+    await page.getByTestId('pt-colour').selectOption('electronegativity');
+    await expect(page.getByTestId('pt-legend')).toContainText('Electronegativity');
+  },
+  'molar-mass': async (page) => {
+    await expect(page.getByTestId('mmc-result')).toContainText('249.6');
+    await page.getByTestId('mmc-formula').fill('C6H12O6');
+    await expect(page.getByTestId('mmc-result')).toContainText('180.15');
+    await expect(page.getByTestId('mmc-table')).toContainText('53.28 %');
+  },
+  'sun-moon': async (page) => {
+    await page.getByTestId('sky-date').fill('2026-06-21');
+    await expect(page.getByTestId('sky-sun')).toContainText('Sunrise');
+    await expect(page.getByTestId('sky-sun')).toContainText(/05:5\d/);
+    await expect(page.getByTestId('sky-twilight')).toContainText('Astronomical');
+    await expect(page.getByTestId('sky-moon')).toContainText('% lit');
+    await page.getByTestId('sky-place').selectOption('Tromsø');
+    await page.getByTestId('sky-date').fill('2026-12-21');
+    await expect(page.getByTestId('sky-sun')).toContainText('Sun down all day');
+  },
+  'star-chart': async (page) => {
+    await expect(page.getByTestId('tool')).toHaveAttribute('data-state', 'done');
+    await page.getByTestId('sky-when').fill('2026-11-23T21:00');
+    await expect(page.getByTestId('sky-bodies')).toBeVisible();
+    await expect(page.getByTestId('tool')).toContainText('stars to magnitude');
+    const box = await page.getByTestId('sky-canvas').boundingBox();
+    expect(box?.width ?? 0).toBeGreaterThan(300);
+  },
+  'molecule-viewer': async (page) => {
+    await expect(page.getByTestId('mol-facts')).toContainText('C8H10N4O2', { timeout: 30_000 });
+    await expect(page.getByTestId('mol-facts')).toContainText('194.19');
+    await expect(page.getByTestId('mol-2d')).toBeVisible();
+    await expect(page.getByTestId('mol-view').locator('canvas')).toHaveCount(1);
+    await page.getByTestId('mol-smiles').fill('CCO');
+    await page.getByTestId('mol-build').click();
+    await expect(page.getByTestId('mol-facts')).toContainText('C2H6O');
+    await chooseFiles(page, page.getByTestId('tool').getByRole('button', { name: 'Open a file' }), [
+      { name: 'water.xyz', mimeType: 'text/plain', buffer: Buffer.from('3\nwater\nO 0 0 0\nH 0.757 0.586 0\nH -0.757 0.586 0\n') },
+    ]);
+    await expect(page.getByTestId('mol-facts')).toContainText('H2O');
+    await expect(page.getByTestId('mol-facts')).toContainText('3, 2');
+  },
+  'map-viewer': async (page) => {
+    await page.getByTestId('geo-sample').click();
+    await expect(page.getByTestId('geo-facts')).toContainText('Points, lines, areas');
+    await expect(page.getByTestId('geo-facts')).toContainText('3, 1, 1');
+    await page.getByTestId('geo-list').getByRole('button', { name: 'Sample loop (made up)' }).click();
+    await expect(page.getByTestId('geo-picked')).toContainText('Climb');
+    await expect(page.getByTestId('geo-profile')).toBeVisible();
+    const gpx = await download(page, () => page.getByTestId('geo-save-gpx').click());
+    expect(gpx.toString()).toContain('<trkpt');
+    const kmlText =
+      '<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>Museum</name><Point><coordinates>77.5964,12.9752,0</coordinates></Point></Placemark></Document></kml>';
+    await chooseFiles(page, page.getByTestId('geo-open'), [{ name: 'place.kml', mimeType: 'application/vnd.google-earth.kml+xml', buffer: Buffer.from(kmlText) }]);
+    await expect(page.getByTestId('geo-list')).toContainText('Museum');
+    await expect(page.getByTestId('geo-map').locator('circle')).toHaveCount(1);
+  },
+  'sheet-music': async (page) => {
+    const score = page.getByTestId('sm-score');
+    await expect(score.locator('svg').first()).toBeVisible();
+    await expect(score).toContainText('Ode to Joy');
+    await page.getByTestId('sm-template').selectOption('Blank page');
+    await expect(score).toContainText('Untitled');
+    // Quarter notes at L:1/8 are written with a 2.
+    await page.getByTestId('sm-abc').locator('.cm-content').click();
+    await page.keyboard.press('Control+End');
+    await page.getByTestId('sm-keys').getByRole('button', { name: 'C4', exact: true }).click();
+    await page.getByTestId('sm-keys').getByRole('button', { name: 'E4', exact: true }).click();
+    await expect(page.getByTestId('sm-abc')).toContainText('C2 E2');
+    await expect(score.locator('.abcjs-note')).toHaveCount(2);
+    await page.getByTestId('sm-up').click();
+    await expect(page.getByTestId('sm-abc')).toContainText('K:');
+    const midi = await download(page, () => page.getByTestId('sm-save-midi').click());
+    expect(midi.subarray(0, 4).toString('latin1')).toBe('MThd');
+    const abc = await download(page, () => page.getByTestId('sm-save-abc').click());
+    expect(abc.toString()).toContain('T:Untitled');
+    const wav = await download(page, () => page.getByTestId('sm-save-wav').click());
+    expect(wav.subarray(0, 4).toString('latin1')).toBe('RIFF');
+    expect(wav.length).toBeGreaterThan(44_100);
+    await page.getByTestId('sm-play').click();
+    await expect(page.getByTestId('sm-stop')).toBeVisible();
+    await page.getByTestId('sm-stop').click();
+  },
+  'circuit-simulator': async (page) => {
+    const canvas = page.getByTestId('cs-canvas');
+    const status = page.getByTestId('cs-status');
+    await expect(canvas.locator('[data-part=led]')).toHaveCount(1);
+    await page.getByTestId('cs-run').click();
+    await expect(status).toContainText('Running');
+    await canvas.locator('[data-part=led]').click();
+    await expect(page.getByTestId('cs-readings')).toContainText('mA');
+    // An Arduino Uno sketch talks over the serial monitor.
+    await page.getByTestId('cs-examples').selectOption('uno-serial');
+    await page.getByTestId('cs-run').click();
+    const log = page.getByTestId('cs-serial-log');
+    await expect(log).toContainText('Type 1 or 0', { timeout: 15_000 });
+    await page.getByTestId('cs-serial-input').fill('1');
+    await page.getByTestId('cs-serial-input').press('Enter');
+    await expect(log).toContainText('LED on', { timeout: 15_000 });
+    await page.getByTestId('cs-reset').click();
+    // Placing a part, and undo.
+    const resistors = await canvas.locator('[data-part=resistor]').count();
+    await page.getByTestId('cs-add-resistor').click();
+    await canvas.click({ position: { x: 30, y: 30 } });
+    await expect(canvas.locator('[data-part=resistor]')).toHaveCount(resistors + 1);
+    await canvas.press('Control+z');
+    await expect(canvas.locator('[data-part=resistor]')).toHaveCount(resistors);
+    // The ESP32 runs in the desktop app's emulator.
+    await page.getByTestId('cs-examples').selectOption('esp32-demo');
+    await expect(status).toContainText('desktop app');
+    await page.getByTestId('cs-examples').selectOption('led');
+    await expect(status).toContainText('Editing');
+  },
+  'filter-designer': async (page) => {
+    await expect(page.getByTestId('flt-title')).toHaveText('4th-order Butterworth low-pass, 1 kHz');
+    await expect(page.getByTestId('flt-facts')).toContainText('−3 dB at');
+    await expect(page.getByTestId('flt-facts')).toContainText('1 kHz');
+    await expect(page.getByTestId('flt-stages')).toContainText('Stage 2: Sallen-Key');
+    await expect(page.getByTestId('flt-plot').locator('polyline')).toHaveCount(1);
+    await page.getByRole('radio', { name: 'Digital IIR' }).click();
+    await expect(page.getByTestId('flt-coeffs')).toContainText('b0');
+    await expect(page.getByTestId('tool').locator('.cm-content')).toContainText('filter_sample');
+    await page.getByRole('radio', { name: 'Band-pass' }).click();
+    await page.getByTestId('flt-f1').fill('300');
+    await page.getByTestId('flt-f2').fill('3.4k');
+    await expect(page.getByTestId('flt-title')).toContainText('band-pass, 300 Hz to 3.4 kHz');
+    await page.getByTestId('flt-fs').fill('5k');
+    await expect(page.getByTestId('tool')).toContainText('more than twice the highest frequency');
+  },
+  'smith-chart': async (page) => {
+    await expect(page.getByTestId('smith-facts')).toContainText('2.872');
+    await expect(page.getByTestId('smith-facts')).toContainText('0.4834');
+    await expect(page.getByTestId('smith-matches')).toContainText('From the load');
+    await expect(page.getByTestId('smith-line')).toContainText('After 0.1 λ');
+    await page.getByTestId('smith-r').fill('50');
+    await page.getByTestId('smith-x').fill('0');
+    await expect(page.getByTestId('smith-matches')).toContainText('already matches');
+  },
+  'lan-scanner': async (page) => {
+    await expect(page.getByTestId('lan-scan')).toBeDisabled();
+    await expect(page.getByTestId('lan-table')).toContainText('Devices appear here');
+    await desktopGate(page);
+  },
+  'wake-on-lan': async (page) => {
+    await desktopGate(page);
+    await page.getByTestId('wol-mac').fill('3c-52-82-1a-2b');
+    await expect(page.getByTestId('tool')).toContainText('12 hex digits');
+    await expect(page.getByTestId('wol-save')).toBeDisabled();
+    await page.getByTestId('wol-name').fill('Gallery 2 kiosk');
+    await page.getByTestId('wol-mac').fill('3c-52-82-1a-2b-3c');
+    await page.getByTestId('wol-save').click();
+    await expect(page.getByTestId('wol-list')).toContainText('Gallery 2 kiosk');
+    await expect(page.getByTestId('wol-list')).toContainText('3C:52:82:1A:2B:3C');
+    // Waking needs the desktop app.
+    await expect(page.getByTestId('wol-wake')).toBeDisabled();
+  },
+  'lan-speed-test': async (page) => {
+    await desktopGate(page);
+    await expect(page.getByTestId('speed-serve')).toBeDisabled();
+    await page.getByRole('radio', { name: 'Test the link to another computer' }).click();
+    await page.getByTestId('speed-address').fill('192.168.1.20');
+    await expect(page.getByTestId('speed-test')).toBeDisabled();
+  },
+  'lan-file-share': async (page) => {
+    await desktopGate(page);
+    await expect(page.getByTestId('share-folder')).toBeDisabled();
+    await expect(page.getByTestId('share-start')).toBeDisabled();
+  },
+  'parquet-avro-viewer': async (page) => {
+    await chooseFiles(page, page.getByTestId('cv-open'), [{ name: 'galleries.parquet', mimeType: 'application/octet-stream', buffer: GALLERIES_PARQUET }]);
+    await expect(page.getByTestId('cv-facts')).toContainText('Rows');
+    await expect(page.getByTestId('cv-schema')).toContainText('visitors');
+    await expect(page.getByTestId('cv-rows')).toContainText('Kids Science');
+  },
+  'scientific-calculator': async (page) => {
+    await page.getByTestId('sci-input').fill('2^10 + sin(30)');
+    await page.getByTestId('sci-input').press('Enter');
+    await expect(page.getByTestId('sci-result')).toHaveText('= 1024.5');
+    await page.getByTestId('sci-angle').click();
+    await page.getByTestId('sci-input').fill('cos(pi)');
+    await expect(page.getByTestId('sci-result')).toHaveText('= -1');
+  },
+  'graphing-calculator': async (page) => {
+    await page.getByTestId('gr-fn-0').fill('x^2 - 4');
+    await expect(page.getByTestId('gr-roots')).toContainText('x = -2');
+    await expect(page.getByTestId('gr-roots')).toContainText('x = 2');
+  },
+  'palette-library': async (page) => {
+    await page.getByTestId('pl-search').fill('viridis');
+    await page.getByTestId('pl-viridis').click();
+    await expect(page.getByTestId('pl-detail')).toContainText('#fde725');
+  },
+  scratchpad: async (page) => {
+    await page.getByTestId('sp-new').click();
+    await page.getByTestId('sp-text').fill('Call the lighting vendor on Monday');
+    await expect(page.getByTestId('sp-count')).toContainText('6 words');
+  },
+  'tailwind-cheatsheet': async (page) => {
+    await page.getByTestId('tw-search').fill('rounded-lg');
+    await expect(page.getByTestId('tw-table')).toContainText('border-radius: 0.5rem;');
+  },
+  'material-theme': async (page) => {
+    await expect(page.getByTestId('mt-preview').locator('.mt-phone')).toHaveCount(2);
+    await page.getByTestId('mt-seed').fill('#6750A4');
+    await expect(page.getByRole('button', { name: 'Copy Primary #65558F' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Copy Primary container #E9DDFF' })).toBeVisible();
+    await page.getByText('Custom colours (0)').click();
+    await page.getByTestId('mt-add-custom').click();
+    const zip = unzipSync(new Uint8Array(await download(page, () => page.getByRole('button', { name: 'All files (ZIP)' }).click())));
+    const colors = Buffer.from(zip['android/app/src/main/res/values/colors.xml'] as Uint8Array).toString('utf8');
+    expect(colors).toContain('<color name="md_theme_light_primary">#65558F</color>');
+    expect(colors).toContain('<color name="md_theme_dark_surface">#141218</color>');
+    expect(colors).toContain('md_custom_light_success');
+    expect(Object.keys(zip)).toContain('flutter/lib/theme/color_schemes.dart');
+  },
   ...Object.fromEntries(
     CALC_CATEGORIES.map((category) => [
       `calc-${category.id}`,
@@ -710,6 +1273,67 @@ test('jq runs in the worker without network access', async ({ page }) => {
   await expect.poll(() => editorText(page.getByTestId('output-editor'))).toContain('"name": "Engine Hall"');
   await page.locator('#json-query-jq').fill('.galleries | map(.floor) | add');
   await expect.poll(() => editorText(page.getByTestId('output-editor'))).toBe('1');
+  expect(problems).toEqual([]);
+});
+
+const SANDBOX_PROBE = `benchtop.register({
+  name: 'Sandbox probe',
+  run(input) {
+    const reach = ['fetch', 'XMLHttpRequest', 'WebSocket', 'EventSource', 'indexedDB', 'caches', 'importScripts', 'BroadcastChannel', 'Worker'].filter((name) => typeof self[name] !== 'undefined');
+    const storage = typeof navigator.storage !== 'undefined';
+    return input.toUpperCase() + (reach.length || storage ? ' REACHABLE ' + reach.join(',') + (storage ? ' storage' : '') : ' SEALED');
+  },
+});
+`;
+
+test('plugins run sealed off from the network and storage, and work as pipeline steps', async ({ page }) => {
+  const problems = watch(page);
+  await openTool(page, 'plugins');
+  await chooseFiles(page, page.getByRole('button', { name: 'Add from file…' }), [{ name: 'probe.js', mimeType: 'text/javascript', buffer: Buffer.from(SANDBOX_PROBE) }]);
+  await expect(page.getByTestId('plugin-select').locator('option:checked')).toHaveText('Sandbox probe');
+  await page.getByTestId('plugin-input').locator('.cm-content').click();
+  await page.keyboard.type('abc');
+  await page.getByTestId('plugin-run').click();
+  await expect.poll(() => editorText(page.getByTestId('plugin-output'))).toBe('ABC SEALED');
+
+  await openTool(page, 'file-pipeline');
+  await page.getByTestId('fp-tool').first().selectOption({ label: 'Sandbox probe' });
+  await chooseFiles(page, page.getByTestId('fp-drop'), [{ name: 'note.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') }]);
+  await page.getByTestId('fp-run').click();
+  await expect.poll(() => editorText(page.getByTestId('fp-preview'))).toBe('HELLO SEALED');
+  expect(problems).toEqual([]);
+});
+
+test('the OCR tool takes a screenshot pasted from the clipboard', async ({ page }) => {
+  const problems = watch(page);
+  await openTool(page, 'ocr');
+  await page.evaluate(
+    async (bytes) => {
+      const data = new DataTransfer();
+      data.items.add(new File([new Uint8Array(bytes)], 'image.png', { type: 'image/png' }));
+      document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+    },
+    [...SAMPLE_PNG],
+  );
+  await expect(page.getByTestId('ocr-files')).toContainText(/screenshot-\d{6}\.png/);
+  expect(problems).toEqual([]);
+});
+
+test('the config generator groups its files and shows only the fields a file uses', async ({ page }) => {
+  const problems = watch(page);
+  const tool = await openTool(page, 'config-generator');
+  const select = page.locator('#config-generator-template');
+  await expect(select.locator('optgroup[label="Kubernetes"] option')).not.toHaveCount(0);
+  await expect(select.locator('optgroup')).toHaveCount(9);
+  await select.selectOption('k8s-hpa');
+  await expect(tool).toHaveAttribute('data-state', /^(idle|done)$/);
+  await expect(page.locator('#config-generator-replicas')).toBeVisible();
+  await expect(page.locator('#config-generator-node')).toHaveCount(0);
+  await page.locator('#config-generator-replicas').fill('3');
+  await expect.poll(() => editorText(page.getByTestId('output-editor'))).toContain('maxReplicas: 15');
+  await select.selectOption('conn-postgres');
+  await page.locator('#config-generator-dbuser').fill('curator');
+  await expect.poll(() => editorText(page.getByTestId('output-editor'))).toContain('postgresql://curator:');
   expect(problems).toEqual([]);
 });
 

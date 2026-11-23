@@ -29,23 +29,48 @@ const SLOW = new Set(['Bombe', 'Multiple Bombe']);
 const waitFor = (c: Case) => (SLOW.has(c.recipe[0]?.op ?? '') ? 180_000 : 60_000);
 
 /** What the recipe produced: its output, or the error it stopped with. */
+/**
+ * Reads an element that may disappear between counting and reading it (the output editor makes way
+ * for a picture or an error when a bake finishes); a locator would otherwise wait for it forever.
+ */
+const briefly = { timeout: 1000 } as const;
+
 async function result(page: Page): Promise<string> {
   const error = page.getByTestId('recipe-error');
-  if (await error.count()) return `ERROR: ${((await error.first().textContent()) ?? '').trim()}`;
+  if (await error.count()) {
+    const message = await error
+      .first()
+      .textContent(briefly)
+      .catch(() => null);
+    if (message !== null) return `ERROR: ${message.trim()}`;
+  }
   // The editor's own text, as rendered lines show control characters as symbols.
   const content = page.getByTestId('recipe-output').locator('.cm-content');
   const text = !(await content.count())
     ? null
-    : await content.evaluate((el) => {
-        // CodeMirror links its DOM to its view (EditorView.findFromDOM): cmTile in current versions, cmView before.
-        type Doc = { state: { doc: { toString(): string } } };
-        const node = el as unknown as { cmTile?: { root?: { view?: Doc } }; cmView?: { rootView?: { view?: Doc } } };
-        return (node.cmTile?.root?.view ?? node.cmView?.rootView?.view)?.state.doc.toString() ?? null;
-      });
+    : await content
+        .first()
+        .evaluate(
+          (el) => {
+            // CodeMirror links its DOM to its view (EditorView.findFromDOM): cmTile in current versions, cmView before.
+            type Doc = { state: { doc: { toString(): string } } };
+            const node = el as unknown as { cmTile?: { root?: { view?: Doc } }; cmView?: { rootView?: { view?: Doc } } };
+            return (node.cmTile?.root?.view ?? node.cmView?.rootView?.view)?.state.doc.toString() ?? null;
+          },
+          undefined,
+          briefly,
+        )
+        .catch(() => null);
   if (text !== null) return text;
   // Outputs shown as a picture (charts, maps) keep their text in a caption.
   const caption = page.getByTestId('recipe-output-text');
-  if (await caption.count()) return (await caption.textContent()) ?? '';
+  if (await caption.count())
+    return (
+      (await caption
+        .first()
+        .textContent(briefly)
+        .catch(() => null)) ?? ''
+    );
   return (await page.getByTestId('recipe-output').locator('.cm-line').allTextContents()).join('\n').replace(NBSP, ' ');
 }
 
@@ -77,7 +102,15 @@ async function run(page: Page, c: Case) {
     // CyberChef's regular expressions may describe the presented HTML (Bombe's table) rather than the data.
     const pattern = new RegExp((c.match as { source: string }).source, (c.match as { flags: string }).flags);
     const preview = page.getByTestId('preview-html');
-    const both = async () => `${await result(page)}\n${(await preview.count()) ? await preview.first().innerHTML() : ''}`;
+    const both = async () =>
+      `${await result(page)}\n${
+        (await preview.count())
+          ? await preview
+              .first()
+              .innerHTML(briefly)
+              .catch(() => '')
+          : ''
+      }`;
     await expect.poll(both, { message: c.name, timeout: waitFor(c) }).toMatch(pattern);
     return;
   }

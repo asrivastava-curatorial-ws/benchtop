@@ -92,7 +92,7 @@ impl Store {
         fs::create_dir_all(&partial_dir)
             .map_err(|error| format!("Cannot create {}: {error}", partial_dir.display()))?;
         let partial = partial_dir.join(item.download.file);
-        let mut last_error = String::from("no download address");
+        let mut failures = Vec::new();
         for url in item.download.urls {
             match self.fetch(item, url, &partial, client, report).await {
                 Ok(()) => {
@@ -104,11 +104,11 @@ impl Store {
                     let _ = fs::remove_file(&partial);
                     return Err("Download cancelled.".into());
                 }
-                Err(error) => last_error = error,
+                Err(error) => failures.push(error),
             }
         }
         let _ = fs::remove_file(&partial);
-        Err(last_error)
+        Err(explain_failures(item.name, &failures))
     }
 
     async fn fetch(
@@ -121,16 +121,20 @@ impl Store {
     ) -> Result<(), String> {
         use tokio::io::AsyncWriteExt;
         let total = item.download.size;
+        let source = source_name(url);
         let mut response = client
             .get(url)
             .send()
             .await
-            .map_err(|error| format!("Could not reach {url}: {error}"))?;
+            .map_err(|error| format!("{source} could not be reached ({error})"))?;
         if !response.status().is_success() {
-            return Err(format!(
-                "{url} answered HTTP {}",
-                response.status().as_u16()
-            ));
+            let code = response.status().as_u16();
+            return Err(if url.starts_with(catalog::MIRROR) && code == 404 {
+                "the Benchtop mirror (the models-v1 release on GitHub) does not have this file yet"
+                    .into()
+            } else {
+                format!("{source} answered HTTP {code}")
+            });
         }
         let mut file = tokio::fs::File::create(partial)
             .await
@@ -141,7 +145,7 @@ impl Store {
         while let Some(chunk) = response
             .chunk()
             .await
-            .map_err(|error| format!("The download stopped: {error}"))?
+            .map_err(|error| format!("the download from {source} stopped ({error})"))?
         {
             if self.take_cancel(item.id) {
                 return Err("cancelled".into());
@@ -149,7 +153,7 @@ impl Store {
             received += chunk.len() as u64;
             if received > total {
                 return Err(format!(
-                    "{url} sent more data than expected; the file may have changed."
+                    "{source} sent more data than expected, so its file has probably changed"
                 ));
             }
             hasher.update(&chunk);
@@ -174,7 +178,7 @@ impl Store {
         let digest = hex(&hasher.finalize());
         if received != total || digest != item.download.sha256 {
             return Err(format!(
-                "The file from {url} does not match the expected checksum, so it was discarded."
+                "the file from {source} did not match the expected checksum and was discarded"
             ));
         }
         Ok(())
@@ -349,8 +353,77 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
+/// A short name for where a download comes from: "github.com/microsoft/onnxruntime",
+/// "huggingface.co" or "the Benchtop mirror".
+fn source_name(url: &str) -> String {
+    if url.starts_with(catalog::MIRROR) {
+        return "the Benchtop mirror".into();
+    }
+    let rest = url
+        .trim_start_matches("https://")
+        .trim_start_matches("http://");
+    let mut parts = rest.split('/');
+    let host = parts.next().unwrap_or(rest);
+    match (host, parts.next(), parts.next()) {
+        ("github.com", Some(owner), Some(repo)) => format!("github.com/{owner}/{repo}"),
+        _ => host.to_string(),
+    }
+}
+
+/// One message naming every source that was tried and what went wrong with each.
+fn explain_failures(name: &str, failures: &[String]) -> String {
+    if failures.is_empty() {
+        return format!("{name} has no download address.");
+    }
+    let mut text = format!("Could not download {name}: ");
+    text.push_str(&failures.join("; "));
+    text.push('.');
+    if failures.iter().all(|f| f.contains("could not be reached")) {
+        text.push_str(" Check the internet connection, or the proxy settings of this computer.");
+    } else if failures
+        .iter()
+        .any(|f| f.contains("does not have this file yet"))
+    {
+        text.push_str(" You can also download the file yourself and use Import from a folder in Settings → AI models.");
+    }
+    text
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn failures_name_every_source() {
+        assert_eq!(
+            super::source_name(
+                "https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/x.tgz"
+            ),
+            "github.com/microsoft/onnxruntime"
+        );
+        assert_eq!(
+            super::source_name("https://huggingface.co/a/b/resolve/main/m.onnx"),
+            "huggingface.co"
+        );
+        assert_eq!(
+            super::source_name(&format!("{}m.onnx", catalog::MIRROR)),
+            "the Benchtop mirror"
+        );
+        let text = super::explain_failures(
+            "ONNX Runtime",
+            &[
+                "github.com/microsoft/onnxruntime answered HTTP 404".into(),
+                "the Benchtop mirror (the models-v1 release on GitHub) does not have this file yet"
+                    .into(),
+            ],
+        );
+        assert!(text.starts_with("Could not download ONNX Runtime: github.com/microsoft/onnxruntime answered HTTP 404; the Benchtop mirror"));
+        assert!(text.contains("Import from a folder"));
+        let offline = super::explain_failures(
+            "u2netp",
+            &["github.com/a/b could not be reached (dns error)".into()],
+        );
+        assert!(offline.ends_with("proxy settings of this computer."));
+    }
+
     use super::*;
     use crate::ai::catalog::{Download, Kind};
 

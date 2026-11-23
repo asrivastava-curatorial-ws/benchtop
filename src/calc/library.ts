@@ -15,6 +15,7 @@ import { HEAT } from './library/heat';
 import { MATH } from './library/math';
 import { OTHER } from './library/other';
 import { PHYSICS } from './library/physics';
+import { POPULAR } from './library/popular';
 import { SPORTS } from './library/sports';
 import { STATISTICS } from './library/statistics';
 import type { CalcCategory, Calculator } from './types';
@@ -38,6 +39,7 @@ export const CALCULATORS: readonly Calculator[] = [
   ...HEAT,
   ...ACOUSTICS,
   ...OTHER,
+  ...POPULAR,
 ];
 
 export const findCalculator = (id: string): Calculator | undefined => CALCULATORS.find((c) => c.id === id);

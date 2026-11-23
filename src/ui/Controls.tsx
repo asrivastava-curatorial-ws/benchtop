@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { alphaOf, hexOf, isColor, withAlpha } from '../lib/color';
 import { choicesOf, newListItem } from '../tools/options';
-import type { ColorOption, ListOption, NumberOption, OptionDef, SelectOption, TextOption, Values } from '../tools/types';
+import type { Choice, ColorOption, ListOption, NumberOption, OptionDef, SelectOption, TextOption, Values } from '../tools/types';
 import { Icon } from './icons';
 
 interface FormProps {
@@ -64,13 +64,30 @@ export function ControlsForm({ defs, values, onChange, layout, idPrefix }: FormP
 }
 
 function SelectControl({ id, def, value, onChange }: { id: string; def: SelectOption; value: string; onChange: (value: string) => void }) {
+  const choices = choicesOf(def);
+  const option = (choice: Choice) => (
+    <option key={choice.value} value={choice.value}>
+      {choice.label}
+    </option>
+  );
+  // Consecutive choices with the same group become one <optgroup>.
+  const groups: { name: string | undefined; items: Choice[] }[] = [];
+  for (const choice of choices) {
+    const last = groups[groups.length - 1];
+    if (last && last.name === choice.group) last.items.push(choice);
+    else groups.push({ name: choice.group, items: [choice] });
+  }
   return (
     <select id={id} class="input" value={value} title={def.help} onChange={(event) => onChange(event.currentTarget.value)}>
-      {choicesOf(def).map((choice) => (
-        <option key={choice.value} value={choice.value}>
-          {choice.label}
-        </option>
-      ))}
+      {groups.map((group, index) =>
+        group.name ? (
+          <optgroup key={`${group.name}-${index}`} label={group.name}>
+            {group.items.map(option)}
+          </optgroup>
+        ) : (
+          group.items.map(option)
+        ),
+      )}
     </select>
   );
 }

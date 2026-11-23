@@ -10,8 +10,8 @@
  *
  * The binary defaults to src-tauri/target/release/benchtop; set BENCHTOP_BINARY to override.
  */
-import { spawn } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawn } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
 import { homedir } from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -199,6 +199,82 @@ try {
     if (read !== value) throw new Error(`read back ${JSON.stringify(read)}`);
   });
 
+  await check('the clipboard history collects copied text, and the quick-launch shortcut registers', async () => {
+    const value = `history-${Date.now()}`;
+    const outcome = await driver.executeAsyncScript(
+      `const done = arguments[0];
+       const { invoke } = window.__TAURI_INTERNALS__;
+       const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+       (async () => {
+         await invoke('clip_watch', { enabled: true });
+         await invoke('plugin:clipboard-manager|write_text', { text: '${value}' });
+         let found = false;
+         for (let i = 0; i < 20 && !found; i++) {
+           await wait(250);
+           found = (await invoke('clip_list')).some((entry) => entry.text === '${value}');
+         }
+         await invoke('clip_watch', { enabled: false });
+         await invoke('clip_clear');
+         const cleared = (await invoke('clip_list')).length === 0;
+         await invoke('desk_shortcut', { accelerator: 'Ctrl+Alt+F9' });
+         const info = await invoke('desk_info');
+         await invoke('desk_shortcut', { accelerator: '' });
+         const tray = await invoke('desk_tray', { enabled: info.tray_supported }).then(() => 'ok', (error) => String(error));
+         if (info.tray_supported) await invoke('desk_tray', { enabled: false });
+         return { found, cleared, shortcut: info.shortcut, traySupported: info.tray_supported, tray };
+       })().then(done, (error) => done({ error: String(error) }));`,
+    );
+    if (outcome.error) throw new Error(outcome.error);
+    if (!outcome.found) throw new Error('the copied text never reached the history');
+    if (!outcome.cleared) throw new Error('the history was not cleared');
+    if (outcome.shortcut !== 'Ctrl+Alt+F9') throw new Error(`shortcut ${JSON.stringify(outcome.shortcut)}`);
+    if (outcome.tray !== 'ok') throw new Error(`tray: ${outcome.tray}`);
+    console.log(`    (tray icon ${outcome.traySupported ? 'shown and removed' : 'not offered: no AppIndicator library here'})`);
+  });
+
+  await check('the IndicTrans2 server starts in the background and stops on request', async () => {
+    // A stand-in setup: the system's Python in place of the private one. Without PyTorch the server
+    // reports both models missing but still starts, which is the part under test here.
+    const dataHome = process.env.XDG_DATA_HOME ?? resolve(homedir(), '.local/share');
+    const folder = resolve(dataHome, 'app.benchtop.desktop', 'indictrans2');
+    if (existsSync(folder)) {
+      console.log('    (skipped: this computer has a real IndicTrans2 setup)');
+      return;
+    }
+    const python = execFileSync('sh', ['-c', 'command -v python3'], { encoding: 'utf8' }).trim();
+    mkdirSync(resolve(folder, 'venv/bin'), { recursive: true });
+    symlinkSync(python, resolve(folder, 'venv/bin/python'));
+    writeFileSync(resolve(folder, 'server.py'), '');
+    writeFileSync(resolve(folder, 'setup.json'), JSON.stringify({ version: 1, python: '3.12', torch: 'test', gpu: false, models: [] }));
+    try {
+      const outcome = await driver.executeAsyncScript(
+        `const done = arguments[0];
+         const { invoke } = window.__TAURI_INTERNALS__;
+         const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+         (async () => {
+           await invoke('indic_start');
+           let status;
+           for (let i = 0; i < 80; i++) {
+             status = await invoke('indic_status');
+             if (status.ready || !status.running) break;
+             await wait(250);
+           }
+           const seen = { ready: status.ready, port: status.port, missing: status.missing, message: status.message };
+           await invoke('indic_stop');
+           return { ...seen, stopped: !(await invoke('indic_status')).running };
+         })().then(done, (error) => done({ error: String(error) }));`,
+      );
+      if (outcome.error) throw new Error(outcome.error);
+      if (!outcome.ready) throw new Error(`not ready: ${outcome.message}`);
+      if (!(outcome.port > 0)) throw new Error(`port ${outcome.port}`);
+      if (outcome.missing.join() !== 'en-indic,indic-en') throw new Error(`missing ${outcome.missing}`);
+      if (!outcome.stopped) throw new Error('the server did not stop');
+      if (readFileSync(resolve(folder, 'server.py'), 'utf8') !== readFileSync(resolve(ROOT, 'scripts/indictrans2-server.py'), 'utf8')) throw new Error('the server script was not refreshed');
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
   await check('save_file is registered and refuses anything but raw bytes', async () => {
     const outcome = await driver.executeAsyncScript(
       `const done = arguments[0];
@@ -304,6 +380,30 @@ try {
     await driver.wait(async () => /8,?678\.23/.test(await driver.executeScript("return document.querySelector('[data-testid=calc-field-payment] input')?.value ?? ''")), 20_000, 'no EMI');
   });
 
+  const runExample = async (id) => {
+    await open('circuit-simulator');
+    await driver.executeScript(`const s = document.querySelector('[data-testid=cs-examples]'); s.value = '${id}'; s.dispatchEvent(new Event('change', { bubbles: true }));`);
+    await driver.sleep(300);
+    await driver.executeScript("document.querySelector('[data-testid=cs-run]').click()");
+  };
+  const serialText = () => driver.executeScript("return document.querySelector('[data-testid=cs-serial-log]')?.textContent ?? ''");
+
+  await check('the circuit simulator runs an Arduino Uno sketch (avr8js)', async () => {
+    await runExample('uno-dimmer');
+    await driver.wait(async () => /A0 = \d+/.test(await serialText()), 20_000, 'no serial output from the Uno');
+    await driver.executeScript("document.querySelector('[data-testid=cs-reset]').click()");
+  });
+
+  await check('the ESP32 emulator runs the demo firmware', async () => {
+    const info = await driver.executeAsyncScript("const done = arguments[0]; window.__TAURI_INTERNALS__.invoke('esp32_info').then(done, (e) => done({ available: false, detail: String(e) }));");
+    if (!info.available) throw new Error(`ESP32 emulator unavailable: ${info.detail}`);
+    await runExample('esp32-demo');
+    await driver.wait(async () => /uptime 2 s/.test(await serialText()), 30_000, `no uptime from the ESP32: ${await serialText()}`);
+    const text = await serialText();
+    if (!text.includes('Benchtop ESP32 demo')) throw new Error(`no banner: ${text.slice(0, 200)}`);
+    await driver.executeScript("document.querySelector('[data-testid=cs-reset]').click()");
+  });
+
   await check('units convert with Indian digit grouping, and steam properties solve (IAPWS-IF97)', async () => {
     await open('unit-converter');
     const ask = await driver.findElement(By.css('[data-testid=uc-ask]'));
@@ -356,6 +456,53 @@ try {
       const mode = statSync(dir).mode & 0o777;
       if (mode !== 0o700) throw new Error(`${dir} has mode ${mode.toString(8)}`);
     }
+  });
+
+  await check('Media Info reads a staged file with FFprobe', async () => {
+    // A tenth of a second of 8 kHz, 16-bit mono silence, written here so no sample file is needed.
+    const samples = 800;
+    const wav = new Uint8Array(44 + samples * 2);
+    const view = new DataView(wav.buffer);
+    const text = (at, value) => {
+      for (let i = 0; i < value.length; i++) view.setUint8(at + i, value.charCodeAt(i));
+    };
+    text(0, 'RIFF');
+    view.setUint32(4, 36 + samples * 2, true);
+    text(8, 'WAVEfmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, 8000, true);
+    view.setUint32(28, 16000, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    text(36, 'data');
+    view.setUint32(40, samples * 2, true);
+    const staged = await driver.executeAsyncScript(
+      `const done = arguments[arguments.length - 1];
+       window.__TAURI_INTERNALS__.invoke('stage_file', new Uint8Array(arguments[0]), { headers: { 'x-file-name': 'tone.wav' } })
+         .then((file) => done(file), (error) => done({ error: String(error) }));`,
+      [...wav],
+    );
+    if (staged.error || !staged.token) throw new Error(JSON.stringify(staged));
+    let report;
+    try {
+      report = await invoke('convert_media_info', { token: staged.token });
+    } catch (error) {
+      // FFprobe comes with FFmpeg; say so when it is missing, without failing.
+      if (/FFprobe/.test(String(error.message)) && /install/i.test(String(error.message))) {
+        console.log('        (FFprobe is not installed here)');
+        return;
+      }
+      throw error;
+    }
+    const stream = report?.streams?.[0];
+    if (stream?.codec_name !== 'pcm_s16le' || Number(stream.sample_rate) !== 8000 || Math.abs(Number(report.format?.duration) - 0.1) > 0.01) throw new Error(JSON.stringify(report).slice(0, 400));
+    const refused = await invoke('convert_media_info', { token: 'not-a-token' }).then(
+      () => 'accepted',
+      (error) => String(error.message),
+    );
+    if (!/Choose the file again/.test(refused)) throw new Error(`an unknown token gave: ${refused}`);
   });
 
   await check('only release pages can be opened in the system browser', async () => {

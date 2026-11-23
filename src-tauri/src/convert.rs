@@ -49,6 +49,7 @@ pub(crate) const PROGRAMS: &[(&str, &[&str])] = &[
     ("calibre", &["ebook-convert"]),
     ("qpdf", &["qpdf"]),
     ("ghostscript", &["gs", "gswin64c", "gswin32c"]),
+    ("espeak", &["espeak-ng"]),
 ];
 
 fn known_locations(id: &str) -> Vec<PathBuf> {
@@ -86,6 +87,7 @@ fn known_locations(id: &str) -> Vec<PathBuf> {
                 "inkscape" => list.push(base.join("Inkscape").join("bin").join("inkscape.exe")),
                 "calibre" => list.push(base.join("Calibre2").join("ebook-convert.exe")),
                 "pandoc" => list.push(base.join("Pandoc").join("pandoc.exe")),
+                "espeak" => list.push(base.join("eSpeak NG").join("espeak-ng.exe")),
                 "ghostscript" => {
                     if let Ok(entries) = std::fs::read_dir(base.join("gs")) {
                         for entry in entries.flatten() {
@@ -778,6 +780,99 @@ pub(crate) fn plan(recipe: &str, inputs: &[PathBuf], o: &Value) -> Result<Plan, 
             args.extend(video_codec("mp4", 20.0, "veryfast"));
             args.extend(os(&["-c:a", "copy", "-movflags", "+faststart"]));
             ffmpeg(args, "mp4", " (watermarked)", p.duration)
+        }
+        "video-dub" => {
+            // inputs: the video, the voice-over (WAV), and optionally subtitles (SRT).
+            if inputs.len() < 2 {
+                return Err("Make the voice-over first.".into());
+            }
+            let p = info();
+            let background = number(o, "background", 20.0, 0.0, 100.0) / 100.0;
+            let keep = flag(o, "keepOriginal") && p.audio;
+            let language: String = text(o, "language", "und")
+                .chars()
+                .filter(char::is_ascii_lowercase)
+                .take(3)
+                .collect();
+            let language = if language.len() == 3 {
+                language
+            } else {
+                "und".into()
+            };
+            let label: String = text(o, "label", "Voice-over").chars().take(60).collect();
+            let subtitles = inputs.len() > 2;
+            let ext = match first
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(str::to_lowercase)
+                .as_deref()
+            {
+                Some("mkv" | "webm") => "mkv",
+                _ => "mp4",
+            };
+            let voice = "[1:a]aresample=48000,aformat=channel_layouts=stereo[vo]";
+            let filter = if p.audio && background > 0.0 {
+                format!("[0:a]aresample=48000,aformat=channel_layouts=stereo,volume={background:.2}[bg];{voice};[bg][vo]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mix]")
+            } else {
+                format!("{voice};[vo]apad[mix]")
+            };
+            let mut args = os(&[
+                "-filter_complex",
+                &filter,
+                "-map",
+                "0:v:0?",
+                "-map",
+                "[mix]",
+            ]);
+            if keep {
+                args.extend(os(&["-map", "0:a:0"]));
+            }
+            if subtitles {
+                args.extend(os(&["-map", "2:0"]));
+            }
+            args.extend(os(&["-c:v", "copy", "-c:a", "aac", "-b:a", "192k"]));
+            if subtitles {
+                args.extend(os(&["-c:s", if ext == "mp4" { "mov_text" } else { "srt" }]));
+                args.extend(os(&[
+                    "-metadata:s:s:0",
+                    &format!("language={language}"),
+                    "-disposition:s:0",
+                    "0",
+                ]));
+            }
+            // MP4 players show handler_name as the track's name; Matroska ones show title.
+            args.extend(os(&[
+                "-metadata:s:a:0",
+                &format!("language={language}"),
+                "-metadata:s:a:0",
+                &format!("title={label}"),
+                "-metadata:s:a:0",
+                &format!("handler_name={label}"),
+                "-disposition:a:0",
+                "default",
+            ]));
+            if keep {
+                args.extend(os(&[
+                    "-metadata:s:a:1",
+                    "title=Original",
+                    "-metadata:s:a:1",
+                    "handler_name=Original",
+                    "-disposition:a:1",
+                    "0",
+                ]));
+            }
+            if !p.audio {
+                args.push("-shortest".into());
+            }
+            if ext == "mp4" {
+                args.extend(os(&["-movflags", "+faststart"]));
+            }
+            ffmpeg(
+                args,
+                ext,
+                &format!(" ({})", label.replace(['/', '\\'], "-")),
+                p.duration,
+            )
         }
         "video-volume" | "audio-volume" => {
             let db = number(o, "db", 6.0, -60.0, 30.0);
@@ -1590,6 +1685,42 @@ pub async fn convert_probe(token: String, picked: State<'_, PickedFiles>) -> Res
     )
 }
 
+/// Everything ffprobe can tell about a picked file: container, streams, chapters and tags.
+#[tauri::command]
+pub async fn convert_media_info(
+    token: String,
+    picked: State<'_, PickedFiles>,
+) -> Result<Value, String> {
+    let path = picked.path(&token).ok_or("Choose the file again.")?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let ffprobe = need("ffprobe", "FFprobe (it comes with FFmpeg)")?;
+        let output = command(&ffprobe)
+            .args([
+                "-v",
+                "error",
+                "-show_format",
+                "-show_streams",
+                "-show_chapters",
+                "-of",
+                "json",
+            ])
+            .arg(&path)
+            .stdin(Stdio::null())
+            .output()
+            .map_err(|error| format!("FFprobe could not be started: {error}"))?;
+        if !output.status.success() {
+            let message = String::from_utf8_lossy(&output.stderr);
+            return Err(format!(
+                "FFprobe could not read this file: {}",
+                message.trim()
+            ));
+        }
+        serde_json::from_slice::<Value>(&output.stdout).map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
 /// Shows a file produced by the converter in the system file manager.
 /// One frame of a video as PNG bytes, at most `width` pixels wide.
 pub(crate) fn grab_frame(
@@ -1782,6 +1913,43 @@ mod tests {
             produced
         };
         let length = |path: &Path| probe(path).duration.unwrap_or_default();
+
+        // Dubbing: a new soundtrack, the original kept as a second track, and subtitles.
+        let srt = dir.join("lines.srt");
+        std::fs::write(&srt, "1\n00:00:00,200 --> 00:00:01,500\nनमस्ते\n").unwrap();
+        let dubbed = check(
+            "video-dub",
+            vec![video.clone(), wav.clone(), srt.clone()],
+            json!({"background": 20, "keepOriginal": true, "language": "hin", "label": "Hindi voice-over"}),
+            "mp4",
+        );
+        let streams = Command::new(find_program("ffprobe").expect("ffprobe"))
+            .args([
+                "-v",
+                "error",
+                "-show_entries",
+                "stream=codec_type:stream_tags=language,title,handler_name",
+                "-of",
+                "json",
+            ])
+            .arg(&dubbed)
+            .output()
+            .expect("ffprobe");
+        let info: Value = serde_json::from_slice(&streams.stdout).unwrap();
+        let kinds: Vec<&str> = info["streams"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["codec_type"].as_str().unwrap_or(""))
+            .collect();
+        assert_eq!(kinds, ["video", "audio", "audio", "subtitle"], "{info}");
+        assert_eq!(info["streams"][1]["tags"]["language"], "hin");
+        let tags = &info["streams"][1]["tags"];
+        assert!(
+            tags["handler_name"] == "Hindi voice-over" || tags["title"] == "Hindi voice-over",
+            "{info}"
+        );
+        assert!((length(&dubbed) - 2.0).abs() < 0.3, "{}", length(&dubbed));
 
         // Audio
         check(

@@ -41,7 +41,7 @@ The AI tools run in a second copy of the program started as `benchtop --ai-worke
 
 ## The calculator library
 
-`src/calc/` holds about 220 calculators as data: variables with dimensions and units (`units.ts`) and equations written as text (`library/*.ts`). `solver.ts` parses the equations with math.js and solves each one that has a single unknown, numerically (secant steps, then a bracketing search from 10⁻⁴⁰ to 10⁴⁰), repeating until nothing changes, so any field can be the result. When typed values contradict each other, the oldest gives way. `engine.ts` converts between the units on screen and the units in the formulas. `report.ts` encodes a calculation into a link (`#/tool/<id>?calc=…&s=…`, validated when read) and draws the PDF report.
+`src/calc/` holds about 260 calculators as data: variables with dimensions and units (`units.ts`) and equations written as text (`library/*.ts`). `solver.ts` parses the equations with math.js and solves each one that has a single unknown, numerically (secant steps, then a bracketing search from 10⁻⁴⁰ to 10⁴⁰), repeating until nothing changes, so any field can be the result. When typed values contradict each other, the oldest gives way. `engine.ts` converts between the units on screen and the units in the formulas. `report.ts` encodes a calculation into a link (`#/tool/<id>?calc=…&s=…`, validated when read) and draws the PDF report.
 
 ## Engineering references
 
@@ -51,6 +51,16 @@ Pure functions under `src/lib`, with the bespoke tools that use them:
 - `lib/steam/if97.ts`: IAPWS-IF97 regions 1 to 5 with the published coefficients. Region 3 is solved for density along an isotherm (the polynomial in δ is precomputed per temperature, so a root scan and bisection cost little), and enthalpy and entropy inputs are inverted by bisection on temperature on the correct side of the saturation line. Viscosity, thermal conductivity (with the industrial critical enhancement) and surface tension follow the IAPWS releases. `tests/unit/steam.test.ts` checks every verification table.
 - `lib/beam/`: `sections.ts` builds shapes from rectangles and circles (parallel-axis theorem, plastic neutral axis by bisection, thin-wall torsion constants); `beam.ts` assembles Euler–Bernoulli beam elements with nodes at every support and load boundary into a banded system, so nodal deflections are exact, and takes shear and moment from statics with the computed reactions.
 - `lib/wire-gauge.ts`: AWG from its defining formula, the BS 3737 SWG table and IEC 60228 sizes.
+
+## Design, print and writing references
+
+More pure functions under `src/lib`, added in 3.3:
+
+- `lib/material-theme.ts`: Material 3 schemes from Google's material-color-utilities (`DynamicScheme` for each of the nine variants and both spec versions), with overridden key palettes rebuilt as a new `DynamicScheme`, custom colour groups, and writers for Android XML, Compose, Flutter, CSS and JSON.
+- `lib/vector-drawable.ts`: an Android VectorDrawable reader (groups with pivots, clip paths, gradients and tints) that writes SVG or Compose `ImageVector.Builder` code; SVG to VectorDrawable goes through svg2vectordrawable. `lib/nine-patch.ts` reads and writes the one-pixel guide border of `.9.png` files and scales the guides between densities.
+- `lib/imposition.ts`: booklet, zine, n-up and repeat layouts as lists of sides with slots, then drawn with pdf-lib's embedded pages; pages without a content stream are treated as blank. `lib/preflight.ts` walks the PDF objects for boxes, fonts, colour spaces and output intents, and walks PDF.js operator lists with the current transform to measure each picture's effective resolution. `lib/pdf-crop.ts` turns on-screen margins into crop and media boxes for rotated pages.
+- `lib/pitman.ts`: Pitman sounds from CMU dictionary phonemes (`lib/cmudict.ts`, with a spelling-based guess for unknown words), stroke forms as straight lines and quarter circles, Ray/Ar and Lay/El choices, circle S, the -ing dot, vowel signs by place, and the outline's position from its first vowel. `lib/braille.ts` (UEB grade 1, Bharati Braille, Braille ASCII, signage SVG) and `lib/phonetics.ts` (IPA with maximal-onset stress marks, Shavian) sit beside it.
+- `lib/poly-roots.ts`: Durand–Kerner for every root at once, then clusters of approximations are tested as repeated roots (Newton's method on the (k−1)th derivative) so double and triple roots come out exact. `lib/timecode.ts` counts SMPTE drop-frame timecode; `lib/subtitles.ts` reads SRT, WebVTT, SBV and ASS and writes the first three.
 
 ## Safety boundaries
 

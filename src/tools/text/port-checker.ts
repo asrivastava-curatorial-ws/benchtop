@@ -4,71 +4,9 @@ import { net } from '../../platform/net';
 import { defineTextTool } from '../types';
 import { hostAndPort } from './_online';
 
-export const SERVICES: Record<number, string> = {
-  20: 'FTP data',
-  21: 'FTP',
-  22: 'SSH',
-  23: 'Telnet',
-  25: 'SMTP',
-  53: 'DNS',
-  80: 'HTTP',
-  88: 'Kerberos',
-  110: 'POP3',
-  111: 'RPC',
-  123: 'NTP',
-  135: 'MS RPC',
-  139: 'NetBIOS',
-  143: 'IMAP',
-  161: 'SNMP',
-  389: 'LDAP',
-  443: 'HTTPS',
-  445: 'SMB',
-  465: 'SMTPS',
-  502: 'Modbus',
-  514: 'Syslog',
-  587: 'SMTP submission',
-  631: 'IPP printing',
-  636: 'LDAPS',
-  853: 'DNS over TLS',
-  873: 'rsync',
-  993: 'IMAPS',
-  995: 'POP3S',
-  1080: 'SOCKS',
-  1194: 'OpenVPN',
-  1433: 'SQL Server',
-  1521: 'Oracle',
-  1723: 'PPTP',
-  1883: 'MQTT',
-  2049: 'NFS',
-  2375: 'Docker (no TLS)',
-  2376: 'Docker',
-  3000: 'Dev server',
-  3306: 'MySQL',
-  3389: 'Remote Desktop',
-  4840: 'OPC UA',
-  5000: 'Dev server',
-  5060: 'SIP',
-  5173: 'Vite',
-  5432: 'PostgreSQL',
-  5672: 'AMQP',
-  5900: 'VNC',
-  6379: 'Redis',
-  6443: 'Kubernetes API',
-  8000: 'HTTP alt',
-  8008: 'HTTP alt',
-  8080: 'HTTP proxy / alt',
-  8443: 'HTTPS alt',
-  8883: 'MQTT over TLS',
-  9000: 'App server',
-  9090: 'Prometheus',
-  9092: 'Kafka',
-  9200: 'Elasticsearch',
-  11211: 'Memcached',
-  25565: 'Minecraft',
-  27017: 'MongoDB',
-  44818: 'EtherNet/IP',
-  47808: 'BACnet',
-};
+export { parsePorts, SERVICES } from '../../lib/ports';
+
+import { parsePorts, SERVICES } from '../../lib/ports';
 
 const PRESETS: Record<string, number[]> = {
   common: [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 587, 993, 995, 3306, 3389, 5432, 5900, 8080, 8443],
@@ -78,31 +16,6 @@ const PRESETS: Record<string, number[]> = {
   remote: [22, 23, 3389, 5900, 5938, 2375, 2376, 6443],
   industrial: [102, 502, 1883, 4840, 8883, 20000, 44818, 47808],
 };
-
-/** "22, 80-90, 443" → ports. */
-export function parsePorts(text: string, limit = 1024): number[] {
-  const ports = new Set<number>();
-  for (const part of text.split(/[\s,;]+/)) {
-    if (part === '') continue;
-    const range = /^(\d+)\s*-\s*(\d+)$/.exec(part);
-    if (range) {
-      const low = Number(range[1]);
-      const high = Number(range[2]);
-      if (low < 1 || high > 65535 || low > high) throw new ToolError(`"${part}" is not a valid port range.`);
-      for (let port = low; port <= high; port++) {
-        ports.add(port);
-        if (ports.size > limit) throw new ToolError(`Check at most ${limit} ports at a time.`);
-      }
-      continue;
-    }
-    const port = Number(part);
-    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ToolError(`"${part}" is not a port number (1–65535).`);
-    ports.add(port);
-  }
-  if (ports.size === 0) throw new ToolError('Enter at least one port.');
-  if (ports.size > limit) throw new ToolError(`Check at most ${limit} ports at a time.`);
-  return [...ports];
-}
 
 const STATES: Record<string, [string, Tone]> = {
   open: ['Open', 'ok'],

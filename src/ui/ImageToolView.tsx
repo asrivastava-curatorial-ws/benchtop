@@ -3,15 +3,18 @@
  * copy so sliders stay responsive; the full-resolution image is only processed
  * when measuring or saving.
  */
+import { zipSync } from 'fflate';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { errorMessage } from '../lib/errors';
+import { saveFile } from '../platform';
 import type { ImageRender, ImageToolSpec, ToolEntry, Values } from '../tools/types';
 import { ControlsForm } from './Controls';
-import { downscale } from './canvas';
+import { downscale, encodeCanvas } from './canvas';
 import { ExportBar } from './ExportBar';
 import { useToolValues } from './hooks';
 import { ImageDrop, type LoadedImage } from './ImageDrop';
 import { Icon } from './icons';
+import { attempt, notify } from './toast';
 
 const PREVIEW_EDGE = 1400;
 
@@ -71,6 +74,20 @@ export function ImageToolView({ entry, spec }: { entry: ToolEntry; spec: ImageTo
     return output.canvas;
   }, [image, spec, selected]);
 
+  const saveAll = () =>
+    attempt(async () => {
+      if (!image) return;
+      const result = await spec.process(image.canvas, latest.current, { scale: 1 });
+      const stem = image.name.replace(/\.[^.]+$/, '') || 'image';
+      const files: Record<string, Uint8Array> = {};
+      for (const [index, output] of result.outputs.entries()) {
+        const label = (output.label ?? `part ${index + 1}`).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        files[`${stem}-${String(index + 1).padStart(2, '0')}-${label}.png`] = new Uint8Array(await (await encodeCanvas(output.canvas, { format: 'png', quality: 100 })).arrayBuffer());
+      }
+      const saved = await saveFile(`${stem}-parts.zip`, zipSync(files, { level: 0 }), 'application/zip');
+      if (saved.saved) notify(`Saved ${result.outputs.length} pictures to ${saved.location}`);
+    });
+
   const outputs = rendered && 'result' in rendered ? rendered.result.outputs : [];
   const current = outputs[Math.min(selected, outputs.length - 1)];
   const state = !image ? 'idle' : rendered === null ? 'busy' : 'error' in rendered ? 'error' : 'done';
@@ -97,6 +114,11 @@ export function ImageToolView({ entry, spec }: { entry: ToolEntry; spec: ImageTo
             </div>
           )}
         </div>
+        {image && outputs.length > 1 && (
+          <button type="button" class="button" onClick={saveAll} data-testid="image-save-all">
+            <Icon name="save" size={16} /> Save all {outputs.length} as a ZIP (PNG)
+          </button>
+        )}
         {image && current && (
           <ExportBar
             render={renderFull}

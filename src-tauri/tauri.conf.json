@@ -22,16 +22,19 @@
     "targets": "all",
     "category": "DeveloperTool",
     "shortDescription": "Developer and engineering toolbox",
-    "longDescription": "Benchtop gathers 307 developer, engineering and everyday utilities in one desktop app: formatters, converters, encoders, hashes, keys and JWTs, text comparison, network and DevOps helpers, diagram editors and file viewers, CSS, colour and image tools, AI background removal, upscaling, face blur, object eraser, English and Hindi text recognition and transcription that run on your computer, a Recipe tool with all of CyberChef's operations, PDF tools including form filling and signing, a file converter for video, audio, documents and e-books using the programs you have installed, a unit converter for every trade and science, steam tables, a beam calculator, a library of about 220 calculators, and a command line. Everything works offline except the online checks, which contact only the hosts you enter when you ask, AI models, which are downloaded once when you first choose them, and Check for updates, which asks GitHub for the newest version when you press it.",
+    "longDescription": "Benchtop gathers 387 developer, engineering, design and everyday utilities in one desktop app: formatters, converters, encoders, hashes, keys and JWTs, text comparison, network and DevOps helpers, diagram editors and file viewers, CSS, colour and image tools, app icons, Material themes and other design tools for Android, iOS and KaiOS, booklet imposition, PDF preflight and other print tools, Pitman shorthand and braille, AI background removal, upscaling, face blur, object eraser, English and Hindi text recognition and transcription that run on your computer, a Recipe tool with all of CyberChef's operations, PDF tools including form filling and signing, a file converter for video, audio, documents and e-books using the programs you have installed, a circuit simulator that runs Arduino Uno and ESP32 firmware, text to speech and video dubbing, notes that keep copies of what you embed, data, science and map tools, bulk file tools, a unit converter for every trade and science, steam tables, a beam calculator, a library of about 260 calculators, plugins, and a command line. Everything works offline except the online checks and Web Page to PDF, which contact only the hosts you enter when you ask, AI models, which are downloaded once when you first choose them, and Check for updates, which asks GitHub for the newest version when you press it.",
     "copyright": "Copyright (c) 2026 Abhisht Srivastava. MIT licence.",
     "licenseFile": "../LICENSE",
+    "resources": ["resources/esp32/*"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
     "linux": {
       "deb": {
-        "section": "devel"
+        "section": "devel",
+        "depends": ["libgcrypt20", "libfdt1"]
       },
       "rpm": {
-        "release": "1"
+        "release": "1",
+        "depends": ["libgcrypt", "libfdt"]
       }
     },
     "windows": {

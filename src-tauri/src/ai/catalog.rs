@@ -42,6 +42,7 @@ pub enum Kind {
     Eraser,
     Speech,
     Vad,
+    Voice,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -75,10 +76,23 @@ macro_rules! ort_url {
     };
 }
 
+/// The same file on the Benchtop mirror (`MIRROR`), tried when the publisher's copy is unreachable.
+macro_rules! mirror {
+    ($file:literal) => {
+        concat!(
+            "https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/",
+            $file
+        )
+    };
+}
+
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const RUNTIME: Download = Download {
     file: "onnxruntime-linux-x64-1.22.0.tgz",
-    urls: &[ort_url!("onnxruntime-linux-x64-1.22.0.tgz")],
+    urls: &[
+        ort_url!("onnxruntime-linux-x64-1.22.0.tgz"),
+        mirror!("onnxruntime-linux-x64-1.22.0.tgz"),
+    ],
     sha256: "8344d55f93d5bc5021ce342db50f62079daf39aaafb5d311a451846228be49b3",
     size: 7_798_730,
     archive: Archive::TarGz,
@@ -88,7 +102,10 @@ const RUNTIME: Download = Download {
 #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const RUNTIME: Download = Download {
     file: "onnxruntime-linux-aarch64-1.22.0.tgz",
-    urls: &[ort_url!("onnxruntime-linux-aarch64-1.22.0.tgz")],
+    urls: &[
+        ort_url!("onnxruntime-linux-aarch64-1.22.0.tgz"),
+        mirror!("onnxruntime-linux-aarch64-1.22.0.tgz"),
+    ],
     sha256: "bb76395092d150b52c7092dc6b8f2fe4d80f0f3bf0416d2f269193e347e24702",
     size: 6_849_865,
     archive: Archive::TarGz,
@@ -98,7 +115,10 @@ const RUNTIME: Download = Download {
 #[cfg(target_os = "windows")]
 const RUNTIME: Download = Download {
     file: "onnxruntime-win-x64-1.22.0.zip",
-    urls: &[ort_url!("onnxruntime-win-x64-1.22.0.zip")],
+    urls: &[
+        ort_url!("onnxruntime-win-x64-1.22.0.zip"),
+        mirror!("onnxruntime-win-x64-1.22.0.zip"),
+    ],
     sha256: "174c616efc0271194488642a72f1a514e01487da4dfe84c49296d66e40ebe0da",
     size: 72_368_545,
     archive: Archive::Zip,
@@ -114,7 +134,10 @@ const RUNTIME: Download = Download {
 #[cfg(target_os = "macos")]
 const RUNTIME: Download = Download {
     file: "onnxruntime-osx-universal2-1.22.0.tgz",
-    urls: &[ort_url!("onnxruntime-osx-universal2-1.22.0.tgz")],
+    urls: &[
+        ort_url!("onnxruntime-osx-universal2-1.22.0.tgz"),
+        mirror!("onnxruntime-osx-universal2-1.22.0.tgz"),
+    ],
     sha256: "cfa6f6584d87555ed9f6e7e8a000d3947554d589efe3723b8bfa358cd263d03c",
     size: 54_820_264,
     archive: Archive::TarGz,
@@ -142,6 +165,110 @@ const RUNTIME_ITEM: Item = Item {
     download: RUNTIME,
 };
 
+/* ------------------------------------------------------------------ uv -- */
+// uv (Astral, MIT or Apache-2.0) sets up IndicTrans2 for the Video Dubbing tool: it fetches
+// its own Python and installs the packages into Benchtop's folder (indic.rs).  It is not an
+// AI model, so it is not in items() and Settings -> AI models does not list it.
+
+macro_rules! uv_url {
+    ($file:literal) => {
+        concat!(
+            "https://github.com/astral-sh/uv/releases/download/0.9.5/",
+            $file
+        )
+    };
+}
+
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+const UV: Option<Download> = Some(Download {
+    file: "uv-x86_64-unknown-linux-gnu.tar.gz",
+    urls: &[
+        uv_url!("uv-x86_64-unknown-linux-gnu.tar.gz"),
+        mirror!("uv-x86_64-unknown-linux-gnu.tar.gz"),
+    ],
+    sha256: "2cf10babba653310606f8b49876cfb679928669e7ddaa1fb41fb00ce73e64f66",
+    size: 21_370_871,
+    archive: Archive::TarGz,
+    keep: &[("uv-x86_64-unknown-linux-gnu/uv", "uv")],
+});
+
+#[cfg(all(target_os = "linux", target_arch = "aarch64"))]
+const UV: Option<Download> = Some(Download {
+    file: "uv-aarch64-unknown-linux-gnu.tar.gz",
+    urls: &[
+        uv_url!("uv-aarch64-unknown-linux-gnu.tar.gz"),
+        mirror!("uv-aarch64-unknown-linux-gnu.tar.gz"),
+    ],
+    sha256: "9db0c2f6683099f86bfeea47f4134e915f382512278de95b2a0e625957594ff3",
+    size: 20_199_463,
+    archive: Archive::TarGz,
+    keep: &[("uv-aarch64-unknown-linux-gnu/uv", "uv")],
+});
+
+#[cfg(all(target_os = "windows", target_arch = "x86_64"))]
+const UV: Option<Download> = Some(Download {
+    file: "uv-x86_64-pc-windows-msvc.zip",
+    urls: &[
+        uv_url!("uv-x86_64-pc-windows-msvc.zip"),
+        mirror!("uv-x86_64-pc-windows-msvc.zip"),
+    ],
+    sha256: "515dc53d7553f1357d0abc1f70acd921fbb9e30230b1d9a08737236daa6ee920",
+    size: 20_760_405,
+    archive: Archive::Zip,
+    keep: &[("uv.exe", "uv.exe")],
+});
+
+#[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+const UV: Option<Download> = Some(Download {
+    file: "uv-aarch64-apple-darwin.tar.gz",
+    urls: &[
+        uv_url!("uv-aarch64-apple-darwin.tar.gz"),
+        mirror!("uv-aarch64-apple-darwin.tar.gz"),
+    ],
+    sha256: "dc098ff224d78ed418e121fd374f655949d2c7031a70f6f6604eaf016a130433",
+    size: 18_341_942,
+    archive: Archive::TarGz,
+    keep: &[("uv-aarch64-apple-darwin/uv", "uv")],
+});
+
+#[cfg(all(target_os = "macos", target_arch = "x86_64"))]
+const UV: Option<Download> = Some(Download {
+    file: "uv-x86_64-apple-darwin.tar.gz",
+    urls: &[
+        uv_url!("uv-x86_64-apple-darwin.tar.gz"),
+        mirror!("uv-x86_64-apple-darwin.tar.gz"),
+    ],
+    sha256: "58b1d4a25aa8ff99147c2550b33dcf730207fe7e0f9a0d5d36a1bbf36b845aca",
+    size: 19_689_319,
+    archive: Archive::TarGz,
+    keep: &[("uv-x86_64-apple-darwin/uv", "uv")],
+});
+
+#[cfg(not(any(
+    all(
+        target_os = "linux",
+        any(target_arch = "x86_64", target_arch = "aarch64")
+    ),
+    all(target_os = "windows", target_arch = "x86_64"),
+    target_os = "macos"
+)))]
+const UV: Option<Download> = None;
+
+/// uv for this platform, if Astral builds it here.
+pub fn uv_item() -> Option<Item> {
+    UV.map(|download| Item {
+        id: "uv",
+        kind: Kind::Runtime,
+        name: "uv",
+        description: "Sets up Python and the packages IndicTrans2 needs, inside Benchtop's folder.",
+        licence: "MIT or Apache-2.0",
+        homepage: "https://github.com/astral-sh/uv",
+        default: false,
+        multilingual: false,
+        download,
+    })
+}
+
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const GPU_ITEMS: &[Item] = &[Item {
     id: "runtime-cuda",
@@ -154,7 +281,7 @@ const GPU_ITEMS: &[Item] = &[Item {
     multilingual: false,
     download: Download {
         file: "onnxruntime-linux-x64-gpu-1.22.0.tgz",
-        urls: &[ort_url!("onnxruntime-linux-x64-gpu-1.22.0.tgz")],
+        urls: &[ort_url!("onnxruntime-linux-x64-gpu-1.22.0.tgz"), mirror!("onnxruntime-linux-x64-gpu-1.22.0.tgz")],
         sha256: "2a19dbfa403672ec27378c3d40a68f793ac7a6327712cd0e8240a86be2b10c55",
         size: 227_317_516,
         archive: Archive::TarGz,
@@ -499,6 +626,203 @@ const MODELS: &[Item] = &[
             archive: Archive::None,
             keep: &[],
         },
+    },    Item {
+        id: "piper-en_US-lessac-medium",
+        kind: Kind::Voice,
+        name: "Lessac (English, US)",
+        description: "A clear American English voice (female).",
+        licence: "Blizzard 2013 Lessac licence (non-commercial)",
+        homepage: "https://github.com/rhasspy/piper",
+        default: true,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-en_US-lessac-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-en_US-lessac-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-en_US-lessac-medium.tar.bz2")),
+            sha256: "9e3febfacf0abf4270172d2958bcec246032b7e88efc2720840cc80c93de334e",
+            size: 67_230_653,
+            archive: Archive::TarBz2,
+            keep: &[("en_US-lessac-medium.onnx", "voice.onnx"), ("en_US-lessac-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-en_US-ryan-medium",
+        kind: Kind::Voice,
+        name: "Ryan (English, US)",
+        description: "An American English voice (male).",
+        licence: "CC BY-NC-SA 4.0 (non-commercial)",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-en_US-ryan-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-en_US-ryan-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-en_US-ryan-medium.tar.bz2")),
+            sha256: "c546af78b6395b4e7c4ce1ed899438b64426a362f5d4ec5fecd090ded9ad7505",
+            size: 67_213_100,
+            archive: Archive::TarBz2,
+            keep: &[("en_US-ryan-medium.onnx", "voice.onnx"), ("en_US-ryan-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-en_GB-alan-medium",
+        kind: Kind::Voice,
+        name: "Alan (English, UK)",
+        description: "A British English voice (male).",
+        licence: "See the voice's model card",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-en_GB-alan-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-en_GB-alan-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-en_GB-alan-medium.tar.bz2")),
+            sha256: "a48d4017da0f77668b27bed63fe6e04dd64c6397e1fadad4f460efb0ef7c9012",
+            size: 67_220_121,
+            archive: Archive::TarBz2,
+            keep: &[("en_GB-alan-medium.onnx", "voice.onnx"), ("en_GB-alan-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-en_GB-jenny_dioco-medium",
+        kind: Kind::Voice,
+        name: "Jenny (English, UK)",
+        description: "A British English voice (female).",
+        licence: "See the voice's model card",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-en_GB-jenny_dioco-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-en_GB-jenny_dioco-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-en_GB-jenny_dioco-medium.tar.bz2")),
+            sha256: "a0888024569bafbefc05a4b48ddf8419d8dbbf3205f4af37cf7c6f1a87cc20c5",
+            size: 67_225_842,
+            archive: Archive::TarBz2,
+            keep: &[("en_GB-jenny_dioco-medium.onnx", "voice.onnx"), ("en_GB-jenny_dioco-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-hi_IN-pratham-medium",
+        kind: Kind::Voice,
+        name: "Pratham (Hindi)",
+        description: "A Hindi voice (male).",
+        licence: "CC BY-NC-SA 4.0 (non-commercial)",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-hi_IN-pratham-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-hi_IN-pratham-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-hi_IN-pratham-medium.tar.bz2")),
+            sha256: "2084d321e1d2752f2b64ed3012ba27751df01a80da46f52920098cdcb7e35648",
+            size: 67_238_438,
+            archive: Archive::TarBz2,
+            keep: &[("hi_IN-pratham-medium.onnx", "voice.onnx"), ("hi_IN-pratham-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-hi_IN-priyamvada-medium",
+        kind: Kind::Voice,
+        name: "Priyamvada (Hindi)",
+        description: "A Hindi voice (female).",
+        licence: "CC BY-NC-SA 4.0 (non-commercial)",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-hi_IN-priyamvada-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-hi_IN-priyamvada-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-hi_IN-priyamvada-medium.tar.bz2")),
+            sha256: "399d91cc97eb288725633261f26b715f9a971e3bf7ec4fa1d7910cd0080d37eb",
+            size: 67_240_610,
+            archive: Archive::TarBz2,
+            keep: &[("hi_IN-priyamvada-medium.onnx", "voice.onnx"), ("hi_IN-priyamvada-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-hi_IN-rohan-medium",
+        kind: Kind::Voice,
+        name: "Rohan (Hindi)",
+        description: "A Hindi voice (male), from IIT Madras's Indic TTS recordings.",
+        licence: "IIT Madras Indic TTS licence",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-hi_IN-rohan-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-hi_IN-rohan-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-hi_IN-rohan-medium.tar.bz2")),
+            sha256: "f0bb7781724951e9c90c49f68abfe821cffcbc198a9ae0031366d045a6ad5488",
+            size: 67_221_139,
+            archive: Archive::TarBz2,
+            keep: &[("hi_IN-rohan-medium.onnx", "voice.onnx"), ("hi_IN-rohan-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-ml_IN-arjun-medium",
+        kind: Kind::Voice,
+        name: "Arjun (Malayalam)",
+        description: "A Malayalam voice (male).",
+        licence: "See the voice's model card",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-ml_IN-arjun-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-ml_IN-arjun-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-ml_IN-arjun-medium.tar.bz2")),
+            sha256: "3058d098e8b1ffcdd6069e96b1d492f319333235912a627c309c7c54cea59acf",
+            size: 67_222_458,
+            archive: Archive::TarBz2,
+            keep: &[("ml_IN-arjun-medium.onnx", "voice.onnx"), ("ml_IN-arjun-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-ml_IN-meera-medium",
+        kind: Kind::Voice,
+        name: "Meera (Malayalam)",
+        description: "A Malayalam voice (female).",
+        licence: "See the voice's model card",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-ml_IN-meera-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-ml_IN-meera-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-ml_IN-meera-medium.tar.bz2")),
+            sha256: "c8d870441e60870b7e8781c26eb22104aff51587b63bee94aba5e5f6c9fbb71f",
+            size: 67_195_010,
+            archive: Archive::TarBz2,
+            keep: &[("ml_IN-meera-medium.onnx", "voice.onnx"), ("ml_IN-meera-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-ne_NP-google-medium",
+        kind: Kind::Voice,
+        name: "Google (Nepali)",
+        description: "A Nepali voice trained on Google's open recordings.",
+        licence: "CC BY-SA 4.0",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-ne_NP-google-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-ne_NP-google-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-ne_NP-google-medium.tar.bz2")),
+            sha256: "73c1e093451867779ec2b55cc3666de2db058019a2e7760e8c8f294a42caca2a",
+            size: 80_242_801,
+            archive: Archive::TarBz2,
+            keep: &[("ne_NP-google-medium.onnx", "voice.onnx"), ("ne_NP-google-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
+    },
+    Item {
+        id: "piper-ne_NP-chitwan-medium",
+        kind: Kind::Voice,
+        name: "Chitwan (Nepali)",
+        description: "A Nepali voice.",
+        licence: "CC0",
+        homepage: "https://github.com/rhasspy/piper",
+        default: false,
+        multilingual: false,
+        download: Download {
+            file: "vits-piper-ne_NP-chitwan-medium.tar.bz2",
+            urls: urls!(concat!("https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/", "vits-piper-ne_NP-chitwan-medium.tar.bz2"), concat!("https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/", "vits-piper-ne_NP-chitwan-medium.tar.bz2")),
+            sha256: "65fa157c090844bbe5b38c1c3e4321535f569fdbb526c08aaa2ad22c09d51279",
+            size: 67_213_467,
+            archive: Archive::TarBz2,
+            keep: &[("ne_NP-chitwan-medium.onnx", "voice.onnx"), ("ne_NP-chitwan-medium.onnx.json", "voice.onnx.json"), ("MODEL_CARD", "MODEL_CARD")],
+        },
     },
 ];
 
@@ -553,6 +877,47 @@ mod tests {
     }
 
     #[test]
+    fn every_file_has_a_publisher_source_and_a_mirror_copy() {
+        // realesr-general-x4v3.onnx is converted for Benchtop (scripts/convert_srvgg.py), so
+        // the mirror is its only source; scripts/mirror-models.py uploads it.
+        for item in items() {
+            let urls = item.download.urls;
+            let mirrored = urls.iter().filter(|url| url.starts_with(MIRROR)).count();
+            assert_eq!(mirrored, 1, "{} needs exactly one mirror address", item.id);
+            assert!(
+                urls.last().is_some_and(|url| url.starts_with(MIRROR)),
+                "{}: the mirror goes last",
+                item.id
+            );
+            if item.download.file != "realesr-general-x4v3.onnx" {
+                assert!(urls.len() >= 2, "{} has no publisher address", item.id);
+            }
+            assert!(
+                urls.iter()
+                    .all(|url| url.ends_with(item.download.file) || !url.starts_with(MIRROR)),
+                "{}: mirror name differs from the file name",
+                item.id
+            );
+        }
+    }
+
+    #[test]
+    fn uv_comes_from_its_release_with_a_mirror_copy() {
+        let Some(item) = uv_item() else { return };
+        let urls = item.download.urls;
+        assert!(urls[0].starts_with("https://github.com/astral-sh/uv/releases/download/"));
+        assert!(urls
+            .last()
+            .is_some_and(|url| url.starts_with(MIRROR) && url.ends_with(item.download.file)));
+        assert_eq!(item.download.sha256.len(), 64);
+        assert_eq!(stored_files(&item).len(), 1);
+        assert!(
+            !items().iter().any(|i| i.id == "uv"),
+            "uv is not an AI model"
+        );
+    }
+
+    #[test]
     fn every_kind_a_tool_needs_has_one_default() {
         for kind in [
             Kind::Runtime,
@@ -562,6 +927,7 @@ mod tests {
             Kind::Eraser,
             Kind::Speech,
             Kind::Vad,
+            Kind::Voice,
         ] {
             let defaults = items()
                 .into_iter()

@@ -11,10 +11,10 @@ import wasmUrl from 'sql.js/dist/sql-wasm-browser.wasm?url';
 import { useIncomingFiles } from '../../app/handoff';
 import { formatBytes } from '../../lib/bytes';
 import { errorMessage } from '../../lib/errors';
-import { parseGcode } from '../../lib/gcode';
 import { copyText, pickFile, pickFiles, saveFile } from '../../platform';
 import { scrollRegion } from '../../ui/a11y';
 import { CodeEditor } from '../../ui/CodeEditor';
+import { MODEL_ACCEPT, type ModelScene, mountModel } from '../../ui/model-view';
 import { attempt, notify } from '../../ui/toast';
 import { defineCustomTool, type Values } from '../types';
 import { Segmented, usePersistentState } from './_shared';
@@ -511,116 +511,17 @@ function ModelViewer() {
   const host = useRef<HTMLDivElement>(null);
   const [info, setInfo] = useState('');
   const [showTravel, setShowTravel] = useState(false);
-  const scene = useRef<{ dispose: () => void; setTravel?: (on: boolean) => void } | null>(null);
+  const scene = useRef<ModelScene | null>(null);
   useEffect(() => () => scene.current?.dispose(), []);
-  useEffect(() => scene.current?.setTravel?.(showTravel), [showTravel]);
+  useEffect(() => scene.current?.setTravel(showTravel), [showTravel]);
   const open = (file: File | null) => {
     if (!file || !host.current) return;
     attempt(async () => {
-      const THREE = await import('three');
-      const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
-      scene.current?.dispose();
       const element = host.current as HTMLDivElement;
-      const width = element.clientWidth || 800;
-      const height = Math.max(420, Math.round(width * 0.6));
-      const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-      renderer.setPixelRatio(window.devicePixelRatio);
-      renderer.setSize(width, height);
-      element.replaceChildren(renderer.domElement);
-      const world = new THREE.Scene();
-      world.background = new THREE.Color(document.documentElement.dataset.theme === 'dark' ? 0x161b22 : 0xf4f6f8);
-      const camera = new THREE.PerspectiveCamera(45, width / height, 0.01, 100000);
-      world.add(new THREE.HemisphereLight(0xffffff, 0x444444, 2.2));
-      const sun = new THREE.DirectionalLight(0xffffff, 2);
-      sun.position.set(1, 2, 3);
-      world.add(sun);
-      const bytes = await file.arrayBuffer();
-      const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-      let object: InstanceType<typeof THREE.Object3D>;
-      let travel: InstanceType<typeof THREE.LineSegments> | null = null;
-      const material = new THREE.MeshStandardMaterial({ color: 0x53c9a0, metalness: 0.1, roughness: 0.6, flatShading: false });
-      if (ext === 'stl') {
-        const { STLLoader } = await import('three/examples/jsm/loaders/STLLoader.js');
-        const geometry = new STLLoader().parse(bytes);
-        geometry.computeVertexNormals();
-        object = new THREE.Mesh(geometry, material);
-        setInfo(`${(geometry.attributes.position?.count ?? 0) / 3} triangles`);
-      } else if (ext === 'ply') {
-        const { PLYLoader } = await import('three/examples/jsm/loaders/PLYLoader.js');
-        const geometry = new PLYLoader().parse(bytes);
-        geometry.computeVertexNormals();
-        object =
-          geometry.index || geometry.attributes.normal
-            ? new THREE.Mesh(geometry, geometry.attributes.color ? new THREE.MeshStandardMaterial({ vertexColors: true }) : material)
-            : new THREE.Points(geometry, new THREE.PointsMaterial({ size: 0.01, vertexColors: Boolean(geometry.attributes.color) }));
-        setInfo(`${geometry.attributes.position?.count ?? 0} points`);
-      } else if (ext === 'obj') {
-        const { OBJLoader } = await import('three/examples/jsm/loaders/OBJLoader.js');
-        object = new OBJLoader().parse(new TextDecoder().decode(bytes));
-        object.traverse((child) => {
-          if ((child as InstanceType<typeof THREE.Mesh>).isMesh) (child as InstanceType<typeof THREE.Mesh>).material = material;
-        });
-        setInfo('OBJ model');
-      } else if (ext === 'glb' || ext === 'gltf') {
-        const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-        const gltf = await new GLTFLoader().parseAsync(ext === 'glb' ? bytes : new TextDecoder().decode(bytes), '');
-        object = gltf.scene;
-        setInfo(`glTF: ${gltf.scenes.length} scene(s), ${gltf.animations.length} animation(s)`);
-      } else if (['gcode', 'gco', 'nc', 'ngc', 'tap', 'g'].includes(ext)) {
-        const path = parseGcode(new TextDecoder().decode(bytes));
-        const group = new THREE.Group();
-        const cuts = new THREE.BufferGeometry();
-        cuts.setAttribute('position', new THREE.BufferAttribute(path.segments, 3));
-        const colours = new Float32Array(path.segments.length);
-        const [, , z0, , , z1] = path.box;
-        for (let i = 0; i < path.segments.length; i += 3) {
-          const t = z1 > z0 ? ((path.segments[i + 2] as number) - z0) / (z1 - z0) : 0;
-          const c = new THREE.Color().setHSL(0.6 - t * 0.6, 0.75, 0.5);
-          colours.set([c.r, c.g, c.b], i);
-        }
-        cuts.setAttribute('color', new THREE.BufferAttribute(colours, 3));
-        group.add(new THREE.LineSegments(cuts, new THREE.LineBasicMaterial({ vertexColors: true })));
-        const moves = new THREE.BufferGeometry();
-        moves.setAttribute('position', new THREE.BufferAttribute(path.travel, 3));
-        travel = new THREE.LineSegments(moves, new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.35 }));
-        travel.visible = showTravel;
-        group.add(travel);
-        group.rotation.x = -Math.PI / 2;
-        object = group;
-        const [x0, y0, , x1, y1] = path.box;
-        setInfo(`${path.layers} layers, ${(path.length / 1000).toFixed(2)} m of moves, ${(x1 - x0).toFixed(1)} × ${(y1 - y0).toFixed(1)} × ${(z1 - z0).toFixed(1)} mm`);
-      } else throw new Error('Open an STL, OBJ, PLY, GLB, glTF or G-code file.');
-      world.add(object);
-      const bounds = new THREE.Box3().setFromObject(object);
-      const size = bounds.getSize(new THREE.Vector3()).length() || 1;
-      const centre = bounds.getCenter(new THREE.Vector3());
-      camera.position.copy(centre).add(new THREE.Vector3(size * 0.6, size * 0.5, size * 0.8));
-      camera.near = size / 1000;
-      camera.far = size * 100;
-      camera.updateProjectionMatrix();
-      const grid = new THREE.GridHelper(size * 1.5, 20, 0x888888, 0x444444);
-      grid.position.y = bounds.min.y;
-      world.add(grid);
-      const controls = new OrbitControls(camera, renderer.domElement);
-      controls.target.copy(centre);
-      controls.update();
-      let frame = 0;
-      const tick = () => {
-        frame = requestAnimationFrame(tick);
-        controls.update();
-        renderer.render(world, camera);
-      };
-      tick();
-      scene.current = {
-        dispose: () => {
-          cancelAnimationFrame(frame);
-          controls.dispose();
-          renderer.dispose();
-        },
-        setTravel: (on) => {
-          if (travel) travel.visible = on;
-        },
-      };
+      const next = await mountModel(element, await file.arrayBuffer(), file.name, { showTravel, height: Math.max(420, Math.round((element.clientWidth || 800) * 0.6)) });
+      scene.current?.dispose();
+      scene.current = next;
+      setInfo(next.info);
     });
   };
   useIncomingFiles((files) => open(files[0] ?? null));
@@ -628,7 +529,7 @@ function ModelViewer() {
   return (
     <div data-testid="tool" class="tool model-tool">
       <div class="button-row">
-        <button type="button" class="button button-primary" data-testid="model-open" onClick={() => attempt(async () => open(await pickFile('.stl,.obj,.ply,.glb,.gltf,.gcode,.gco,.nc,.ngc,.tap')))}>
+        <button type="button" class="button button-primary" data-testid="model-open" onClick={() => attempt(async () => open(await pickFile(MODEL_ACCEPT)))}>
           Open a model or G-code
         </button>
         <label class="check">
@@ -641,7 +542,10 @@ function ModelViewer() {
         )}
       </div>
       <div ref={host} class="model-stage" role="img" aria-label="3D view: drag to turn, scroll to zoom, right-drag to move" />
-      <p class="tone-muted">STL, OBJ, PLY, glTF and GLB models, and G-code from 3D printers and CNC machines (coloured by height). Drag to turn, scroll to zoom.</p>
+      <p class="tone-muted">
+        STL, OBJ, PLY, glTF, GLB, 3MF, AMF, Collada, FBX, VRML, VTK and 3DS models, PCD and XYZ point clouds, and G-code from 3D printers and CNC machines (coloured by height). Drag to turn, scroll to
+        zoom.
+      </p>
     </div>
   );
 }
