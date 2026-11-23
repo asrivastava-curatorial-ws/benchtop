@@ -12,7 +12,10 @@ benchtop.register({
   ],
   sample: 'VITM/2024/12\nVITM/2023/7',
   run(input, options) {
-    const lines = input.split('\n').filter(Boolean).map((line) => line.replace(/(\d+)$/, (n) => n.padStart(options.digits, '0')));
+    const lines = input
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => line.replace(/(\d+)$/, (n) => n.padStart(options.digits, '0')));
     if (options.sort) lines.sort();
     return { output: lines.join('\n'), info: `${lines.length} numbers` };
   },
@@ -23,14 +26,14 @@ benchtop.register({
 
 ## What a plugin can define
 
-| Field | Meaning |
-| --- | --- |
-| `name` | Shown in the Plugins list and as a pipeline step. Required. |
-| `run(input, options)` | Returns the output text, or `{ output, info, language }`. May be `async`. Required. |
-| `description` | One sentence shown above the tool. |
-| `sample` | Example input for the Sample button. |
-| `language` | Highlighting for the output: `text`, `json`, `javascript`, `typescript`, `jsx`, `html`, `css`, `xml`, `markdown`, `yaml`, `sql`, `cpp` or `python`. |
-| `options` | Controls shown above the input; their values arrive in `options`. |
+| Field                 | Meaning                                                                                                                                             |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                | Shown in the Plugins list and as a pipeline step. Required.                                                                                         |
+| `run(input, options)` | Returns the output text, or `{ output, info, language }`. May be `async`. Required.                                                                 |
+| `description`         | One sentence shown above the tool.                                                                                                                  |
+| `sample`              | Example input for the Sample button.                                                                                                                |
+| `language`            | Highlighting for the output: `text`, `json`, `javascript`, `typescript`, `jsx`, `html`, `css`, `xml`, `markdown`, `yaml`, `sql`, `cpp` or `python`. |
+| `options`             | Controls shown above the input; their values arrive in `options`.                                                                                   |
 
 Each option has a `key`, a `label` and a `type`, with a `default`:
 

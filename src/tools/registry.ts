@@ -2060,6 +2060,13 @@ export const TOOLS: readonly ToolEntry[] = [
     keywords: ['blur', 'grayscale', 'sepia', 'hue-rotate'],
     covers: ['Image Filter (CSS)'],
   }),
+  other('css', 'custom', () => import('./custom/animation-studio'), {
+    id: 'animation-studio',
+    name: 'Animation Studio (Theatre.js)',
+    description: 'Animate shapes, text and pictures on a keyframe timeline with easing; playback runs on Theatre.js. Save a web page that plays offline, or Theatre.js state for your own code.',
+    keywords: ['animation', 'theatre.js', 'theatrejs', 'keyframes', 'timeline', 'motion design', 'tween', 'easing', 'after effects', 'motion graphics', 'animate'],
+    covers: ['Theatre.js Studio', 'Rive (simple scenes)', 'After Effects (simple motion)', 'Keyshape'],
+  }),
   other('css', 'custom', () => import('./custom/cubic-bezier'), {
     id: 'cubic-bezier',
     name: 'Cubic Bezier',
@@ -2645,6 +2652,21 @@ export const TOOLS: readonly ToolEntry[] = [
     description: 'Type LaTeX or pick symbols to build equations, chemistry included; save them as SVG or PNG, or copy MathML for Word and web pages.',
     keywords: ['latex', 'equation', 'formula', 'math', 'maths', 'mathjax', 'mathml', 'svg', 'png', 'chemistry', 'mhchem', 'symbols'],
     covers: ['CodeCogs Equation Editor', 'Mathcha', 'LaTeX to image converters'],
+  }),
+  other('docs', 'custom', () => import('./custom/slide-deck'), {
+    id: 'slide-deck',
+    name: 'Slide Deck (reveal.js)',
+    description:
+      'Write a presentation in Markdown beside a live reveal.js preview, with speaker notes, code and maths; present full screen, or save one HTML file that presents offline, a PDF or Markdown.',
+    keywords: ['slides', 'presentation', 'reveal.js', 'revealjs', 'deck', 'slideshow', 'markdown slides', 'powerpoint', 'keynote', 'speaker notes', 'talk', 'lecture', 'pdf'],
+    covers: ['reveal.js', 'Slides.com', 'reveal-md', 'Marp', 'Google Slides (simple decks)'],
+  }),
+  other('docs', 'custom', () => import('./custom/resume-builder'), {
+    id: 'resume-builder',
+    name: 'Resume Builder',
+    description: 'Fill in your experience, education and skills, pick a template and save a PDF. Opens and saves Reactive Resume files, and JSON Resume too.',
+    keywords: ['resume', 'résumé', 'cv', 'curriculum vitae', 'reactive resume', 'rxresu.me', 'json resume', 'job', 'pdf', 'template', 'biodata'],
+    covers: ['Reactive Resume', 'Canva resumes', 'Novorésumé', 'JSON Resume themes'],
   }),
   other('docs', 'custom', () => import('./custom/mail-merge'), {
     id: 'mail-merge',

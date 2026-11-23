@@ -119,7 +119,7 @@ function urlPicture(url: unknown): Picture | null {
 /* ----------------------------------------------------------------- data -- */
 
 function rowsFromCsv(text: string): { rows: Row[]; columns: string[] } {
-  const parsed = Papa.parse<Record<string, string>>(text.replace(/^﻿/, ''), { header: true, skipEmptyLines: 'greedy', transformHeader: (h) => h.trim() });
+  const parsed = Papa.parse<Record<string, string>>(text.replace(/^\uFEFF/, ''), { header: true, skipEmptyLines: 'greedy', transformHeader: (h) => h.trim() });
   const columns = (parsed.meta.fields ?? []).filter((f) => f);
   return { rows: parsed.data.map((r) => Object.fromEntries(columns.map((c) => [c, String(r[c] ?? '').trim()]))), columns };
 }

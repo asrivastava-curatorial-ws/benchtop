@@ -47,7 +47,11 @@ impl Store {
     pub fn is_installed(&self, item: &Item) -> bool {
         let folder = self.folder(item);
         fs::read_to_string(self.marker(item))
-            .map(|text| text.trim() == item.download.sha256)
+            .map(|text| {
+                let marker = text.trim();
+                marker == item.download.sha256
+                    || catalog::earlier_checksums(item.id).contains(&marker)
+            })
             .unwrap_or(false)
             && catalog::stored_files(item)
                 .iter()
@@ -353,7 +357,7 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
-/// A short name for where a download comes from: "github.com/microsoft/onnxruntime",
+/// A short name for where a download comes from: "github.com/astral-sh/uv", "PyPI",
 /// "huggingface.co" or "the Benchtop mirror".
 fn source_name(url: &str) -> String {
     if url.starts_with(catalog::MIRROR) {
@@ -366,6 +370,7 @@ fn source_name(url: &str) -> String {
     let host = parts.next().unwrap_or(rest);
     match (host, parts.next(), parts.next()) {
         ("github.com", Some(owner), Some(repo)) => format!("github.com/{owner}/{repo}"),
+        ("files.pythonhosted.org", _, _) => "PyPI".into(),
         _ => host.to_string(),
     }
 }
@@ -395,9 +400,15 @@ mod tests {
     fn failures_name_every_source() {
         assert_eq!(
             super::source_name(
-                "https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/x.tgz"
+                "https://github.com/astral-sh/uv/releases/download/0.9.5/uv-x86_64-pc-windows-msvc.zip"
             ),
-            "github.com/microsoft/onnxruntime"
+            "github.com/astral-sh/uv"
+        );
+        assert_eq!(
+            super::source_name(
+                "https://files.pythonhosted.org/packages/8c/60/16d2/onnxruntime-1.22.0-cp312-cp312-win_amd64.whl"
+            ),
+            "PyPI"
         );
         assert_eq!(
             super::source_name("https://huggingface.co/a/b/resolve/main/m.onnx"),
@@ -410,12 +421,14 @@ mod tests {
         let text = super::explain_failures(
             "ONNX Runtime",
             &[
-                "github.com/microsoft/onnxruntime answered HTTP 404".into(),
+                "PyPI answered HTTP 404".into(),
                 "the Benchtop mirror (the models-v1 release on GitHub) does not have this file yet"
                     .into(),
             ],
         );
-        assert!(text.starts_with("Could not download ONNX Runtime: github.com/microsoft/onnxruntime answered HTTP 404; the Benchtop mirror"));
+        assert!(text.starts_with(
+            "Could not download ONNX Runtime: PyPI answered HTTP 404; the Benchtop mirror"
+        ));
         assert!(text.contains("Import from a folder"));
         let offline = super::explain_failures(
             "u2netp",
@@ -488,6 +501,31 @@ mod tests {
         );
         assert!(!store.folder(&item).join("README").exists());
         store.remove(&item).unwrap();
+        assert!(!store.is_installed(&item));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_install_from_an_earlier_download_of_the_same_files_stays_valid() {
+        let dir = std::env::temp_dir().join(format!("benchtop-earlier-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let store = Store::new(dir.clone());
+        let item = catalog::find("runtime").expect("runtime");
+        let folder = store.folder(&item);
+        fs::create_dir_all(&folder).unwrap();
+        for file in catalog::stored_files(&item) {
+            fs::write(folder.join(file), b"library").unwrap();
+        }
+        fs::write(
+            folder.join(".sha256"),
+            catalog::earlier_checksums("runtime")[0],
+        )
+        .unwrap();
+        assert!(
+            store.is_installed(&item),
+            "the GitHub-archive install still counts"
+        );
+        fs::write(folder.join(".sha256"), "0".repeat(64)).unwrap();
         assert!(!store.is_installed(&item));
         let _ = fs::remove_dir_all(&dir);
     }

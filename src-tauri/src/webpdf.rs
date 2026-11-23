@@ -41,8 +41,12 @@ fn default_true() -> bool {
     true
 }
 
-/// Width and height in inches.
+/// Width and height in inches.  Besides the named sizes, "1280x720px",
+/// "13.33x7.5in" or "297x210mm" give a page of that size (slides, for example).
 pub fn paper_inches(name: &str) -> (f64, f64) {
+    if let Some(size) = custom_paper(name) {
+        return size;
+    }
     match name.to_ascii_lowercase().as_str() {
         "a3" => (11.693, 16.535),
         "a5" => (5.827, 8.268),
@@ -51,6 +55,25 @@ pub fn paper_inches(name: &str) -> (f64, f64) {
         "tabloid" => (11.0, 17.0),
         _ => (8.268, 11.693),
     }
+}
+
+/// A page size written as width x height with a unit (px at 96 per inch, in or
+/// mm), in inches; None for the named sizes and for anything unreadable.
+pub fn custom_paper(name: &str) -> Option<(f64, f64)> {
+    let lower = name.trim().to_ascii_lowercase();
+    let (dimensions, per_inch) = if let Some(rest) = lower.strip_suffix("px") {
+        (rest, 96.0)
+    } else if let Some(rest) = lower.strip_suffix("mm") {
+        (rest, 25.4)
+    } else {
+        (lower.strip_suffix("in")?, 1.0)
+    };
+    let (width, height) = dimensions.split_once('x')?;
+    let width: f64 = width.trim().parse().ok()?;
+    let height: f64 = height.trim().parse().ok()?;
+    let (width, height) = (width / per_inch, height / per_inch);
+    let sensible = |inches: f64| inches.is_finite() && (0.5..=200.0).contains(&inches);
+    (sensible(width) && sensible(height)).then_some((width, height))
 }
 
 /// The browser engine that will be used.
@@ -582,6 +605,12 @@ async fn chromium_pdf(
     }
 
     let (width, height) = paper_inches(&options.paper);
+    // A custom page (a slide, say) is laid out to fill it, so it has no margins.
+    let margin = if custom_paper(&options.paper).is_some() {
+        0.0
+    } else {
+        0.4
+    };
     let printed = cdp
         .send(
             s,
@@ -591,10 +620,10 @@ async fn chromium_pdf(
                 "paperHeight": height,
                 "landscape": options.landscape,
                 "printBackground": options.background,
-                "marginTop": 0.4,
-                "marginBottom": 0.4,
-                "marginLeft": 0.4,
-                "marginRight": 0.4,
+                "marginTop": margin,
+                "marginBottom": margin,
+                "marginLeft": margin,
+                "marginRight": margin,
                 "preferCSSPageSize": true,
                 "generateDocumentOutline": true,
                 "generateTaggedPDF": true,
@@ -674,6 +703,7 @@ async fn webview_pdf(
         .map_err(|_| "Bad output path.")?
         .to_string();
     let (paper, landscape) = (options.paper.to_ascii_lowercase(), options.landscape);
+    let custom = custom_paper(&paper);
     window
         .with_webview(move |platform| {
             use webkit2gtk::PrintOperationExt;
@@ -692,7 +722,21 @@ async fn webview_pdf(
                 "tabloid" => "na_ledger",
                 _ => "iso_a4",
             };
-            setup.set_paper_size(&gtk::PaperSize::new(Some(name)));
+            if let Some((width, height)) = custom {
+                setup.set_paper_size(&gtk::PaperSize::new_custom(
+                    "benchtop-custom",
+                    "Custom",
+                    width,
+                    height,
+                    gtk::Unit::Inch,
+                ));
+                setup.set_top_margin(0.0, gtk::Unit::Inch);
+                setup.set_bottom_margin(0.0, gtk::Unit::Inch);
+                setup.set_left_margin(0.0, gtk::Unit::Inch);
+                setup.set_right_margin(0.0, gtk::Unit::Inch);
+            } else {
+                setup.set_paper_size(&gtk::PaperSize::new(Some(name)));
+            }
             setup.set_orientation(if landscape {
                 gtk::PageOrientation::Landscape
             } else {
@@ -850,6 +894,12 @@ mod tests {
     fn knows_paper_sizes() {
         assert_eq!(paper_inches("Letter"), (8.5, 11.0));
         assert_eq!(paper_inches("anything"), paper_inches("A4"));
+        assert_eq!(paper_inches("1280x720px"), (1280.0 / 96.0, 7.5));
+        assert_eq!(paper_inches("254 x 127mm"), (10.0, 5.0));
+        assert_eq!(custom_paper("13.5x7.5in"), Some((13.5, 7.5)));
+        assert_eq!(custom_paper("A4"), None);
+        assert_eq!(custom_paper("0x720px"), None);
+        assert_eq!(custom_paper("99999x720px"), None);
         assert_eq!(
             browser_name(Path::new("/usr/bin/google-chrome-stable")),
             "Google Chrome"

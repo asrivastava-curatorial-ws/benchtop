@@ -15,6 +15,7 @@
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+    "paths": { "@theatre/core": ["./src/types/theatre-core.d.ts"] },
     "noEmit": true,
     "types": ["vite/client"]
   },

@@ -98,7 +98,7 @@ async function chooseImage(page: Page, trigger: Locator): Promise<void> {
   await (await chooser).setFiles({ name: 'sample.png', mimeType: 'image/png', buffer: SAMPLE_PNG });
 }
 
-async function download(page: Page, click: () => Promise<void>): Promise<Buffer> {
+async function download(page: Page, click: () => Promise<unknown>): Promise<Buffer> {
   const pending = page.waitForEvent('download');
   await click();
   const file = await pending;
@@ -807,6 +807,101 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
     await expect(page.getByTestId('dp-results')).toContainText('Hubballi', { timeout: 30_000 });
     const parquet = await download(page, () => page.getByTestId('dp-parquet').click());
     expect(parquet.subarray(0, 4).toString()).toBe('PAR1');
+    await expect(tool).toHaveAttribute('data-state', 'done');
+  },
+  'slide-deck': async (page, tool) => {
+    const frame = page.frameLocator('[data-testid="deck-frame"]');
+    await expect(page.getByTestId('deck-status')).toContainText('Slide 1 of 7', { timeout: 30_000 });
+    await expect(frame.locator('.slides section h1').first()).toHaveText(/Making things move/i);
+    await expect(page.getByTestId('deck-notes')).toContainText('Welcome everyone');
+    // The preview follows the cursor, and maths is drawn as inline SVG in the theme's colour.
+    // The editor draws only the lines in view, so go to the end of the deck first.
+    await page.getByTestId('deck-editor').locator('.cm-content').click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.getByTestId('deck-editor').locator('.cm-line', { hasText: 'The energy of a photon' }).click();
+    await expect(page.getByTestId('deck-status')).toContainText('Slide 5 of 7', { timeout: 30_000 });
+    await expect(frame.locator('section.present svg').first()).toBeVisible({ timeout: 30_000 });
+    await page.getByTestId('deck-theme').selectOption('white');
+    const html = (await download(page, () => page.getByTestId('deck-html').click())).toString();
+    expect(html).toContain('Reveal.initialize');
+    expect(html).toContain('RevealHighlight');
+    expect(html).toContain('"theme":"white"');
+    expect(html).not.toContain('fonts.googleapis.com');
+    const md = (await download(page, () => page.getByTestId('deck-md').click())).toString();
+    expect(md).toContain('$$\\int_0^1');
+    // A saved deck opens again for editing, maths still as TeX.
+    await page.getByRole('button', { name: 'New', exact: true }).click();
+    await expect(page.getByTestId('deck-status')).toContainText('of 2', { timeout: 30_000 });
+    await chooseFiles(page, page.getByTestId('deck-open'), [{ name: 'talk.html', mimeType: 'text/html', buffer: Buffer.from(html) }]);
+    await expect(page.getByTestId('deck-status')).toContainText('of 7', { timeout: 30_000 });
+    expect(await editorText(page.getByTestId('deck-editor'))).toContain('E = h\\nu');
+    await expect(page.getByTestId('deck-theme')).toHaveValue('white');
+    await expect(tool).toHaveAttribute('data-state', 'done');
+  },
+  'animation-studio': async (page, tool) => {
+    await expect(page.getByTestId('anim-obj-Ball')).toBeVisible();
+    await expect(page.getByTestId('anim-clock')).toContainText('3.00 s / 3.00 s');
+    // Playback runs on Theatre.js and moves the playhead.
+    await page.getByTestId('anim-play').click();
+    await expect(page.getByTestId('anim-clock')).not.toContainText('3.00 s /', { timeout: 10_000 });
+    await page.getByTestId('anim-play').click();
+    await expect(page.getByTestId('anim-play')).toHaveAccessibleName('Play');
+    await page.getByRole('button', { name: 'New', exact: true }).click();
+    await page.getByTestId('anim-add-box').click();
+    await expect(page.getByTestId('anim-obj-Box')).toBeVisible();
+    await page.getByRole('button', { name: 'Next keyframe' }).click();
+    await expect(page.getByTestId('anim-clock')).toContainText('4.00 s / 4.00 s');
+    await page.getByTestId('anim-key-x').click();
+    await page.getByRole('button', { name: 'Back to the start' }).click();
+    await page.getByTestId('anim-prop-x').fill('200');
+    await page.getByTestId('anim-prop-x').press('Enter');
+    await expect(page.getByTestId('anim-kf-Box-x')).toHaveCount(2);
+    await page.getByTestId('anim-kf-Box-x').first().click();
+    await page.getByTestId('anim-easing').selectOption('Back out');
+    await expect(page.getByTestId('anim-easing')).toHaveValue('Back out');
+    const state = JSON.parse((await download(page, () => page.getByTestId('anim-state').click())).toString());
+    expect(state.definitionVersion).toBe('0.4.0');
+    expect(Object.keys(state.sheetsById.Scene.sequence.tracksByObject)).toEqual(['Box']);
+    const project = JSON.parse((await download(page, () => page.getByTestId('anim-project').click())).toString());
+    expect(project.kind).toBe('benchtop-animation');
+    const html = (await download(page, () => page.getByTestId('anim-html').click())).toString();
+    expect(html).toContain("load('@theatre/core')");
+    expect(html.match(/<\/script>/g)?.length).toBe(html.match(/<script/g)?.length);
+    await expect(tool).toHaveAttribute('data-state', 'done');
+  },
+  'resume-builder': async (page, tool) => {
+    const frame = page.frameLocator('[data-testid="rx-frame"]');
+    await expect(frame.locator('h1')).toHaveText('Meera Iyer');
+    await page.getByTestId('rx-name').fill('Asha Rao');
+    await expect(frame.locator('h1')).toHaveText('Asha Rao');
+    const experience = page.getByTestId('rx-section-experience');
+    await experience.locator('summary').click();
+    await page.getByTestId('rx-add-experience').click();
+    await experience.locator('.rx-items > li').last().getByLabel('Company').fill('Open Museum Lab');
+    await expect(frame.locator('.section-experience')).toContainText('Open Museum Lab');
+    await page.getByRole('radio', { name: 'Design' }).click();
+    await page.getByTestId('rx-template-banner').click();
+    await expect(frame.locator('body')).toHaveClass(/t-banner/);
+    await page.getByTestId('rx-paper').selectOption('letter');
+    await expect(page.getByTestId('rx-pages')).toContainText('US Letter');
+    const reactive = JSON.parse((await download(page, () => page.getByTestId('rx-reactive').click())).toString());
+    expect(reactive.basics.name).toBe('Asha Rao');
+    expect(reactive.benchtop.template).toBe('banner');
+    expect(reactive.metadata.page.format).toBe('letter');
+    const jsonResume = JSON.parse((await download(page, () => page.getByTestId('rx-jsonresume').click())).toString());
+    expect(jsonResume.basics.name).toBe('Asha Rao');
+    expect(jsonResume.work.map((w: { name: string }) => w.name)).toContain('Open Museum Lab');
+    const html = (await download(page, () => page.getByTestId('rx-html').click())).toString();
+    expect(html).toContain('size: letter');
+    await chooseFiles(page, page.getByTestId('rx-open'), [
+      {
+        name: 'lin.json',
+        mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify({ basics: { name: 'Lin Example', label: 'Designer' }, work: [{ name: 'Studio', position: 'Lead', startDate: '2020-03' }] })),
+      },
+    ]);
+    await expect(frame.locator('h1')).toHaveText('Lin Example');
+    await expect(frame.locator('.section-experience')).toContainText('Mar 2020 – Present');
     await expect(tool).toHaveAttribute('data-state', 'done');
   },
   'markdown-editor': async (page, tool) => {

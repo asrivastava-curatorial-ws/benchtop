@@ -265,6 +265,9 @@ pub struct DupReport {
     pub cancelled: bool,
 }
 
+/// Files of one size: (size, [(index, path, size)]).
+type SizeGroup = (u64, Vec<(usize, PathBuf, u64)>);
+
 /// Groups files with identical contents: same size, then the same checksum of
 /// the first 64 KB, then the same checksum of the whole file (BLAKE3).
 pub fn find_duplicates(
@@ -316,8 +319,7 @@ pub fn find_duplicates(
             }
         }
     }
-    let candidates: Vec<(u64, Vec<(usize, PathBuf, u64)>)> =
-        by_size.into_iter().filter(|(_, v)| v.len() > 1).collect();
+    let candidates: Vec<SizeGroup> = by_size.into_iter().filter(|(_, v)| v.len() > 1).collect();
     let total: usize = candidates.iter().map(|(_, v)| v.len()).sum();
     let mut done = 0usize;
     let mut groups = Vec::new();
@@ -517,7 +519,7 @@ pub fn measure(base: &Path, progress: &dyn Fn(usize), cancelled: &dyn Fn() -> bo
                 size,
                 modified: modified_ms(&meta),
             });
-            largest.sort_by(|a, b| b.size.cmp(&a.size));
+            largest.sort_by_key(|entry| std::cmp::Reverse(entry.size));
             largest.truncate(100);
         }
     }
@@ -567,7 +569,8 @@ pub fn measure(base: &Path, progress: &dyn Fn(usize), cancelled: &dyn Fn() -> bo
                 children: Vec::new(),
             });
         }
-        node.children.sort_by(|a, b| b.size.cmp(&a.size));
+        node.children
+            .sort_by_key(|child| std::cmp::Reverse(child.size));
         node
     }
     let name = base
@@ -577,7 +580,7 @@ pub fn measure(base: &Path, progress: &dyn Fn(usize), cancelled: &dyn Fn() -> bo
     let tree = build(base, name, &dirs, threshold, 0);
     let mut types: Vec<(String, u64, u64)> =
         types.into_iter().map(|(k, (s, c))| (k, s, c)).collect();
-    types.sort_by(|a, b| b.1.cmp(&a.1));
+    types.sort_by_key(|entry| std::cmp::Reverse(entry.1));
     types.truncate(40);
     UsageReport {
         tree,
@@ -692,6 +695,8 @@ pub fn compare_folders(
     Ok(rows)
 }
 
+// The arguments come from the front end by name, so they stay separate.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn bulk_compare(
     app: AppHandle,

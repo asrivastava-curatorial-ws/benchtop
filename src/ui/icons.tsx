@@ -54,6 +54,12 @@ const PATHS = {
     </>
   ),
   play: <path d="M7.5 5.2v13.6a.6.6 0 0 0 .9.5l11-6.8a.6.6 0 0 0 0-1L8.4 4.7a.6.6 0 0 0-.9.5z" />,
+  pause: (
+    <>
+      <rect x="6.5" y="5" width="3.5" height="14" rx="1" />
+      <rect x="14" y="5" width="3.5" height="14" rx="1" />
+    </>
+  ),
   refresh: (
     <>
       <path d="M19.5 12a7.5 7.5 0 1 1-2.4-5.5" />

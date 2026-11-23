@@ -15,6 +15,9 @@
       "!**/*.min.css",
       "!docs/TOOLS.md",
       "!public/tesseract",
+      "!public/openchemlib",
+      "!public/oui.json",
+      "!public/sky.json",
       "!src/recipe/vendor",
       "!tests/e2e/fixtures/cyberchef-port-cases.json",
       "!tests/unit/fixtures/cyberchef-extra-cases.json"

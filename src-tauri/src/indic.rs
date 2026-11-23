@@ -1026,7 +1026,7 @@ mod tests {
         }
         assert!(log.contains("transformers==4.51.3 sentencepiece==0.2.0 sacremoses==0.1.1 indic-nlp-library-itt==0.1.1"), "{log}");
         assert!(
-            log.contains(&format!("server.py --download en-indic,indic-en")),
+            log.contains("server.py --download en-indic,indic-en"),
             "{log}"
         );
         assert!(

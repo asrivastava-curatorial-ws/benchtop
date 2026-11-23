@@ -67,15 +67,6 @@ macro_rules! urls {
     ($($part:expr),+) => { &[$($part),+] };
 }
 
-macro_rules! ort_url {
-    ($file:literal) => {
-        concat!(
-            "https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/",
-            $file
-        )
-    };
-}
-
 /// The same file on the Benchtop mirror (`MIRROR`), tried when the publisher's copy is unreachable.
 macro_rules! mirror {
     ($file:literal) => {
@@ -86,62 +77,60 @@ macro_rules! mirror {
     };
 }
 
+// ONNX Runtime 1.22.0 comes from Microsoft's official Python packages on PyPI: each wheel is
+// a zip archive holding the same C library as the release archives on GitHub, which are no
+// longer downloadable (HTTP 404 as of November 2026).  PyPI keeps every published file.
+
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const RUNTIME: Download = Download {
-    file: "onnxruntime-linux-x64-1.22.0.tgz",
-    urls: &[
-        ort_url!("onnxruntime-linux-x64-1.22.0.tgz"),
-        mirror!("onnxruntime-linux-x64-1.22.0.tgz"),
-    ],
-    sha256: "8344d55f93d5bc5021ce342db50f62079daf39aaafb5d311a451846228be49b3",
-    size: 7_798_730,
-    archive: Archive::TarGz,
-    keep: &[("lib/libonnxruntime.so.1.22.0", "libonnxruntime.so")],
+    file: "onnxruntime-1.22.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+    urls: urls!(
+        "https://files.pythonhosted.org/packages/8c/60/16d219b8868cc8e8e51a68519873bdb9f5f24af080b62e917a13fff9989b/onnxruntime-1.22.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+        mirror!("onnxruntime-1.22.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl")
+    ),
+    sha256: "6964a975731afc19dc3418fad8d4e08c48920144ff590149429a5ebe0d15fb3c",
+    size: 16_406_377,
+    archive: Archive::Zip,
+    keep: &[("onnxruntime/capi/libonnxruntime.so.1.22.0", "libonnxruntime.so")],
 };
 
 #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const RUNTIME: Download = Download {
-    file: "onnxruntime-linux-aarch64-1.22.0.tgz",
-    urls: &[
-        ort_url!("onnxruntime-linux-aarch64-1.22.0.tgz"),
-        mirror!("onnxruntime-linux-aarch64-1.22.0.tgz"),
-    ],
-    sha256: "bb76395092d150b52c7092dc6b8f2fe4d80f0f3bf0416d2f269193e347e24702",
-    size: 6_849_865,
-    archive: Archive::TarGz,
-    keep: &[("lib/libonnxruntime.so.1.22.0", "libonnxruntime.so")],
+    file: "onnxruntime-1.22.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",
+    urls: urls!(
+        "https://files.pythonhosted.org/packages/03/79/36f910cd9fc96b444b0e728bba14607016079786adf032dae61f7c63b4aa/onnxruntime-1.22.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl",
+        mirror!("onnxruntime-1.22.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl")
+    ),
+    sha256: "c8601128eaef79b636152aea76ae6981b7c9fc81a618f584c15d78d42b310f1c",
+    size: 14_443_220,
+    archive: Archive::Zip,
+    keep: &[("onnxruntime/capi/libonnxruntime.so.1.22.0", "libonnxruntime.so")],
 };
 
 #[cfg(target_os = "windows")]
 const RUNTIME: Download = Download {
-    file: "onnxruntime-win-x64-1.22.0.zip",
-    urls: &[
-        ort_url!("onnxruntime-win-x64-1.22.0.zip"),
-        mirror!("onnxruntime-win-x64-1.22.0.zip"),
-    ],
-    sha256: "174c616efc0271194488642a72f1a514e01487da4dfe84c49296d66e40ebe0da",
-    size: 72_368_545,
+    file: "onnxruntime-1.22.0-cp312-cp312-win_amd64.whl",
+    urls: urls!(
+        "https://files.pythonhosted.org/packages/36/b4/3f1c71ce1d3d21078a6a74c5483bfa2b07e41a8d2b8fb1e9993e6a26d8d3/onnxruntime-1.22.0-cp312-cp312-win_amd64.whl",
+        mirror!("onnxruntime-1.22.0-cp312-cp312-win_amd64.whl")
+    ),
+    sha256: "c0d534a43d1264d1273c2d4f00a5a588fa98d21117a3345b7104fa0bbcaadb9a",
+    size: 12_692_233,
     archive: Archive::Zip,
-    keep: &[
-        ("lib/onnxruntime.dll", "onnxruntime.dll"),
-        (
-            "lib/onnxruntime_providers_shared.dll",
-            "onnxruntime_providers_shared.dll",
-        ),
-    ],
+    keep: &[("onnxruntime/capi/onnxruntime.dll", "onnxruntime.dll"), ("onnxruntime/capi/onnxruntime_providers_shared.dll", "onnxruntime_providers_shared.dll")],
 };
 
 #[cfg(target_os = "macos")]
 const RUNTIME: Download = Download {
-    file: "onnxruntime-osx-universal2-1.22.0.tgz",
-    urls: &[
-        ort_url!("onnxruntime-osx-universal2-1.22.0.tgz"),
-        mirror!("onnxruntime-osx-universal2-1.22.0.tgz"),
-    ],
-    sha256: "cfa6f6584d87555ed9f6e7e8a000d3947554d589efe3723b8bfa358cd263d03c",
-    size: 54_820_264,
-    archive: Archive::TarGz,
-    keep: &[("lib/libonnxruntime.1.22.0.dylib", "libonnxruntime.dylib")],
+    file: "onnxruntime-1.22.0-cp312-cp312-macosx_13_0_universal2.whl",
+    urls: urls!(
+        "https://files.pythonhosted.org/packages/4d/de/9162872c6e502e9ac8c99a98a8738b2fab408123d11de55022ac4f92562a/onnxruntime-1.22.0-cp312-cp312-macosx_13_0_universal2.whl",
+        mirror!("onnxruntime-1.22.0-cp312-cp312-macosx_13_0_universal2.whl")
+    ),
+    sha256: "f3c0380f53c1e72a41b3f4d6af2ccc01df2c17844072233442c3a7e74851ab97",
+    size: 34_298_046,
+    archive: Archive::Zip,
+    keep: &[("onnxruntime/capi/libonnxruntime.1.22.0.dylib", "libonnxruntime.dylib")],
 };
 
 /// The library file name inside the runtime folder.
@@ -170,22 +159,13 @@ const RUNTIME_ITEM: Item = Item {
 // its own Python and installs the packages into Benchtop's folder (indic.rs).  It is not an
 // AI model, so it is not in items() and Settings -> AI models does not list it.
 
-macro_rules! uv_url {
-    ($file:literal) => {
-        concat!(
-            "https://github.com/astral-sh/uv/releases/download/0.9.5/",
-            $file
-        )
-    };
-}
-
 #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
 const UV: Option<Download> = Some(Download {
     file: "uv-x86_64-unknown-linux-gnu.tar.gz",
-    urls: &[
-        uv_url!("uv-x86_64-unknown-linux-gnu.tar.gz"),
-        mirror!("uv-x86_64-unknown-linux-gnu.tar.gz"),
-    ],
+    urls: urls!(
+        "https://github.com/astral-sh/uv/releases/download/0.9.5/uv-x86_64-unknown-linux-gnu.tar.gz",
+        mirror!("uv-x86_64-unknown-linux-gnu.tar.gz")
+    ),
     sha256: "2cf10babba653310606f8b49876cfb679928669e7ddaa1fb41fb00ce73e64f66",
     size: 21_370_871,
     archive: Archive::TarGz,
@@ -195,10 +175,10 @@ const UV: Option<Download> = Some(Download {
 #[cfg(all(target_os = "linux", target_arch = "aarch64"))]
 const UV: Option<Download> = Some(Download {
     file: "uv-aarch64-unknown-linux-gnu.tar.gz",
-    urls: &[
-        uv_url!("uv-aarch64-unknown-linux-gnu.tar.gz"),
-        mirror!("uv-aarch64-unknown-linux-gnu.tar.gz"),
-    ],
+    urls: urls!(
+        "https://github.com/astral-sh/uv/releases/download/0.9.5/uv-aarch64-unknown-linux-gnu.tar.gz",
+        mirror!("uv-aarch64-unknown-linux-gnu.tar.gz")
+    ),
     sha256: "9db0c2f6683099f86bfeea47f4134e915f382512278de95b2a0e625957594ff3",
     size: 20_199_463,
     archive: Archive::TarGz,
@@ -208,10 +188,10 @@ const UV: Option<Download> = Some(Download {
 #[cfg(all(target_os = "windows", target_arch = "x86_64"))]
 const UV: Option<Download> = Some(Download {
     file: "uv-x86_64-pc-windows-msvc.zip",
-    urls: &[
-        uv_url!("uv-x86_64-pc-windows-msvc.zip"),
-        mirror!("uv-x86_64-pc-windows-msvc.zip"),
-    ],
+    urls: urls!(
+        "https://github.com/astral-sh/uv/releases/download/0.9.5/uv-x86_64-pc-windows-msvc.zip",
+        mirror!("uv-x86_64-pc-windows-msvc.zip")
+    ),
     sha256: "515dc53d7553f1357d0abc1f70acd921fbb9e30230b1d9a08737236daa6ee920",
     size: 20_760_405,
     archive: Archive::Zip,
@@ -221,10 +201,10 @@ const UV: Option<Download> = Some(Download {
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 const UV: Option<Download> = Some(Download {
     file: "uv-aarch64-apple-darwin.tar.gz",
-    urls: &[
-        uv_url!("uv-aarch64-apple-darwin.tar.gz"),
-        mirror!("uv-aarch64-apple-darwin.tar.gz"),
-    ],
+    urls: urls!(
+        "https://github.com/astral-sh/uv/releases/download/0.9.5/uv-aarch64-apple-darwin.tar.gz",
+        mirror!("uv-aarch64-apple-darwin.tar.gz")
+    ),
     sha256: "dc098ff224d78ed418e121fd374f655949d2c7031a70f6f6604eaf016a130433",
     size: 18_341_942,
     archive: Archive::TarGz,
@@ -234,10 +214,10 @@ const UV: Option<Download> = Some(Download {
 #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
 const UV: Option<Download> = Some(Download {
     file: "uv-x86_64-apple-darwin.tar.gz",
-    urls: &[
-        uv_url!("uv-x86_64-apple-darwin.tar.gz"),
-        mirror!("uv-x86_64-apple-darwin.tar.gz"),
-    ],
+    urls: urls!(
+        "https://github.com/astral-sh/uv/releases/download/0.9.5/uv-x86_64-apple-darwin.tar.gz",
+        mirror!("uv-x86_64-apple-darwin.tar.gz")
+    ),
     sha256: "58b1d4a25aa8ff99147c2550b33dcf730207fe7e0f9a0d5d36a1bbf36b845aca",
     size: 19_689_319,
     archive: Archive::TarGz,
@@ -280,15 +260,18 @@ const GPU_ITEMS: &[Item] = &[Item {
     default: false,
     multilingual: false,
     download: Download {
-        file: "onnxruntime-linux-x64-gpu-1.22.0.tgz",
-        urls: &[ort_url!("onnxruntime-linux-x64-gpu-1.22.0.tgz"), mirror!("onnxruntime-linux-x64-gpu-1.22.0.tgz")],
-        sha256: "2a19dbfa403672ec27378c3d40a68f793ac7a6327712cd0e8240a86be2b10c55",
-        size: 227_317_516,
-        archive: Archive::TarGz,
+        file: "onnxruntime_gpu-1.22.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+        urls: urls!(
+            "https://files.pythonhosted.org/packages/b5/5c/3f9700ba277d52c121dd2cebc8a672fb60b53e888972fc6682b6692a766c/onnxruntime_gpu-1.22.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+            mirror!("onnxruntime_gpu-1.22.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl")
+        ),
+        sha256: "86b064c8f6cbe6da03f51f46351237d985f8fd5eb907d3f9997ea91881131a13",
+        size: 283_199_528,
+        archive: Archive::Zip,
         keep: &[
-            ("lib/libonnxruntime.so.1.22.0", "libonnxruntime.so"),
-            ("lib/libonnxruntime_providers_shared.so", "libonnxruntime_providers_shared.so"),
-            ("lib/libonnxruntime_providers_cuda.so", "libonnxruntime_providers_cuda.so"),
+            ("onnxruntime/capi/libonnxruntime.so.1.22.0", "libonnxruntime.so"),
+            ("onnxruntime/capi/libonnxruntime_providers_shared.so", "libonnxruntime_providers_shared.so"),
+            ("onnxruntime/capi/libonnxruntime_providers_cuda.so", "libonnxruntime_providers_cuda.so"),
         ],
     },
 }];
@@ -832,6 +815,22 @@ pub fn items() -> Vec<Item> {
     all.extend_from_slice(GPU_ITEMS);
     all.extend_from_slice(MODELS);
     all
+}
+
+/// Checksums of earlier downloads of an item that installed the same files, so an existing
+/// installation stays valid when the download changes source.
+pub fn earlier_checksums(id: &str) -> &'static [&'static str] {
+    match id {
+        // ONNX Runtime 1.22.0 from Microsoft's GitHub release archives (Benchtop 3.0 to 4.1.0).
+        "runtime" => &[
+            "8344d55f93d5bc5021ce342db50f62079daf39aaafb5d311a451846228be49b3",
+            "bb76395092d150b52c7092dc6b8f2fe4d80f0f3bf0416d2f269193e347e24702",
+            "174c616efc0271194488642a72f1a514e01487da4dfe84c49296d66e40ebe0da",
+            "cfa6f6584d87555ed9f6e7e8a000d3947554d589efe3723b8bfa358cd263d03c",
+        ],
+        "runtime-cuda" => &["2a19dbfa403672ec27378c3d40a68f793ac7a6327712cd0e8240a86be2b10c55"],
+        _ => &[],
+    }
 }
 
 pub fn find(id: &str) -> Option<Item> {

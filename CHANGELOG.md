@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.2.0 (2026-11-23)
+
+Three new tools, bringing the total to 390.
+
+- **Slide Deck (reveal.js):** write a presentation in Markdown (--- between slides, -- for a slide below, "Note:" for speaker notes) beside a live reveal.js preview that follows the cursor. Fourteen themes, six transitions, three slide sizes, fragments, code highlighting, maths drawn as SVG, pictures embedded by pasting or dropping them, and speaker notes shown under the preview. Present full screen, or save one HTML file that presents offline in any browser (with reveal.js's speaker view), a PDF with one slide per page, or the Markdown; a saved HTML deck opens again for editing. Themes that load fonts from Google Fonts use the computer's fonts instead, so nothing is fetched.
+- **Animation Studio (Theatre.js):** animate boxes, ellipses, text and pictures: position, size, rotation, scale, opacity, corner radius, text size and colour, on a keyframe timeline with easing presets and holds. Drag objects on the stage and keyframes along their rows, undo and redo, and play with Theatre.js itself. Projects are saved in Theatre.js's own state format, so `getProject(name, { state })` plays them in your code (Copy code writes the snippet); "Web page" saves an HTML file that plays the animation offline with Theatre.js inside it. The editor is Benchtop's own: Theatre.js's Studio is AGPL, its core library Apache 2.0. Its frames match Theatre.js's to nine decimal places, which the tests check.
+- **Resume Builder:** fill in your details, summary and sections (experience, education, projects, skills, languages and seven more, plus sections of your own) with a small rich-text editor, choose one of four templates (Classic, Sidebar, Banner, Compact), colours, fonts, paper and margins, arrange sections in a main and a side column, and save a PDF. Files are kept in Reactive Resume's own format, so résumés move between Benchtop and Reactive Resume (rxresu.me) both ways; Reactive Resume 4 exports and JSON Resume files open too, and JSON Resume is saved as well. Barlow and JetBrains Mono travel inside the PDF.
+- The PDF engine prints pages of any size, such as slides, as well as the named paper sizes.
+
+## 4.1.1 (2026-11-23)
+
+- **AI tools set up again:** the ONNX Runtime archives on Microsoft's GitHub releases page can no longer be downloaded (they answer HTTP 404), so Benchtop 4.0 and 4.1.0 could not install the runtime the AI tools need. ONNX Runtime 1.22.0 now comes from Microsoft's official packages on PyPI, which carry the same library, with this project's mirror as the fallback; every file is still checked against a fixed SHA-256 before use. A runtime installed by an earlier version stays installed and is not downloaded again.
+- A failed download names PyPI when that is the source that failed.
+- `scripts/mirror-models.py` reports a file it cannot fetch and carries on with the rest, and now copies the uv downloads too.
+
 ## 4.1.0 (2026-11-23)
 
 - **IndicTrans2 in one click:** Video Dubbing can set up AI4Bharat's IndicTrans2 by itself. **Set up IndicTrans2** downloads uv (checked against a fixed SHA-256), which fetches a private Python 3.12 and installs PyTorch, Transformers and the text tools into Benchtop's own folder, then downloads the two models from Hugging Face: about 2.5 GB, nothing installed system-wide. Progress shows step by step, and setup can be stopped and resumed. The translation server then runs in the background on this computer, offline, and stops when Benchtop closes; the dubbing tool uses it as soon as it is ready. A Hugging Face token (for the Indian-to-English model) is used for that download only and never saved. **Remove** deletes everything again. The server script no longer needs IndicTransToolkit, so it also runs on Windows and ARM computers without a compiler.

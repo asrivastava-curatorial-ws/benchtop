@@ -534,6 +534,99 @@ try {
     );
   });
 
+  /** Runs a command and returns its raw bytes (a Response) as a Buffer. */
+  const invokeBytes = async (command, args) => {
+    const outcome = await driver.executeAsyncScript(
+      `const done = arguments[arguments.length - 1];
+       window.__TAURI_INTERNALS__.invoke(arguments[0], arguments[1]).then(
+         (buffer) => {
+           const bytes = new Uint8Array(buffer);
+           let text = '';
+           for (let i = 0; i < bytes.length; i += 32768) text += String.fromCharCode(...bytes.subarray(i, i + 32768));
+           done({ base64: btoa(text) });
+         },
+         (error) => done({ error: String(error?.message ?? error) }),
+       );`,
+      command,
+      args,
+    );
+    if (outcome.error !== undefined) throw new Error(outcome.error);
+    return Buffer.from(outcome.base64, 'base64');
+  };
+  /** Set BENCHTOP_TEST_KEEP to a folder to keep the PDFs these checks make, for a look. */
+  const keep = (name, bytes) => {
+    if (process.env.BENCHTOP_TEST_KEEP) writeFileSync(resolve(process.env.BENCHTOP_TEST_KEEP, name), bytes);
+  };
+  const pdfPages = (pdf) => {
+    if (pdf.subarray(0, 5).toString('latin1') !== '%PDF-') throw new Error('not a PDF');
+    const text = pdf.toString('latin1');
+    const boxes = [...text.matchAll(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/g)].map((m) => [Number(m[3]) - Number(m[1]), Number(m[4]) - Number(m[2])]);
+    return { count: (text.match(/\/Type\s*\/Page[^s]/g) ?? []).length, boxes };
+  };
+
+  await check('the slide preview runs reveal.js in a frame of its own, and a deck prints one slide per page', async () => {
+    await open('slide-deck');
+    await driver.wait(
+      async () => (await driver.executeScript("return document.querySelector('[data-testid=deck-status]')?.textContent ?? ''")).includes('Slide 1 of'),
+      30_000,
+      'the preview did not start',
+    );
+    const snapshot = await driver.executeAsyncScript(`const done = arguments[arguments.length - 1];
+      const frame = document.createElement('iframe');
+      frame.style.cssText = 'position:fixed;left:0;top:0;width:1400px;height:900px;border:0;opacity:0;pointer-events:none;z-index:-1';
+      const started = Date.now();
+      frame.addEventListener('load', () => {
+        frame.contentWindow.benchtopDeck
+          .snapshot('# One\\n\\n---\\n\\n## Two\\n\\n- a\\n- b\\n\\n---\\n\\n## Three', { theme: 'black', transition: 'slide', size: '16:9', slideNumber: true, progress: true, controls: true, center: true, loop: false, autoSlide: 0, codeTheme: 'monokai' })
+          .then((s) => { frame.remove(); done({ ...s, ms: Date.now() - started }); }, (e) => done({ error: String(e) }));
+      }, { once: true });
+      frame.src = './deck.html';
+      document.body.append(frame);`);
+    if (snapshot.error) throw new Error(snapshot.error);
+    if (snapshot.ms > 6000) throw new Error(`laying the deck out took ${snapshot.ms} ms`);
+    const pdf = await invokeBytes('html_to_pdf', { html: snapshot.html, paper: `${snapshot.width}x${snapshot.height}px`, landscape: false, background: true });
+    keep('deck.pdf', pdf);
+    const { count, boxes } = pdfPages(pdf);
+    if (count !== 3) throw new Error(`${count} pages instead of 3`);
+    const [w, h] = boxes[0] ?? [0, 0];
+    if (Math.abs(w - snapshot.width * 0.75) > 2 || Math.abs(h - snapshot.height * 0.75) > 2) throw new Error(`page is ${w} x ${h} pt`);
+  });
+
+  await check('Present shows the slide preview full screen', async () => {
+    await open('slide-deck');
+    await driver.wait(
+      async () => (await driver.executeScript("return document.querySelector('[data-testid=deck-status]')?.textContent ?? ''")).includes('Slide 1 of'),
+      30_000,
+      'the preview did not start',
+    );
+    await driver.findElement(By.css('[data-testid=deck-present]')).click();
+    await driver.wait(async () => (await driver.executeScript('return document.fullscreenElement?.dataset.testid ?? null')) === 'deck-frame', 10_000, 'the preview did not go full screen');
+    await driver.executeAsyncScript('const done = arguments[arguments.length - 1]; document.exitFullscreen().then(done, done);');
+    await driver.wait(async () => (await driver.executeScript('return document.fullscreenElement')) === null, 10_000, 'full screen did not end');
+  });
+
+  await check('a résumé prints to an A4 PDF', async () => {
+    await open('resume-builder');
+    await driver.wait(async () => (await driver.executeScript("return document.querySelector('[data-testid=rx-frame]')?.srcdoc ?? ''")).includes('Meera Iyer'), 30_000, 'no preview');
+    // The preview adds the page margins as padding; the PDF gets them from @page instead.
+    const html = (await driver.executeScript("return document.querySelector('[data-testid=rx-frame]').srcdoc")).replace(/body\{padding:[^}]*\}html\{overflow:hidden;\}/, '');
+    const pdf = await invokeBytes('html_to_pdf', { html, paper: 'A4', landscape: false, background: true });
+    keep('resume.pdf', pdf);
+    const { count, boxes } = pdfPages(pdf);
+    if (count < 1) throw new Error('no pages');
+    const [w, h] = boxes[0] ?? [0, 0];
+    if (Math.abs(w - 595.3) > 2 || Math.abs(h - 841.9) > 2) throw new Error(`page is ${w} x ${h} pt`);
+  });
+
+  await check('Theatre.js plays an animation in the web view', async () => {
+    await open('animation-studio');
+    const clock = () => driver.executeScript("return document.querySelector('[data-testid=anim-clock]')?.textContent ?? ''");
+    await driver.wait(async () => (await clock()).startsWith('3.00'), 10_000, 'the editor did not open on the last frame');
+    await driver.findElement(By.css('[data-testid=anim-play]')).click();
+    await driver.wait(async () => !(await clock()).startsWith('3.00'), 10_000, 'the playhead did not move');
+    await driver.findElement(By.css('[data-testid=anim-play]')).click();
+  });
+
   await check('the window refuses to navigate away from the app', async () => {
     await driver.executeScript("location.href = 'https://example.org/'");
     await driver.sleep(1500);

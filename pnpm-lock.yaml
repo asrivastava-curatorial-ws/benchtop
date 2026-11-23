@@ -131,6 +131,12 @@ importers:
       '@tauri-apps/plugin-clipboard-manager':
         specifier: ^2.5.0
         version: 2.5.0
+      '@theatre/core':
+        specifier: 0.7.2
+        version: 0.7.2
+      '@theatre/dataverse':
+        specifier: 0.7.2
+        version: 0.7.2
       '@tmcw/togeojson':
         specifier: 7.1.4
         version: 7.1.4
@@ -371,6 +377,9 @@ importers:
       regenerator-runtime:
         specifier: ^0.14.1
         version: 0.14.1
+      reveal.js:
+        specifier: 6.0.2
+        version: 6.0.2
       sass:
         specifier: 1.108.2
         version: 1.108.2
@@ -1358,6 +1367,12 @@ packages:
 
   '@tauri-apps/plugin-clipboard-manager@2.5.0':
     resolution: {integrity: sha512-dibUy1nKURYDXRMvjNk4deAbTZ5jPQ8wCE4nolt5xniryWgXQ4sK2GkFXoXlHbRdPzfZptZj95BRLfalA7m/2Q==}
+
+  '@theatre/core@0.7.2':
+    resolution: {integrity: sha512-IDQa/6WY7mIJAtsSd4EgNcM0IUZkl+FrqZ8DdYiCVTFap9ARDNmrngJOeFjJOsnnaHlc5GdEB/jj7fsjbIrAzQ==}
+
+  '@theatre/dataverse@0.7.2':
+    resolution: {integrity: sha512-YyfoyX7EyhFUY2OM5fsM0LPrs1SdgLwpiTMkkvTIoZLdOwvQhstjYq4Yz/8ZncJlRoTWvakfmgvCaBN+QuBYxg==}
 
   '@tmcw/togeojson@7.1.4':
     resolution: {integrity: sha512-plPYr+qhVPoRPy7HwbptxPm8r4meK4KzdfLjJXGTxOONir/gIp9oFs5IqSaJLTmpT1/SUD3LLBGBMdg3S540pg==}
@@ -3019,6 +3034,9 @@ packages:
     resolution: {integrity: sha512-TTlYpa+OL+vMMNG24xSlQGEJ3B/RzEfUlLct7b5G/ytav+wPrplCpVMFuwzXbkecJrb6IYo1iFb0S9v37754mg==}
     engines: {node: '>=0.12'}
 
+  reveal.js@6.0.2:
+    resolution: {integrity: sha512-JYIg5D9aoxoaLeb84O+OvAwsKWdIavVgEDScxtYEXFCT6t6TQrhNtSgogcjdCpdLsWglhJn3zyE3fUOwiH5KEg==}
+
   robust-predicates@3.0.3:
     resolution: {integrity: sha512-NS3levdsRIUOmiJ8FZWCP7LG3QpJyrs/TE0Zpf1yvZu8cAJJ6QMW92H1c7kWpdIHo8RvmLxN/o2JXTKHp74lUA==}
 
@@ -4343,6 +4361,14 @@ snapshots:
   '@tauri-apps/plugin-clipboard-manager@2.5.0':
     dependencies:
       '@tauri-apps/api': 2.12.4
+
+  '@theatre/core@0.7.2':
+    dependencies:
+      '@theatre/dataverse': 0.7.2
+
+  '@theatre/dataverse@0.7.2':
+    dependencies:
+      lodash-es: 4.18.1
 
   '@tmcw/togeojson@7.1.4': {}
 
@@ -5893,6 +5919,8 @@ snapshots:
   regenerator-runtime@0.14.1: {}
 
   ret@0.1.15: {}
+
+  reveal.js@6.0.2: {}
 
   robust-predicates@3.0.3: {}
 

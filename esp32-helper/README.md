@@ -6,17 +6,17 @@ program built from [lcgamboa's QEMU](https://github.com/lcgamboa/qemu) (QEMU
 pins to a simulated circuit). Benchtop starts it, writes the firmware into a
 4 MB flash image, and talks to it over standard input and output:
 
-| Direction | Line | Meaning |
-| --- | --- | --- |
-| out | `R` | the machine is running |
-| out | `P <pin> <0\|1>` | a pin's output level changed |
-| out | `D <pin> <0\|1>` | a pin became an output (1) or an input (0) |
-| out | `W <pin> <0-1000>` | a pin carries LEDC PWM at this duty, in tenths of a percent (`-1`: no longer) |
-| out | `U <hex>` | a byte sent on UART0 |
-| in | `I <pin> <0\|1>` | drive an input pin |
-| in | `A <channel> <0-4095>` | set an ADC1 channel's reading |
-| in | `S <hex bytes>` | bytes received on UART0 |
-| in | `Q` | quit |
+| Direction | Line                   | Meaning                                                                       |
+| --------- | ---------------------- | ----------------------------------------------------------------------------- |
+| out       | `R`                    | the machine is running                                                        |
+| out       | `P <pin> <0\|1>`       | a pin's output level changed                                                  |
+| out       | `D <pin> <0\|1>`       | a pin became an output (1) or an input (0)                                    |
+| out       | `W <pin> <0-1000>`     | a pin carries LEDC PWM at this duty, in tenths of a percent (`-1`: no longer) |
+| out       | `U <hex>`              | a byte sent on UART0                                                          |
+| in        | `I <pin> <0\|1>`       | drive an input pin                                                            |
+| in        | `A <channel> <0-4095>` | set an ADC1 channel's reading                                                 |
+| in        | `S <hex bytes>`        | bytes received on UART0                                                       |
+| in        | `Q`                    | quit                                                                          |
 
 Pins are numbered in the order of Benchtop's ESP32 board: GPIO 2, 4, 5, 12,
 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33, 34, 35, 36 and 39.

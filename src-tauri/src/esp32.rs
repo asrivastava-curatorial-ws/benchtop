@@ -330,8 +330,7 @@ pub fn esp32_start(
                 _ => {
                     let detail = errors
                         .lines()
-                        .filter(|l| !l.trim().is_empty() && !l.contains("Adding SPI flash"))
-                        .last()
+                        .rfind(|l| !l.trim().is_empty() && !l.contains("Adding SPI flash"))
                         .unwrap_or("")
                         .trim()
                         .to_string();

@@ -14,7 +14,10 @@ const tidy = (raw) =>
   raw
     .split('\n')[0]
     .replace(/\s+/g, ' ')
-    .replace(/[,.]?\s*\b(co\.?,? ?ltd|company,? limited|co\.? limited|corp(oration)?|inc(orporated)?|l\.?l\.?c|ltd|limited|gmbh( & co\.? kg)?|s\.?a\.?|s\.?p\.?a\.?|b\.?v\.?|a\.?g\.?|ab|oy|plc|pty|pvt|private|technolog(y|ies)|electronics?|communications?|international|holdings?)\b\.?/gi, '')
+    .replace(
+      /[,.]?\s*\b(co\.?,? ?ltd|company,? limited|co\.? limited|corp(oration)?|inc(orporated)?|l\.?l\.?c|ltd|limited|gmbh( & co\.? kg)?|s\.?a\.?|s\.?p\.?a\.?|b\.?v\.?|a\.?g\.?|ab|oy|plc|pty|pvt|private|technolog(y|ies)|electronics?|communications?|international|holdings?)\b\.?/gi,
+      '',
+    )
     .replace(/[\s,.-]+$/, '')
     .trim() || raw.split('\n')[0].trim();
 const names = [];
@@ -30,4 +33,8 @@ for (const prefix of Object.keys(source).sort()) {
   records[prefix.length] += prefix.toUpperCase() + index.get(name).toString(36).padStart(3, '0');
 }
 writeFileSync(new URL('../public/oui.json', import.meta.url), JSON.stringify({ source: 'IEEE MA-L, MA-M and MA-S registries via oui-data', names, records }));
-console.log(`${Object.entries(records).map(([n, r]) => `${r.length / (Number(n) + 3)} × ${n}`).join(', ')} prefixes, ${names.length} names`);
+console.log(
+  `${Object.entries(records)
+    .map(([n, r]) => `${r.length / (Number(n) + 3)} × ${n}`)
+    .join(', ')} prefixes, ${names.length} names`,
+);

@@ -32,7 +32,6 @@ CATALOG = ROOT / "src-tauri" / "src" / "ai" / "catalog.rs"
 REPO = os.environ.get("REPO", "asrivastava-curatorial-ws/benchtop")
 TAG = "models-v1"
 MIRROR = "https://github.com/asrivastava-curatorial-ws/benchtop/releases/download/models-v1/"
-ORT = "https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/"
 CONVERTED = "realesr-general-x4v3.onnx"
 
 
@@ -42,8 +41,7 @@ def catalogue():
     found = {}
     for match in re.finditer(r'file:\s*"([^"]+)",(.*?)sha256:\s*"([0-9a-f]{64})",\s*size:\s*([\d_]+)', text, re.S):
         name, urls, sha, size = match.group(1), match.group(2), match.group(3), int(match.group(4).replace("_", ""))
-        candidates = [ORT + f for f in re.findall(r'ort_url!\("([^"]+)"\)', urls)]
-        candidates += [a + b for a, b in re.findall(r'concat!\(\s*"([^"]+)",\s*"([^"]+)"\s*\)', urls)]
+        candidates = [a + b for a, b in re.findall(r'concat!\(\s*"([^"]+)",\s*"([^"]+)"\s*\)', urls)]
         candidates += re.findall(r'(?<!concat!\()\s"(https://[^"]+)"', urls)
         publisher = next((u for u in candidates if not u.startswith(MIRROR)), None)
         found[name] = (name, publisher, sha, size)
@@ -94,7 +92,12 @@ def main():
                 target.write_bytes(Path(converted).read_bytes())
             else:
                 print(f"downloading    {name} ({size / 1e6:.1f} MB)")
-                subprocess.run(["curl", "-fL", "--retry", "3", "-o", str(target), url], check=True)
+                if subprocess.run(["curl", "-fL", "--retry", "3", "-o", str(target), url]).returncode != 0:
+                    # One publisher taking a file down must not stop the others from being mirrored.
+                    print(f"NOT AVAILABLE  {name}: {url}", file=sys.stderr)
+                    failed.append(name)
+                    target.unlink(missing_ok=True)
+                    continue
             got = sha256(target)
             if got != sha:
                 print(f"CHECKSUM MISMATCH {name}: {got}", file=sys.stderr)

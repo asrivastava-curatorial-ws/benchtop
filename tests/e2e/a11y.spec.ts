@@ -21,6 +21,9 @@ const PAGES = [
   '/#/tool/video-tools',
   '/#/tool/serial-monitor',
   '/#/tool/mermaid-editor',
+  '/#/tool/slide-deck',
+  '/#/tool/animation-studio',
+  '/#/tool/resume-builder',
 ];
 
 async function check(page: Page, theme: 'light' | 'dark', path: string) {

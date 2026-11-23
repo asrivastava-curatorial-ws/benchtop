@@ -2,7 +2,7 @@
 
 <!-- Generated from src/tools/registry.ts by tests/unit/docs.test.ts. Do not edit by hand. -->
 
-Benchtop has 387 tools. All of them work without a network connection except the 11 in Online checks and Web Page to PDF, which contact only the hosts you enter, when you ask, and only in the desktop app. Video Dubbing translates through the AI server address you give it, usually one on this computer. The AI tools download their models and voices once, when you first choose one (or import them from a folder), and then work offline too.
+Benchtop has 390 tools. All of them work without a network connection except the 11 in Online checks and Web Page to PDF, which contact only the hosts you enter, when you ask, and only in the desktop app. Video Dubbing translates through the AI server address you give it, usually one on this computer. The AI tools download their models and voices once, when you first choose one (or import them from a folder), and then work offline too.
 
 ## Format and minify
 
@@ -234,6 +234,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | Transition | Tune transition timing and try it on hover. | Transition |
 | Animation | Pick or write keyframes and set the animation timing. | Animation, CSS Animation Kit |
 | Filter | Combine blur, brightness, contrast, hue and other CSS filters. | Image Filter (CSS) |
+| Animation Studio (Theatre.js) | Animate shapes, text and pictures on a keyframe timeline with easing; playback runs on Theatre.js. Save a web page that plays offline, or Theatre.js state for your own code. | Theatre.js Studio, Rive (simple scenes), After Effects (simple motion), Keyshape |
 | Cubic Bezier | Shape an easing curve and export it for CSS and animation libraries. | Cubic Bezier Generator |
 | Media Query | Build @media queries and test them in a resizable frame. | CSS Media Query |
 | Bootstrap Theme Builder | Edit any of Bootstrap 5.3's Sass variables with a live preview, then export Sass or compiled CSS. | Bootstrap Build (Bootstrap 5 theme editor) |
@@ -351,6 +352,8 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | Notes | Notes with text, checklists, Markdown and maths, code, links and any files: paste or drop pictures, videos, audio, PDFs and 3D models. Copies are kept in the note, so it stays whole when the originals go. Share as .bnote files. | Evernote, OneNote, Notion (pages), Google Keep |
 | Markdown Editor | Write Markdown with a live preview, maths ($…$), tables, task lists and embedded pictures; save as a web page, PDF, Word document or EPUB e-book. | Typora, StackEdit, Dillinger, Pandoc (Markdown export) |
 | Equation Editor (LaTeX) | Type LaTeX or pick symbols to build equations, chemistry included; save them as SVG or PNG, or copy MathML for Word and web pages. | CodeCogs Equation Editor, Mathcha, LaTeX to image converters |
+| Slide Deck (reveal.js) | Write a presentation in Markdown beside a live reveal.js preview, with speaker notes, code and maths; present full screen, or save one HTML file that presents offline, a PDF or Markdown. | reveal.js, Slides.com, reveal-md, Marp, Google Slides (simple decks) |
+| Resume Builder | Fill in your experience, education and skills, pick a template and save a PDF. Opens and saves Reactive Resume files, and JSON Resume too. | Reactive Resume, Canva resumes, Novorésumé, JSON Resume themes |
 | Certificates, Badges and Labels | Mail merge from a spreadsheet: certificates, ID cards, name badges and address labels with photos, logos, QR codes and barcodes, saved as one print-ready PDF. | Certifier, Canva bulk create, Avery Design & Print, Word mail merge |
 | Web Page to PDF | Paste web addresses and save the pages as PDFs, made by the browser installed on this computer (Chrome, Edge, Chromium or Brave). Desktop app; uses the network. | PDFCrowd, web2pdfconvert, Print Friendly & PDF |
 
@@ -553,7 +556,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 
 ## Coverage of the original web tools
 
-590 web tools map onto Benchtop tools:
+603 web tools map onto Benchtop tools:
 
 | Web tool | Benchtop tool |
 | --- | --- |
@@ -567,6 +570,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | Advanced IP Scanner | LAN Scanner |
 | Advanced Renamer | Bulk Rename |
 | AES encryption and decryption | AES Encryption |
+| After Effects (simple motion) | Animation Studio (Theatre.js) |
 | Analog Devices Filter Wizard | Filter Designer |
 | Android Asset Studio launcher icons | App Icon Maker |
 | Android Asset Studio nine-patch generator | Nine-patch Maker |
@@ -632,6 +636,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | Cable Size Calculator | Cable Size and Voltage Drop |
 | Calculator apps | Scientific Calculator |
 | Canva bulk create | Certificates, Badges and Labels |
+| Canva resumes | Resume Builder |
 | Carbon | Code Screenshot |
 | Case Converter | Case Converter |
 | Certifier | Certificates, Badges and Labels |
@@ -758,6 +763,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | glogg / klogg | Log Viewer |
 | Google HAR Analyzer | HAR Viewer |
 | Google Keep | Notes |
+| Google Slides (simple decks) | Slide Deck (reveal.js) |
 | GPX viewers | Map Viewer (GeoJSON, KML, GPX) |
 | Gradient Generator | Gradient Generator |
 | Gradient Image | Gradient Generator |
@@ -816,6 +822,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | JSON diff | Diff Checker |
 | JSON diff checkers | JSON Diff |
 | JSON Formatter | JSON Formatter |
+| JSON Resume themes | Resume Builder |
 | JSON to C# | JSON to Code |
 | JSON to CSV Converter | JSON to CSV |
 | JSON to Go | JSON to Code |
@@ -838,6 +845,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | KaiOS Manifest Convertor | KaiOS Manifest Maker |
 | Keccak-256 | Hash and HMAC |
 | Keycode info | Keycode Info |
+| Keyshape | Animation Studio (Theatre.js) |
 | KML to GPX converters | Map Viewer (GeoJSON, KML, GPX) |
 | kube-linter | Kubernetes, Compose, Terraform and Dockerfile Checker |
 | kube-score | Kubernetes, Compose, Terraform and Dockerfile Checker |
@@ -863,6 +871,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | macOS Large Type | Large Type |
 | mapshaper (viewing) | Map Viewer (GeoJSON, KML, GPX) |
 | Markdown to HTML Converter | Markdown to HTML |
+| Marp | Slide Deck (reveal.js) |
 | Material Theme Builder | Material Theme Builder |
 | Math evaluator | Math Evaluator |
 | Mathcha | Equation Editor (LaTeX) |
@@ -894,6 +903,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | No-crop apps | Social Media Sizer |
 | Noteflight (basic) | Sheet Music Writer |
 | Notion (pages) | Notes |
+| Novorésumé | Resume Builder |
 | NS lookup | DNS Lookup |
 | NTLM hash | Hash and HMAC |
 | Number to Words Converter | Number to Words |
@@ -978,6 +988,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | Random Word Generator | Random Words |
 | ray.so | Code Screenshot |
 | RDAP lookup | Domain WHOIS and Expiry |
+| Reactive Resume | Resume Builder |
 | Redirect checker | Website Status |
 | Redirect link decoder | Link Unwrapper |
 | Redocly preview | OpenAPI Viewer |
@@ -986,7 +997,10 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | Remove extra spaces | Text Cleaner |
 | Remove Line Breaks | Remove Line Breaks |
 | RequestBin | Mock API Server and Webhook Catcher |
+| reveal-md | Slide Deck (reveal.js) |
+| reveal.js | Slide Deck (reveal.js) |
 | Reverse DNS | DNS Lookup |
+| Rive (simple scenes) | Animation Studio (Theatre.js) |
 | robots.txt Generator | robots.txt Generator |
 | Rollup Config Generator | Config File Generator |
 | Roman numeral converter | Roman Numerals |
@@ -1013,6 +1027,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | SiteSucker | Website Copier |
 | Sky charts | Star Chart |
 | SkyCiv beam calculator | Beam Calculator |
+| Slides.com | Slide Deck (reveal.js) |
 | Smallpdf and iLovePDF crop | PDF Crop |
 | Smallpdf and iLovePDF form filling | PDF Form Filler |
 | Smallpdf eSign | PDF Signer |
@@ -1084,6 +1099,7 @@ Benchtop has 387 tools. All of them work without a network connection except the
 | Text Shadow | Text Shadow |
 | Text to NATO alphabet | NATO Phonetic Alphabet |
 | tfsec | Kubernetes, Compose, Terraform and Dockerfile Checker |
+| Theatre.js Studio | Animation Studio (Theatre.js) |
 | TI Filter Design Tool | Filter Designer |
 | Time sheet calculator | Time Sheet Calculator |
 | timeanddate.com meeting planner | Time Zone Planner |

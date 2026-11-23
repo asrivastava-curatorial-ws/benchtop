@@ -109,8 +109,9 @@ function workerSafeChunks(): Plugin {
         for (const next of [...chunk.imports, ...chunk.dynamicImports]) visit(next);
       };
       for (const chunk of chunks) if (chunk.isEntry && chunk.name in WORKERS) visit(chunk.fileName);
-      const page = chunks.find((chunk) => chunk.isEntry && !(chunk.name in WORKERS));
-      if (page && reached.has(page.fileName)) this.error('A worker would load the page entry and start the whole app inside the worker.');
+      for (const page of chunks.filter((chunk) => chunk.isEntry && !(chunk.name in WORKERS))) {
+        if (reached.has(page.fileName)) this.error(`A worker would load the ${page.name} page entry and start it inside the worker.`);
+      }
     },
   };
 }
@@ -149,7 +150,8 @@ export default defineConfig({
     // gains little, and the preloader needs a document, which workers lack.
     modulePreload: false,
     rolldownOptions: {
-      input: { index: 'index.html', ...WORKERS },
+      // deck.html is the Slide Deck tool's preview, a page of its own shown in a frame.
+      input: { index: 'index.html', deck: 'deck.html', ...WORKERS },
       output: {
         entryFileNames: (chunk) => (chunk.name in WORKERS ? 'assets/[name].js' : 'assets/[name]-[hash].js'),
       },

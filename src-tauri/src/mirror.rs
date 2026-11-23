@@ -290,7 +290,7 @@ impl Rules {
             .iter()
             .filter(|(prefix, _)| path.starts_with(prefix.as_str()))
             .max_by_key(|(prefix, allow)| (prefix.len(), *allow))
-            .is_none_or(|(_, allow)| *allow)
+            .map_or(true, |(_, allow)| *allow)
     }
 }
 

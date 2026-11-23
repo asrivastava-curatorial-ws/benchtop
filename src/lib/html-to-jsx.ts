@@ -119,7 +119,7 @@ const escapeText = (text: string) =>
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/ /g, '&nbsp;')
+    .replace(/\u00A0/g, '&nbsp;')
     .replace(/[{}]/g, (c) => `{'${c}'}`);
 const cssValue = (value: string) => (/^-?(\d+\.?\d*|\.\d+)$/.test(value) ? value : `'${value.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`);
 
