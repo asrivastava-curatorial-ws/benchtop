@@ -44,7 +44,11 @@ jobs:
         if: runner.os == 'Linux'
         env:
           QEMU_WORK: /home/runner/qemu-work
-        run: sh esp32-helper/ci-build.sh src-tauri/resources/esp32 benchtop-esp32-source.tar.xz
+        # Stop here, before any installer is built, if the emulator or its source is not where they belong.
+        run: |
+          sh esp32-helper/ci-build.sh src-tauri/resources/esp32 benchtop-esp32-source.tar.xz
+          test -x src-tauri/resources/esp32/benchtop-esp32
+          test -s benchtop-esp32-source.tar.xz
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}

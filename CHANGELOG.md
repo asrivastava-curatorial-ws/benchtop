@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.1.1 (2026-11-25)
+
+- **Linux installers:** the packages built on GitHub (.deb, .rpm and AppImage) carry the ESP32 emulator again, and its source is attached to the release. Since 4.1.0 the build script had left both inside QEMU's build folder, so the Circuit Simulator's ESP32 boards could not run in those installs, and the Linux job of the release ended with an error. The release workflow now stops before building any installer if the emulator or its source is missing.
+- The description in the Linux packages lists what Benchtop has now (it still said 387 tools).
+
 ## 5.1.0 (2026-11-25)
 
 26 new tools, bringing the total to 429, and 43 more calculators (306 in all): simulation labs for mechanisms, mechanics, waves and heat, optics, geometry, genetics and biology; a PDF reader that annotates, a PDF toolbox and PDF comparison; flipbooks whose pages turn like paper; worksheets and solvers that show their working; a code runner; Paint; more boards, parts and analyses in the Circuit Simulator; and many more formats in the File Converter.

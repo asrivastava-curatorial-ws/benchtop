@@ -17,8 +17,16 @@ set -eu
 QEMU_REPO=https://github.com/lcgamboa/qemu
 QEMU_COMMIT=885a6e7061fb70fac78a074a719423810bc19a17
 here=$(cd "$(dirname "$0")" && pwd)
-out=$1
+# Both paths are relative to where the script is run.  Make them absolute now:
+# the build below changes directory, and relative paths would put the program
+# and the archive inside the QEMU build folder instead.
+mkdir -p "$1"
+out=$(cd "$1" && pwd)
 archive=${2:-}
+case $archive in
+  '' | /*) ;;
+  *) archive="$(pwd)/$archive" ;;
+esac
 work=${QEMU_WORK:-$(mktemp -d)}
 mkdir -p "$work"
 if [ ! -d "$work/qemu/.git" ]; then
@@ -37,6 +45,7 @@ if [ ! -f build.ninja ]; then
 fi
 ninja qemu-system-xtensa
 sh "$here/build.sh" "$work/qemu" "$out"
+[ -x "$out/benchtop-esp32" ] || { echo "benchtop-esp32 is missing from $out" >&2; exit 1; }
 if [ -n "$archive" ]; then
   # The QEMU tree as built (with the subprojects meson fetched) and Benchtop's part.
   stage=$(mktemp -d)
