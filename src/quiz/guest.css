@@ -1,0 +1,526 @@
+/* ==========================================================================
+   Live Quiz: what a participant sees (the join page on a phone, and the
+   "as a participant" pane beside the presenter's stage).  A dark sheet in
+   JetBrains Mono, with targets big enough for thumbs.  Everything hangs off
+   .qz, so the same rules hold inside the app and on the page of its own.
+   ========================================================================== */
+
+.qz {
+  --qz-bg: #0d1117;
+  --qz-panel: #161b22;
+  --qz-raised: #21262d;
+  --qz-line: #30363d;
+  --qz-text: #e6edf3;
+  --qz-muted: #8b949e;
+  --qz-blue: #2f81f7;
+  --qz-blue-fill: #1f6feb;
+  --qz-green: #238636;
+  --qz-green-text: #3fb950;
+  --qz-amber: #d29922;
+  --qz-red: #f85149;
+
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 34rem;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 12px 16px 28px;
+  background: var(--qz-bg);
+  color: var(--qz-text);
+  font-family: "JetBrains Mono Variable", ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 15px;
+  line-height: 1.5;
+  color-scheme: dark;
+  -webkit-text-size-adjust: 100%;
+}
+
+.qz *,
+.qz *::before,
+.qz *::after {
+  box-sizing: border-box;
+}
+
+.qz h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.qz p {
+  margin: 0;
+}
+
+.qz fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.qz legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+
+.qz ol,
+.qz ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qz :focus-visible {
+  outline: 2px solid var(--qz-blue);
+  outline-offset: 2px;
+}
+
+.qz-note {
+  padding: 48px 0;
+  color: var(--qz-muted);
+  text-align: center;
+}
+
+.qz-you {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding-bottom: 10px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--qz-line);
+  font-size: 0.87rem;
+  color: var(--qz-muted);
+}
+
+.qz-you em {
+  font-style: normal;
+}
+
+.qz-you .qz-grow {
+  color: var(--qz-text);
+}
+
+.qz-grow {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.qz-card,
+.qz-join,
+.qz-pad {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.qz-join {
+  padding-top: 20px;
+}
+
+.qz-count {
+  font-size: 0.8rem;
+  color: var(--qz-muted);
+}
+
+.qz-picture {
+  display: block;
+  max-width: 100%;
+  max-height: 38vh;
+  margin: 0 auto;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+.qz-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.qz-big {
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.qz-hint {
+  color: var(--qz-muted);
+  font-size: 0.87rem;
+}
+
+/* ---- fields and buttons ---- */
+
+.qz-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qz-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--qz-line);
+  border-radius: 6px;
+  background: var(--qz-bg);
+  color: var(--qz-text);
+  font: inherit;
+  /* Sixteen pixels keeps phones from zooming into the box. */
+  font-size: 16px;
+}
+
+.qz textarea.qz-input {
+  resize: vertical;
+}
+
+.qz-input:focus-visible {
+  outline-offset: 0;
+  border-color: var(--qz-blue);
+}
+
+.qz-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--qz-line);
+  border-radius: 6px;
+  background: var(--qz-raised);
+  color: var(--qz-text);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.qz-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.qz-button.qz-primary {
+  border-color: rgb(240 246 252 / 0.1);
+  background: var(--qz-green);
+  color: #ffffff;
+}
+
+.qz-button.qz-small {
+  min-width: 44px;
+  min-height: 40px;
+  padding: 6px 12px;
+}
+
+.qz-button.is-on {
+  border-color: var(--qz-blue-fill);
+  background: var(--qz-blue-fill);
+  color: #ffffff;
+}
+
+.qz-row {
+  display: flex;
+  gap: 8px;
+}
+
+.qz-row .qz-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- choosing ---- */
+
+.qz-options {
+  display: grid;
+  gap: 10px;
+}
+
+.qz-options.has-pictures {
+  grid-template-columns: 1fr 1fr;
+}
+
+.qz-option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  min-height: 52px;
+  padding: 14px 16px;
+  border: 1px solid var(--qz-line);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: var(--qz-panel);
+  color: var(--qz-text);
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.qz-option img {
+  width: 100%;
+  max-height: 22vh;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.qz-option.is-on {
+  border-color: var(--qz-blue);
+  background: rgb(47 129 247 / 0.16);
+}
+
+.qz-timer {
+  align-self: flex-start;
+  min-width: 3.2em;
+  padding: 2px 10px;
+  border: 1px solid var(--qz-line);
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.qz-timer.is-low {
+  border-color: var(--qz-red);
+  color: var(--qz-red);
+}
+
+.qz-pin-area {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--qz-line);
+  border-radius: 6px;
+  background: var(--qz-panel);
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+
+.qz-pin-area img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* A pin: a dot ringed in white and then in dark, so that it shows on any picture. */
+.qz-pin {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  background: var(--qz-blue-fill);
+  box-shadow: 0 0 0 2px #0d1117;
+  pointer-events: none;
+}
+
+/* ---- lists: sorting, questions, ideas, standings ---- */
+
+.qz-sorter,
+.qz-list,
+.qz-board ol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qz-sorter li,
+.qz-list li,
+.qz-board li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--qz-line);
+  border-radius: 6px;
+  background: var(--qz-panel);
+}
+
+.qz-list li.is-done {
+  color: var(--qz-muted);
+}
+
+.qz-place {
+  flex: none;
+  min-width: 1.8em;
+  color: var(--qz-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.qz-board {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.qz-board li.is-you {
+  border-color: var(--qz-blue);
+  background: rgb(47 129 247 / 0.16);
+}
+
+.qz-pair {
+  display: grid;
+  gap: 6px;
+}
+
+.qz .qz-sort,
+.qz .qz-scale {
+  padding: 10px 12px;
+  border: 1px solid var(--qz-line);
+  border-radius: 6px;
+  background: var(--qz-panel);
+}
+
+.qz-sort legend,
+.qz-scale legend {
+  float: left;
+  width: 100%;
+}
+
+.qz-sort {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qz-scale > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  clear: both;
+}
+
+.qz-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--qz-muted);
+}
+
+/* ---- joining and waiting ---- */
+
+.qz-avatars {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 6px;
+}
+
+.qz-avatars legend {
+  float: left;
+  width: 100%;
+  grid-column: 1 / -1;
+}
+
+.qz-avatars button {
+  min-height: 46px;
+  border: 1px solid var(--qz-line);
+  border-radius: 6px;
+  background: var(--qz-panel);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.qz-avatars button.is-on {
+  border-color: var(--qz-blue);
+  background: rgb(47 129 247 / 0.22);
+}
+
+.qz-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.qz-chat ol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 40vh;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+}
+
+.qz-chat strong {
+  color: var(--qz-muted);
+  font-weight: 500;
+}
+
+/* ---- how it went ---- */
+
+.qz-result {
+  padding-left: 14px;
+  border-left: 4px solid var(--qz-line);
+}
+
+.qz-result.is-right {
+  border-left-color: var(--qz-green-text);
+}
+
+.qz-result.is-right .qz-big {
+  color: var(--qz-green-text);
+}
+
+.qz-result.is-part {
+  border-left-color: var(--qz-amber);
+}
+
+.qz-result.is-part .qz-big {
+  color: var(--qz-amber);
+}
+
+.qz-result.is-wrong {
+  border-left-color: var(--qz-red);
+}
+
+.qz-result.is-wrong .qz-big {
+  color: var(--qz-red);
+}
+
+/* ---- the page of its own (join.html) ---- */
+
+html.qz-page,
+html.qz-page body {
+  min-height: 100%;
+  margin: 0;
+  background: #0d1117;
+}
+
+html.qz-page {
+  height: 100%;
+}
+
+html.qz-page body {
+  height: 100%;
+}
+
+html.qz-page #quiz {
+  min-height: 100%;
+}
+
+.qz-trouble {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 16px;
+  background: #5a1e02;
+  color: #ffdfb6;
+  font-family: "JetBrains Mono Variable", ui-monospace, monospace;
+  font-size: 0.85rem;
+  text-align: center;
+}

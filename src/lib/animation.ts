@@ -13,6 +13,7 @@
  */
 
 import { licenceComment } from './slides';
+import { flatten, parsePathData } from './vector';
 
 /* ----------------------------------------------------------- the model -- */
 
@@ -23,11 +24,11 @@ export interface Rgba {
   readonly a: number;
 }
 
-export type ShapeKind = 'box' | 'ellipse' | 'text' | 'picture';
+export type ShapeKind = 'box' | 'ellipse' | 'text' | 'picture' | 'group' | 'clip';
 
-export const SHAPE_LABELS: Record<ShapeKind, string> = { box: 'Box', ellipse: 'Ellipse', text: 'Text', picture: 'Picture' };
+export const SHAPE_LABELS: Record<ShapeKind, string> = { box: 'Box', ellipse: 'Ellipse', text: 'Text', picture: 'Picture', group: 'Group', clip: 'Clip' };
 
-export type PropKey = 'x' | 'y' | 'width' | 'height' | 'rotation' | 'scale' | 'opacity' | 'radius' | 'fontSize' | 'fill';
+export type PropKey = 'x' | 'y' | 'width' | 'height' | 'rotation' | 'scale' | 'opacity' | 'radius' | 'fontSize' | 'fill' | 'progress';
 
 export interface PropSpec {
   readonly key: PropKey;
@@ -43,14 +44,16 @@ export interface PropSpec {
 export const PROPS: readonly PropSpec[] = [
   { key: 'x', label: 'X', type: 'number', step: 1 },
   { key: 'y', label: 'Y', type: 'number', step: 1 },
-  { key: 'width', label: 'Width', type: 'number', step: 1 },
-  { key: 'height', label: 'Height', type: 'number', step: 1 },
+  { key: 'width', label: 'Width', type: 'number', step: 1, only: ['box', 'ellipse', 'text', 'picture', 'clip'] },
+  { key: 'height', label: 'Height', type: 'number', step: 1, only: ['box', 'ellipse', 'text', 'picture', 'clip'] },
   { key: 'rotation', label: 'Rotation (°)', type: 'number', step: 1 },
   { key: 'scale', label: 'Scale', type: 'number', step: 0.05 },
   { key: 'opacity', label: 'Opacity', type: 'number', step: 0.05, range: [0, 1] },
   { key: 'radius', label: 'Corner radius', type: 'number', step: 1, only: ['box', 'picture'] },
   { key: 'fontSize', label: 'Text size', type: 'number', step: 1, only: ['text'] },
   { key: 'fill', label: 'Colour', type: 'rgba', only: ['box', 'ellipse', 'text'] },
+  // How far along its motion path an object is; it only matters for objects that have a path.
+  { key: 'progress', label: 'Along the path', type: 'number', step: 0.01, range: [0, 1] },
 ];
 
 export const propSpec = (key: string) => PROPS.find((p) => p.key === key);
@@ -66,6 +69,23 @@ export interface AnimObject {
   readonly text?: string;
   /** A picture object's image, as a data URL. */
   readonly picture?: string;
+  /** A motion path (SVG path data, in the coordinates of the stage or of its group): the object sits on it at `progress`. */
+  readonly path?: string;
+  /** With a path: turn to face the way the path runs. */
+  readonly follow?: boolean;
+  /** The group this object is in; its position is then measured from the group's centre. */
+  readonly parent?: string;
+  /** A clip plays a nested animation (`AnimProject.clips`): which one, when it starts, how fast, and whether it repeats. */
+  readonly clip?: string;
+  readonly start?: number;
+  readonly speed?: number;
+  readonly loop?: boolean;
+}
+
+export interface Soundtrack {
+  readonly name: string;
+  /** The audio file as a data URL. */
+  readonly src: string;
 }
 
 export interface Stage {
@@ -114,6 +134,9 @@ export interface AnimProject {
   readonly stage: Stage;
   readonly objects: readonly AnimObject[];
   readonly state: TheatreState;
+  /** Nested animations that clip objects play, by id. */
+  readonly clips?: Readonly<Record<string, AnimProject>>;
+  readonly audio?: Soundtrack;
 }
 
 export const DEFINITION_VERSION = '0.4.0';
@@ -265,10 +288,12 @@ export const DEFAULT_HANDLES: readonly [number, number, number, number] = [0.5, 
 /* ------------------------------------------------------------- values -- */
 
 export const DEFAULTS: Record<ShapeKind, PropValues> = {
-  box: { x: 640, y: 360, width: 200, height: 200, rotation: 0, scale: 1, opacity: 1, radius: 16, fontSize: 48, fill: hexToRgba('#2f81f7') },
-  ellipse: { x: 640, y: 360, width: 200, height: 200, rotation: 0, scale: 1, opacity: 1, radius: 0, fontSize: 48, fill: hexToRgba('#f78166') },
-  text: { x: 640, y: 360, width: 640, height: 120, rotation: 0, scale: 1, opacity: 1, radius: 0, fontSize: 72, fill: hexToRgba('#f0f6fc') },
-  picture: { x: 640, y: 360, width: 320, height: 240, rotation: 0, scale: 1, opacity: 1, radius: 0, fontSize: 48, fill: hexToRgba('#ffffff') },
+  box: { x: 640, y: 360, width: 200, height: 200, rotation: 0, scale: 1, opacity: 1, radius: 16, fontSize: 48, fill: hexToRgba('#2f81f7'), progress: 0 },
+  ellipse: { x: 640, y: 360, width: 200, height: 200, rotation: 0, scale: 1, opacity: 1, radius: 0, fontSize: 48, fill: hexToRgba('#f78166'), progress: 0 },
+  text: { x: 640, y: 360, width: 640, height: 120, rotation: 0, scale: 1, opacity: 1, radius: 0, fontSize: 72, fill: hexToRgba('#f0f6fc'), progress: 0 },
+  picture: { x: 640, y: 360, width: 320, height: 240, rotation: 0, scale: 1, opacity: 1, radius: 0, fontSize: 48, fill: hexToRgba('#ffffff'), progress: 0 },
+  group: { x: 640, y: 360, width: 0, height: 0, rotation: 0, scale: 1, opacity: 1, radius: 0, fontSize: 48, fill: hexToRgba('#ffffff'), progress: 0 },
+  clip: { x: 640, y: 360, width: 480, height: 270, rotation: 0, scale: 1, opacity: 1, radius: 0, fontSize: 48, fill: hexToRgba('#ffffff'), progress: 0 },
 };
 
 function sanitize(spec: PropSpec, value: unknown): PropValue | undefined {
@@ -559,7 +584,10 @@ export function addObject(project: AnimProject, kind: ShapeKind, extra: Partial<
   return { project: next, key };
 }
 
-export function removeObject(project: AnimProject, key: string): AnimProject {
+export function removeObject(input: AnimProject, key: string): AnimProject {
+  // What was inside a removed group stays where it is on the stage.
+  let project = input;
+  for (const child of input.objects.filter((o) => o.parent === key)) project = setParent(project, child.key, objectOf(input, key)?.parent);
   const next = withSheet({ ...project, objects: project.objects.filter((o) => o.key !== key) }, (sheet) => {
     const byObject = { ...sheet.staticOverrides.byObject };
     delete byObject[key];
@@ -573,7 +601,7 @@ export function removeObject(project: AnimProject, key: string): AnimProject {
 export function renameObject(project: AnimProject, key: string, wanted: string): AnimProject {
   const name = uniqueName(project, wanted, key);
   if (name === key) return project;
-  return withSheet({ ...project, objects: project.objects.map((o) => (o.key === key ? { ...o, key: name } : o)) }, (sheet) => {
+  return withSheet({ ...project, objects: project.objects.map((o) => (o.key === key ? { ...o, key: name } : o.parent === key ? { ...o, parent: name } : o)) }, (sheet) => {
     const byObject = { ...sheet.staticOverrides.byObject };
     if (byObject[key]) {
       byObject[name] = byObject[key] as Record<string, unknown>;
@@ -600,10 +628,16 @@ export function updateObject(project: AnimProject, key: string, change: Partial<
 export function reorderObject(project: AnimProject, key: string, step: number): AnimProject {
   const objects = [...project.objects];
   const at = objects.findIndex((o) => o.key === key);
-  const to = at + step;
-  if (at < 0 || to < 0 || to >= objects.length) return project;
-  const [moved] = objects.splice(at, 1);
-  objects.splice(to, 0, moved as AnimObject);
+  const moved = objects[at];
+  const way = Math.sign(step);
+  if (!moved || way === 0) return project;
+  // The order among an object's own siblings is what shows: members of other groups are stepped over.
+  let to = at + way;
+  while (objects[to] && objects[to]?.parent !== moved.parent) to += way;
+  const other = objects[to];
+  if (!other) return project;
+  objects[at] = other;
+  objects[to] = moved;
   return { ...project, objects };
 }
 
@@ -634,7 +668,21 @@ const FILE_KIND = 'benchtop-animation';
 
 /** The editor's own file: the Theatre.js state plus what Theatre.js does not keep (shapes, text, pictures, stage). */
 export function projectFile(project: AnimProject): string {
-  return `${JSON.stringify({ kind: FILE_KIND, version: 1, name: project.name, sheet: project.sheet, stage: project.stage, objects: project.objects, state: project.state }, null, 2)}\n`;
+  return `${JSON.stringify(projectData(project), null, 2)}\n`;
+}
+
+function projectData(project: AnimProject): Record<string, unknown> {
+  return {
+    kind: FILE_KIND,
+    version: 1,
+    name: project.name,
+    sheet: project.sheet,
+    stage: project.stage,
+    objects: project.objects,
+    state: project.state,
+    ...(project.clips && Object.keys(project.clips).length ? { clips: Object.fromEntries(Object.entries(project.clips).map(([id, clip]) => [id, projectData(clip)])) } : {}),
+    ...(project.audio ? { audio: project.audio } : {}),
+  };
 }
 
 /** The Theatre.js project state on its own, for `getProject(name, { state })`. */
@@ -643,7 +691,7 @@ export function theatreStateFile(project: AnimProject): string {
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
-const KINDS: readonly ShapeKind[] = ['box', 'ellipse', 'text', 'picture'];
+const KINDS: readonly ShapeKind[] = ['box', 'ellipse', 'text', 'picture', 'group', 'clip'];
 
 function readState(raw: unknown): TheatreState {
   if (!isRecord(raw) || !isRecord(raw.sheetsById)) throw new Error('This is not a Theatre.js project: it has no "sheetsById".');
@@ -710,6 +758,10 @@ export function readProjectFile(text: string): AnimProject {
   } catch {
     throw new Error('This file is not JSON. Open an animation saved by Benchtop or a Theatre.js state file.');
   }
+  return readProjectData(raw, 0);
+}
+
+function readProjectData(raw: unknown, depth: number): AnimProject {
   if (!isRecord(raw)) throw new Error('This file does not hold an animation.');
   const own = raw.kind === FILE_KIND;
   const state = readState(own ? raw.state : raw);
@@ -735,15 +787,405 @@ export function readProjectFile(text: string): AnimProject {
       kind,
       ...(typeof o.text === 'string' ? { text: o.text.slice(0, 2000) } : {}),
       ...(typeof o.picture === 'string' && o.picture.startsWith('data:image/') ? { picture: o.picture } : {}),
+      ...(typeof o.path === 'string' && o.path.length <= 20_000 && pathTable(o.path).total > 0 ? { path: o.path } : {}),
+      ...(o.follow === true ? { follow: true } : {}),
+      ...(typeof o.parent === 'string' ? { parent: o.parent } : {}),
+      ...(typeof o.clip === 'string' ? { clip: o.clip } : {}),
+      ...(typeof o.start === 'number' && Number.isFinite(o.start) ? { start: o.start } : {}),
+      ...(typeof o.speed === 'number' && Number.isFinite(o.speed) && o.speed > 0 ? { speed: o.speed } : {}),
+      ...(o.loop === true ? { loop: true } : {}),
     });
   }
+  // Only groups hold other objects, and never in a circle.
+  for (const [index, o] of objects.entries()) {
+    const chain = new Set([o.key]);
+    let up = o.parent;
+    let sound = true;
+    while (up !== undefined) {
+      const parent = objects.find((candidate) => candidate.key === up);
+      if (parent?.kind !== 'group' || chain.has(up)) {
+        sound = false;
+        break;
+      }
+      chain.add(up);
+      up = parent.parent;
+    }
+    if (!sound) {
+      const { parent: _dropped, ...rest } = o;
+      objects[index] = rest;
+    }
+  }
+  const clips: Record<string, AnimProject> = {};
+  if (own && depth === 0 && isRecord(raw.clips)) {
+    for (const [id, clip] of Object.entries(raw.clips)) {
+      try {
+        clips[id] = readProjectData(clip, depth + 1);
+      } catch {
+        /* A clip that cannot be read is left out; its object shows as empty. */
+      }
+    }
+  }
+  const audioRaw = own && isRecord(raw.audio) ? raw.audio : null;
+  const audio =
+    audioRaw && typeof audioRaw.src === 'string' && /^data:audio\/[a-z0-9.+-]+(?:;[a-z0-9=.+-]+)*;base64,/i.test(audioRaw.src.slice(0, 120))
+      ? { name: typeof audioRaw.name === 'string' ? audioRaw.name.slice(0, 120) : 'Soundtrack', src: audioRaw.src }
+      : undefined;
   // Objects the state mentions but the file does not describe.
   for (const key of [...Object.keys(sheetState.staticOverrides.byObject), ...Object.keys(sheetState.sequence?.tracksByObject ?? {})]) {
     if (seen.has(key)) continue;
     seen.add(key);
     objects.push({ key, kind: 'box' });
   }
-  return { name: own && typeof raw.name === 'string' && raw.name.trim().length >= 3 ? raw.name.trim().slice(0, 32) : 'Benchtop animation', sheet, stage, objects, state };
+  return {
+    name: own && typeof raw.name === 'string' && raw.name.trim().length >= 3 ? raw.name.trim().slice(0, 32) : 'Benchtop animation',
+    sheet,
+    stage,
+    objects,
+    state,
+    ...(Object.keys(clips).length ? { clips } : {}),
+    ...(audio ? { audio } : {}),
+  };
+}
+
+/* ------------------------------------------- paths, groups and clips -- */
+
+export interface PathTable {
+  /** x and y of the points along the path. */
+  readonly points: number[];
+  /** Distance from the start to each point. */
+  readonly lengths: number[];
+  readonly total: number;
+}
+
+const tables = new Map<string, PathTable>();
+
+/** A motion path as a run of short straight pieces with their lengths (kept for the next frame). */
+export function pathTable(d: string): PathTable {
+  const known = tables.get(d);
+  if (known) return known;
+  const points: number[] = [];
+  const lengths: number[] = [];
+  let total = 0;
+  try {
+    for (const path of parsePathData(d)) {
+      const line = flatten(path, 0.25);
+      if (path.closed && line[0]) line.push(line[0]);
+      line.forEach(([x, y], index) => {
+        const px = points[points.length - 2];
+        const py = points[points.length - 1];
+        // A jump to a new sub-path adds no distance.
+        if (px !== undefined && py !== undefined && index > 0) total += Math.hypot(x - px, y - py);
+        points.push(x, y);
+        lengths.push(total);
+      });
+    }
+  } catch {
+    /* Path data that cannot be read gives an empty table: the object stays where it is. */
+  }
+  const table = { points, lengths, total };
+  if (tables.size > 200) tables.clear();
+  tables.set(d, table);
+  return table;
+}
+
+/** The place `progress` (0 to 1) along a path, and the direction of travel there in degrees. */
+export function pointOnPath(table: PathTable, progress: number): { x: number; y: number; angle: number } | null {
+  const count = table.lengths.length;
+  if (count === 0) return null;
+  if (count === 1 || table.total <= 0) return { x: table.points[0] as number, y: table.points[1] as number, angle: 0 };
+  const wanted = clamp01(progress) * table.total;
+  let low = 0;
+  let high = count - 1;
+  while (high - low > 1) {
+    const middle = (low + high) >> 1;
+    if ((table.lengths[middle] as number) <= wanted) low = middle;
+    else high = middle;
+  }
+  const span = (table.lengths[high] as number) - (table.lengths[low] as number);
+  const part = span > 0 ? (wanted - (table.lengths[low] as number)) / span : 0;
+  const ax = table.points[low * 2] as number;
+  const ay = table.points[low * 2 + 1] as number;
+  const bx = table.points[high * 2] as number;
+  const by = table.points[high * 2 + 1] as number;
+  return { x: ax + (bx - ax) * part, y: ay + (by - ay) * part, angle: (Math.atan2(by - ay, bx - ax) * 180) / Math.PI };
+}
+
+/** An object's values with its motion path applied: the path gives the position, and the direction when it follows. */
+export function onPath(object: Pick<AnimObject, 'path' | 'follow'> | undefined, values: PropValues): PropValues {
+  if (!object?.path) return values;
+  const place = pointOnPath(pathTable(object.path), values.progress as number);
+  if (!place) return values;
+  return { ...values, x: place.x, y: place.y, rotation: (values.rotation as number) + (object.follow ? place.angle : 0) };
+}
+
+/** Ready-made motion paths, sized to a stage. */
+export function presetPath(kind: 'line' | 'arc' | 'circle' | 'wave' | 'eight', width: number, height: number): string {
+  const n = (value: number) => String(Math.round(value));
+  const cx = width / 2;
+  const cy = height / 2;
+  const r = Math.min(width, height) * 0.35;
+  switch (kind) {
+    case 'line':
+      return `M${n(width * 0.15)} ${n(cy)}L${n(width * 0.85)} ${n(cy)}`;
+    case 'arc':
+      return `M${n(width * 0.15)} ${n(height * 0.75)}Q${n(cx)} ${n(height * 0.05)} ${n(width * 0.85)} ${n(height * 0.75)}`;
+    case 'circle':
+      return `M${n(cx + r)} ${n(cy)}A${n(r)} ${n(r)} 0 1 1 ${n(cx - r)} ${n(cy)}A${n(r)} ${n(r)} 0 1 1 ${n(cx + r)} ${n(cy)}`;
+    case 'wave': {
+      const step = (width * 0.7) / 4;
+      const x0 = width * 0.15;
+      return `M${n(x0)} ${n(cy)}Q${n(x0 + step / 2)} ${n(cy - r)} ${n(x0 + step)} ${n(cy)}T${n(x0 + step * 2)} ${n(cy)}T${n(x0 + step * 3)} ${n(cy)}T${n(x0 + step * 4)} ${n(cy)}`;
+    }
+    default:
+      return `M${n(cx)} ${n(cy)}C${n(cx + r * 1.6)} ${n(cy - r * 1.2)} ${n(cx + r * 1.6)} ${n(cy + r * 1.2)} ${n(cx)} ${n(cy)}C${n(cx - r * 1.6)} ${n(cy - r * 1.2)} ${n(cx - r * 1.6)} ${n(cy + r * 1.2)} ${n(cx)} ${n(cy)}`;
+  }
+}
+
+/** A smooth path through clicked points (Catmull-Rom, written as cubic curves). */
+export function smoothPath(points: readonly (readonly [number, number])[]): string {
+  const n = (value: number) => String(Math.round(value * 10) / 10);
+  const first = points[0];
+  if (!first) return '';
+  let d = `M${n(first[0])} ${n(first[1])}`;
+  for (let i = 0; i + 1 < points.length; i++) {
+    const p0 = points[Math.max(0, i - 1)] as readonly [number, number];
+    const p1 = points[i] as readonly [number, number];
+    const p2 = points[i + 1] as readonly [number, number];
+    const p3 = points[Math.min(points.length - 1, i + 2)] as readonly [number, number];
+    d += `C${n(p1[0] + (p2[0] - p0[0]) / 6)} ${n(p1[1] + (p2[1] - p0[1]) / 6)} ${n(p2[0] - (p3[0] - p1[0]) / 6)} ${n(p2[1] - (p3[1] - p1[1]) / 6)} ${n(p2[0])} ${n(p2[1])}`;
+  }
+  return d;
+}
+
+/** The objects directly inside a group, or at the top when `parent` is undefined, in drawing order. */
+export const childrenOf = (project: AnimProject, parent: string | undefined): AnimObject[] => project.objects.filter((o) => o.parent === parent);
+
+/** Where a group's centre is on the stage when nothing is animated, through the groups it is in. */
+function restOrigin(project: AnimProject, key: string | undefined): { x: number; y: number } {
+  let x = 0;
+  let y = 0;
+  const seen = new Set<string>();
+  for (let at = key; at !== undefined && !seen.has(at); at = objectOf(project, at)?.parent) {
+    seen.add(at);
+    const values = valuesAt(project, at, 0);
+    x += values.x as number;
+    y += values.y as number;
+  }
+  return { x, y };
+}
+
+function shiftProp(project: AnimProject, key: string, prop: 'x' | 'y', by: number): AnimProject {
+  if (by === 0) return project;
+  return withSheet(project, (sheet) => {
+    const statics = sheet.staticOverrides.byObject[key] ?? {};
+    const current = typeof statics[prop] === 'number' ? (statics[prop] as number) : (DEFAULTS[objectOf(project, key)?.kind ?? 'box'][prop] as number);
+    const byObject = { ...sheet.staticOverrides.byObject, [key]: { ...statics, [prop]: current + by } };
+    let sequence = sheet.sequence;
+    const tracks = sequence?.tracksByObject[key];
+    const id = tracks?.trackIdByPropPath[pathKey(prop)];
+    const track = id && tracks ? tracks.trackData[id] : undefined;
+    if (sequence && tracks && id && track) {
+      const moved = { ...track, keyframes: track.keyframes.map((k) => (typeof k.value === 'number' ? { ...k, value: k.value + by } : k)) };
+      sequence = { ...sequence, tracksByObject: { ...sequence.tracksByObject, [key]: { ...tracks, trackData: { ...tracks.trackData, [id]: moved } } } };
+    }
+    return { ...sheet, staticOverrides: { byObject }, ...(sequence ? { sequence } : {}) };
+  });
+}
+
+/**
+ * Puts an object into a group (or takes it out, with `parent` undefined).  It stays where it
+ * is on the stage: its position, keyframes and motion path are re-measured from the group's centre.
+ */
+export function setParent(project: AnimProject, key: string, parent: string | undefined): AnimProject {
+  const object = objectOf(project, key);
+  if (!object || object.parent === parent || parent === key) return project;
+  if (parent !== undefined) {
+    if (objectOf(project, parent)?.kind !== 'group') return project;
+    // A group cannot go inside itself, however deep.
+    for (let at: string | undefined = parent; at !== undefined; at = objectOf(project, at)?.parent) if (at === key) return project;
+  }
+  const from = restOrigin(project, object.parent);
+  const to = restOrigin(project, parent);
+  const dx = from.x - to.x;
+  const dy = from.y - to.y;
+  let next = shiftProp(shiftProp(project, key, 'x', dx), key, 'y', dy);
+  next = {
+    ...next,
+    objects: next.objects.map((o) => {
+      if (o.key !== key) return o;
+      const { parent: _old, ...rest } = o;
+      const moved = o.path && (dx !== 0 || dy !== 0) ? { ...rest, path: shiftPath(o.path, dx, dy) } : rest;
+      return parent === undefined ? moved : { ...moved, parent };
+    }),
+  };
+  return next;
+}
+
+/** Everything inside a group, however deep. */
+export function descendantsOf(project: AnimProject, key: string): AnimObject[] {
+  const found: AnimObject[] = [];
+  const visit = (parent: string, depth: number) => {
+    if (depth > 32) return;
+    for (const child of childrenOf(project, parent)) {
+      found.push(child);
+      visit(child.key, depth + 1);
+    }
+  };
+  visit(key, 0);
+  return found;
+}
+
+/** Removes an object and, for a group, everything inside it. */
+export function removeTree(project: AnimProject, key: string): AnimProject {
+  let next = project;
+  // Innermost first, so nothing is moved out of a group that is about to go.
+  for (const child of descendantsOf(project, key).reverse()) next = removeObject(next, child.key);
+  return pruneClips(removeObject(next, key));
+}
+
+/** Takes an object off its motion path: it returns to its own position. */
+export function clearPath(project: AnimProject, key: string): AnimProject {
+  const object = objectOf(project, key);
+  if (!object?.path) return project;
+  const next = trackOf(project, key, 'progress') ? stopAnimating(project, key, 'progress', 0) : project;
+  return {
+    ...next,
+    objects: next.objects.map((o) => {
+      if (o.key !== key) return o;
+      const { path: _path, follow: _follow, ...rest } = o;
+      return rest;
+    }),
+  };
+}
+
+/**
+ * A place on the stage as the same place measured inside a group (which may be moved,
+ * turned or scaled, and may sit in other groups), at time `t`.  With `offset` false it
+ * converts a movement instead of a place.
+ */
+export function localPoint(project: AnimProject, parent: string | undefined, x: number, y: number, t: number, offset = true): { x: number; y: number } {
+  const chain: AnimObject[] = [];
+  const seen = new Set<string>();
+  for (let at = parent; at !== undefined && !seen.has(at); at = objectOf(project, at)?.parent) {
+    seen.add(at);
+    const group = objectOf(project, at);
+    if (group) chain.unshift(group);
+  }
+  let px = x;
+  let py = y;
+  // Outermost group first: each one undoes its own move, turn and scale.
+  for (const group of chain) {
+    const v = onPath(group, valuesAt(project, group.key, t));
+    const angle = (-(v.rotation as number) * Math.PI) / 180;
+    const scale = (v.scale as number) || 1;
+    const dx = px - (offset ? (v.x as number) : 0);
+    const dy = py - (offset ? (v.y as number) : 0);
+    px = (dx * Math.cos(angle) - dy * Math.sin(angle)) / scale;
+    py = (dx * Math.sin(angle) + dy * Math.cos(angle)) / scale;
+  }
+  return { x: px, y: py };
+}
+
+/** Path data moved by (dx, dy). */
+export function shiftPath(d: string, dx: number, dy: number): string {
+  const n = (value: number) => String(Math.round(value * 100) / 100);
+  let out = '';
+  try {
+    for (const path of parsePathData(d)) {
+      path.nodes.forEach((node, index) => {
+        const previous = path.nodes[index - 1];
+        if (index === 0) out += `M${n(node.x + dx)} ${n(node.y + dy)}`;
+        else if (previous?.hout || node.hin) {
+          const c1 = previous?.hout ?? [previous?.x ?? node.x, previous?.y ?? node.y];
+          const c2 = node.hin ?? [node.x, node.y];
+          out += `C${n(c1[0] + dx)} ${n(c1[1] + dy)} ${n(c2[0] + dx)} ${n(c2[1] + dy)} ${n(node.x + dx)} ${n(node.y + dy)}`;
+        } else out += `L${n(node.x + dx)} ${n(node.y + dy)}`;
+      });
+      if (path.closed) {
+        const first = path.nodes[0];
+        const last = path.nodes[path.nodes.length - 1];
+        if (first && last && (last.hout || first.hin)) {
+          const c1 = last.hout ?? [last.x, last.y];
+          const c2 = first.hin ?? [first.x, first.y];
+          out += `C${n(c1[0] + dx)} ${n(c1[1] + dy)} ${n(c2[0] + dx)} ${n(c2[1] + dy)} ${n(first.x + dx)} ${n(first.y + dy)}`;
+        }
+        out += 'Z';
+      }
+    }
+  } catch {
+    return d;
+  }
+  return out;
+}
+
+/** The time inside a clip's own animation when the main timeline is at `t`. */
+export function clipTime(object: Pick<AnimObject, 'start' | 'speed' | 'loop'>, t: number, length: number): number {
+  const local = (t - (object.start ?? 0)) * (object.speed ?? 1);
+  if (length <= 0) return 0;
+  if (object.loop) return local < 0 ? 0 : local % length;
+  return Math.min(Math.max(local, 0), length);
+}
+
+/** A project as it is kept inside another one: a clip cannot hold clips of its own, nor a soundtrack. */
+export function asClip(project: AnimProject): AnimProject {
+  const { clips: _nested, audio: _sound, ...plain } = project;
+  let inner: AnimProject = plain;
+  for (const o of plain.objects) if (o.kind === 'clip') inner = removeObject(inner, o.key);
+  return inner;
+}
+
+/**
+ * The box that holds everything in a group, in the group's own coordinates
+ * (turns of the members are not counted), or null for an empty group.
+ */
+export function groupBounds(project: AnimProject, key: string, t: number, depth = 0): { x: number; y: number; width: number; height: number } | null {
+  let left = Number.POSITIVE_INFINITY;
+  let top = Number.POSITIVE_INFINITY;
+  let right = Number.NEGATIVE_INFINITY;
+  let bottom = Number.NEGATIVE_INFINITY;
+  for (const child of childrenOf(project, key)) {
+    const v = onPath(child, valuesAt(project, child.key, t));
+    const scale = Math.abs(v.scale as number);
+    const x = v.x as number;
+    const y = v.y as number;
+    let box: { x: number; y: number; width: number; height: number } | null;
+    if (child.kind === 'group') {
+      const inner = depth < 16 ? groupBounds(project, child.key, t, depth + 1) : null;
+      box = inner && { x: x + inner.x * scale, y: y + inner.y * scale, width: inner.width * scale, height: inner.height * scale };
+    } else {
+      const width = Math.max(0, v.width as number) * scale;
+      const height = Math.max(0, v.height as number) * scale;
+      box = { x: x - width / 2, y: y - height / 2, width, height };
+    }
+    if (!box) continue;
+    left = Math.min(left, box.x);
+    top = Math.min(top, box.y);
+    right = Math.max(right, box.x + box.width);
+    bottom = Math.max(bottom, box.y + box.height);
+  }
+  return right >= left ? { x: left, y: top, width: right - left, height: bottom - top } : null;
+}
+
+/** Adds another animation as a clip: it is kept inside this project and played by a clip object. */
+export function addClip(project: AnimProject, clip: AnimProject, wanted: string): { project: AnimProject; key: string } {
+  let id = cleanName(wanted) || 'Clip';
+  for (let n = 2; project.clips?.[id]; n++) id = `${cleanName(wanted) || 'Clip'} ${n}`;
+  const inner = asClip(clip);
+  const added = addObject({ ...project, clips: { ...project.clips, [id]: inner } }, 'clip', { key: wanted, clip: id });
+  const fit = Math.min(1, (project.stage.width * 0.6) / inner.stage.width, (project.stage.height * 0.6) / inner.stage.height);
+  let next = setStatic(added.project, added.key, 'width', Math.round(inner.stage.width * fit));
+  next = setStatic(next, added.key, 'height', Math.round(inner.stage.height * fit));
+  return { project: next, key: added.key };
+}
+
+/** Clips nobody plays any more are dropped from the project. */
+export function pruneClips(project: AnimProject): AnimProject {
+  if (!project.clips) return project;
+  const used = new Set(project.objects.map((o) => o.clip).filter(Boolean));
+  const kept = Object.fromEntries(Object.entries(project.clips).filter(([id]) => used.has(id)));
+  if (Object.keys(kept).length === Object.keys(project.clips).length) return project;
+  const { clips: _all, ...rest } = project;
+  return Object.keys(kept).length ? { ...rest, clips: kept } : rest;
 }
 
 /* ------------------------------------------------------------ drawing -- */
@@ -786,6 +1228,27 @@ export const RUNTIME_STYLE = `function objectStyle(kind, v) {
   return style;
 }`;
 
+/**
+ * Motion paths and clip timing for a saved page, the same arithmetic as pointOnPath and clipTime.
+ * Kept in step by a test.
+ */
+export const RUNTIME_MOTION = `function pointOnPath(table, progress) {
+  var count = table.lengths.length;
+  if (count === 0) return null;
+  if (count === 1 || table.total <= 0) return { x: table.points[0], y: table.points[1], angle: 0 };
+  var wanted = Math.min(Math.max(progress, 0), 1) * table.total, low = 0, high = count - 1;
+  while (high - low > 1) { var middle = (low + high) >> 1; if (table.lengths[middle] <= wanted) low = middle; else high = middle; }
+  var span = table.lengths[high] - table.lengths[low], part = span > 0 ? (wanted - table.lengths[low]) / span : 0;
+  var ax = table.points[low * 2], ay = table.points[low * 2 + 1], bx = table.points[high * 2], by = table.points[high * 2 + 1];
+  return { x: ax + (bx - ax) * part, y: ay + (by - ay) * part, angle: Math.atan2(by - ay, bx - ax) * 180 / Math.PI };
+}
+function clipTime(o, t, length) {
+  var local = (t - (o.start || 0)) * (o.speed || 1);
+  if (length <= 0) return 0;
+  if (o.loop) return local < 0 ? 0 : local % length;
+  return Math.min(Math.max(local, 0), length);
+}`;
+
 /** The part of @theatre/core's `types` the configuration uses. */
 export interface PropTypes {
   number(value: number, options?: { range?: [number, number] }): unknown;
@@ -807,6 +1270,7 @@ export function coreConfig(kind: ShapeKind, types: PropTypes): Record<string, un
     radius: d.radius,
     fontSize: d.fontSize,
     fill: types.rgba({ r: f.r, g: f.g, b: f.b, a: f.a }),
+    progress: types.number(d.progress as number, { range: [0, 1] }),
   };
 }
 
@@ -814,7 +1278,7 @@ export function coreConfig(kind: ShapeKind, types: PropTypes): Record<string, un
 export function configSource(kind: ShapeKind, types = 'types'): string {
   const d = DEFAULTS[kind];
   const f = d.fill;
-  return `{ x: ${d.x}, y: ${d.y}, width: ${d.width}, height: ${d.height}, rotation: ${d.rotation}, scale: ${d.scale}, opacity: ${types}.number(${d.opacity}, { range: [0, 1] }), radius: ${d.radius}, fontSize: ${d.fontSize}, fill: ${types}.rgba({ r: ${f.r}, g: ${f.g}, b: ${f.b}, a: ${f.a} }) }`;
+  return `{ x: ${d.x}, y: ${d.y}, width: ${d.width}, height: ${d.height}, rotation: ${d.rotation}, scale: ${d.scale}, opacity: ${types}.number(${d.opacity}, { range: [0, 1] }), radius: ${d.radius}, fontSize: ${d.fontSize}, fill: ${types}.rgba({ r: ${f.r}, g: ${f.g}, b: ${f.b}, a: ${f.a} }), progress: ${types}.number(${d.progress}, { range: [0, 1] }) }`;
 }
 
 const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -856,10 +1320,33 @@ LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.`;
 
+/** What the saved page needs to know about an object: its shape, its place in a group, its path as a table. */
+function pageObjects(project: AnimProject): Record<string, unknown>[] {
+  return project.objects.map((o) => {
+    const table = o.path ? pathTable(o.path) : null;
+    return {
+      key: o.key,
+      kind: o.kind,
+      text: o.text ?? '',
+      picture: o.picture ?? '',
+      ...(o.parent ? { parent: o.parent } : {}),
+      ...(table?.lengths.length
+        ? { table: { points: table.points.map((v) => Math.round(v * 100) / 100), lengths: table.lengths.map((v) => Math.round(v * 100) / 100), total: table.total }, follow: o.follow === true }
+        : {}),
+      ...(o.kind === 'clip' ? { clip: o.clip ?? '', start: o.start ?? 0, speed: o.speed ?? 1, loop: o.loop === true } : {}),
+    };
+  });
+}
+
 export function animationHtml(project: AnimProject, code: { core: string; dataverse: string; licence?: string }, options: PageOptions): string {
   const { stage } = project;
-  const objects = project.objects.map((o) => ({ key: o.key, kind: o.kind, text: o.text ?? '', picture: o.picture ?? '' }));
-  const data = JSON.stringify({ name: project.name, sheet: project.sheet, objects, state: project.state, loop: options.loop }).replace(/</g, '\\u003c');
+  const objects = pageObjects(project);
+  const clips = Object.fromEntries(
+    Object.entries(project.clips ?? {})
+      .filter(([id]) => project.objects.some((o) => o.clip === id))
+      .map(([id, clip]) => [id, { name: clip.name, sheet: clip.sheet, stage: clip.stage, objects: pageObjects(clip), state: clip.state }]),
+  );
+  const data = JSON.stringify({ name: project.name, sheet: project.sheet, objects, clips, audio: project.audio?.src ?? '', state: project.state, loop: options.loop }).replace(/</g, '\\u003c');
   const configs = `{ ${KINDS.map((k) => `${k}: function (types) { return ${configSource(k)}; }`).join(', ')} }`;
   return `<!doctype html>
 <html lang="en">
@@ -874,6 +1361,9 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 .obj { position: absolute; box-sizing: border-box; transform-origin: 50% 50%; }
 .obj.text { display: flex; align-items: center; justify-content: center; text-align: center; white-space: pre-wrap; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-weight: 600; line-height: 1.15; }
 .obj.picture { background-size: cover; background-position: center; background-repeat: no-repeat; }
+.obj.clip { overflow: hidden; }
+.obj.clip > .inner { position: absolute; left: 50%; top: 50%; transform-origin: 0 0; }
+#start { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border: 0; background: rgba(0, 0, 0, 0.55); color: #fff; font: 600 20px system-ui, sans-serif; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -904,40 +1394,101 @@ ${inlineScript(code.core)}
 <script>
 (function () {
   ${RUNTIME_STYLE}
+  ${RUNTIME_MOTION}
   var data = JSON.parse(document.getElementById('animation').textContent);
   var configs = ${configs};
   var stage = document.getElementById('stage');
   var Theatre = window.Theatre;
   var project = Theatre.getProject(data.name, { state: data.state });
   var sheet = project.sheet(data.sheet);
-  data.objects.forEach(function (o) {
-    var el = document.createElement('div');
-    el.className = 'obj ' + o.kind;
-    if (o.kind === 'text') el.textContent = o.text;
-    if (o.kind === 'picture' && o.picture) el.style.backgroundImage = 'url("' + o.picture + '")';
-    stage.appendChild(el);
-    var object = sheet.object(o.key, configs[o.kind](Theatre.types));
-    object.onValuesChange(function (values) {
-      var style = objectStyle(o.kind, values);
-      for (var name in style) el.style[name] = style[name];
+  var ready = [project.ready];
+  // Builds the objects of one animation inside a container; groups hold their members, clips play an animation of their own.
+  function build(container, objects, ownSheet, position) {
+    var elements = {};
+    objects.forEach(function (o) {
+      var el = document.createElement('div');
+      el.className = 'obj ' + o.kind;
+      if (o.kind === 'text') el.textContent = o.text;
+      if (o.kind === 'picture' && o.picture) el.style.backgroundImage = 'url("' + o.picture + '")';
+      elements[o.key] = el;
     });
-  });
+    objects.forEach(function (o) {
+      var el = elements[o.key];
+      (o.parent && elements[o.parent] ? elements[o.parent] : container).appendChild(el);
+      var inner = null, clip = o.kind === 'clip' ? data.clips[o.clip] : null;
+      if (clip) {
+        inner = document.createElement('div');
+        inner.className = 'inner';
+        inner.style.width = clip.stage.width + 'px';
+        inner.style.height = clip.stage.height + 'px';
+        el.appendChild(inner);
+        var child = Theatre.getProject(data.name + ' / ' + o.key, { state: clip.state });
+        var childSheet = child.sheet(clip.sheet);
+        ready.push(child.ready);
+        build(inner, clip.objects, childSheet, null);
+        var sync = function (t) { childSheet.sequence.position = clipTime(o, t, Theatre.val(childSheet.sequence.pointer.length)); };
+        if (position) { Theatre.onChange(position, sync); child.ready.then(function () { sync(Theatre.val(position)); }); }
+      }
+      var object = ownSheet.object(o.key, configs[o.kind](Theatre.types));
+      object.onValuesChange(function (values) {
+        var v = values;
+        if (o.table) {
+          var place = pointOnPath(o.table, values.progress);
+          if (place) { v = Object.assign({}, values, { x: place.x, y: place.y, rotation: values.rotation + (o.follow ? place.angle : 0) }); }
+        }
+        var style = objectStyle(o.kind, v);
+        for (var name in style) el.style[name] = style[name];
+        if (inner && clip) {
+          var scale = Math.min(Math.max(0, v.width) / clip.stage.width, Math.max(0, v.height) / clip.stage.height);
+          inner.style.transform = 'scale(' + scale + ') translate(-50%, -50%)';
+        }
+      });
+    });
+  }
+  build(stage, data.objects, sheet, sheet.sequence.pointer.position);
   function fit() {
     var scale = Math.min(window.innerWidth / ${stage.width}, window.innerHeight / ${stage.height});
     stage.style.transform = 'translate(' + (window.innerWidth - ${stage.width} * scale) / 2 + 'px, ' + (window.innerHeight - ${stage.height} * scale) / 2 + 'px) scale(' + scale + ')';
   }
   window.addEventListener('resize', fit);
   fit();
-  var playing = false;
+  var playing = false, voiced = false;
   function play() {
     playing = true;
-    sheet.sequence.play({ iterationCount: data.loop ? Infinity : 1 }).then(function (done) { if (done) playing = false; });
+    // With sound, Theatre.js plays a sequence a thousand times at most.
+    sheet.sequence.play({ iterationCount: data.loop ? (voiced ? 1000 : Infinity) : 1 }).then(function (done) { if (done) playing = false; });
   }
   document.addEventListener('click', function () {
     if (playing) { sheet.sequence.pause(); playing = false; }
     else { if (!data.loop && Math.abs(sheet.sequence.position - Theatre.val(sheet.sequence.pointer.length)) < 1e-6) sheet.sequence.position = 0; play(); }
   });
-  project.ready.then(play);
+  Promise.all(ready).then(function () {
+    var Context = window.AudioContext || window.webkitAudioContext;
+    if (!data.audio || !Context) { play(); return; }
+    // Sound needs a click first; Theatre.js then starts the sound and the picture together, on every loop.
+    var start = document.createElement('button');
+    start.id = 'start';
+    start.type = 'button';
+    start.textContent = 'Play with sound';
+    document.body.appendChild(start);
+    start.addEventListener('click', function (event) {
+      event.stopPropagation();
+      start.remove();
+      var context = new Context();
+      var binary = atob(data.audio.slice(data.audio.indexOf(',') + 1)), bytes = new Uint8Array(binary.length);
+      for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      new Promise(function (resolve, reject) { var decoding = context.decodeAudioData(bytes.buffer, resolve, reject); if (decoding && decoding.catch) decoding.catch(reject); }).then(function (sound) {
+        var wanted = Math.ceil(Theatre.val(sheet.sequence.pointer.length) * sound.sampleRate);
+        if (sound.length < wanted) {
+          // Silence after a short sound, so that a loop starts the sound again with the picture.
+          var padded = context.createBuffer(sound.numberOfChannels, wanted, sound.sampleRate);
+          for (var c = 0; c < sound.numberOfChannels; c++) padded.getChannelData(c).set(sound.getChannelData(c));
+          sound = padded;
+        }
+        return sheet.sequence.attachAudio({ source: sound, audioContext: context });
+      }).then(function () { voiced = true; play(); }, function () { play(); });
+    });
+  });
 })();
 </script>
 </body>

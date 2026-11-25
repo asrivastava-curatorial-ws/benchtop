@@ -152,7 +152,12 @@ const SUB = '₀₁₂₃₄₅₆₇₈₉';
  * Molar mass of a formula: "H2SO4", "Ca(OH)2", "K4[Fe(CN)6]", "CuSO4·5H2O"
  * (also "CuSO4.5H2O" or "CuSO4*5H2O").  Throws on unknown elements.
  */
-export function molarMass(formula: string): FormulaMass {
+/**
+ * Atoms in a formula, in order of first appearance: "Ca(OH)2" gives Ca 1,
+ * O 2, H 2; hydrates ("CuSO4·5H2O") add up their parts.  Charges written at
+ * the end ("SO4^2-") are ignored here.  Symbols are not checked.
+ */
+export function formulaCounts(formula: string): Map<string, number> {
   const text = formula.replace(/\s+/g, '').replace(/[₀-₉]/g, (d) => String(SUB.indexOf(d)));
   if (!text) throw new Error('Enter a formula, such as H2SO4 or CuSO4·5H2O.');
   const counts = new Map<string, number>();
@@ -163,6 +168,13 @@ export function molarMass(formula: string): FormulaMass {
     const group = parseGroup(lead ? part.slice((lead[1] as string).length) : part);
     for (const [symbol, n] of group) counts.set(symbol, (counts.get(symbol) ?? 0) + n * factor);
   }
+  return counts;
+}
+
+export function molarMass(formula: string): FormulaMass {
+  const text = formula.replace(/\s+/g, '').replace(/[₀-₉]/g, (d) => String(SUB.indexOf(d)));
+  const counts = formulaCounts(formula);
+  const parts = text.split(/[·.*•]/).filter(Boolean);
   let mass = 0;
   const rows: { symbol: string; name: string; count: number; mass: number }[] = [];
   for (const [symbol, count] of counts) {

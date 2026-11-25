@@ -17,7 +17,20 @@ const partOf = (doc: CircuitDoc, type: string, n = 0) => {
 };
 
 /** Terminals that may be left unconnected in the examples. */
-const OPTIONAL = new Set(['relay:NC', 'counter:RST', 'timer555:CTRL']);
+const OPTIONAL = new Set([
+  'relay:NC',
+  'counter:RST',
+  'timer555:CTRL',
+  'shift-register:Q7S',
+  'neopixel-ring:DOUT',
+  'neopixel-strip:DOUT',
+  'neopixel-matrix:DOUT',
+  'lcd:D0',
+  'lcd:D1',
+  'lcd:D2',
+  'lcd:D3',
+  'tft:MISO',
+]);
 
 async function started(doc: CircuitDoc, options: ConstructorParameters<typeof Session>[1] = {}): Promise<Session> {
   const session = new Session(doc, options);

@@ -58,14 +58,46 @@ export async function arduinoInfo(): Promise<ArduinoInfo> {
 export interface CompileResult {
   readonly ok: boolean;
   readonly log: string;
-  /** Intel HEX, for the Uno. */
+  /** Intel HEX, for the AVR boards (Uno, Nano, Mega, ATtiny85). */
   readonly hex?: string;
+  /** A UF2 file in Base64, for the Raspberry Pi Pico. */
+  readonly uf2?: string;
   /** A prepared ESP32 flash image, for esp32Start. */
   readonly token?: string;
   readonly size?: number;
 }
 
-export async function arduinoCompile(board: 'uno' | 'esp32', sketch: string): Promise<CompileResult> {
+export async function arduinoCompile(board: 'uno' | 'nano' | 'mega' | 'attiny85' | 'pico' | 'esp32', sketch: string): Promise<CompileResult> {
   if (!isDesktop) throw new Error('Compiling sketches needs the desktop app and arduino-cli (or Arduino IDE 2).');
   return invoke<CompileResult>('arduino_compile', { board, sketch });
+}
+
+export interface DetectedBoard {
+  /** The port's address: COM3, /dev/ttyACM0, /dev/cu.usbmodem14101. */
+  readonly port: string;
+  readonly label: string;
+  /** The board's name and its identifier for arduino-cli, when the port's USB identity gives them. */
+  readonly name: string;
+  readonly fqbn: string;
+}
+
+/** The serial ports arduino-cli sees, with the boards it recognises on them. */
+export async function arduinoBoards(): Promise<DetectedBoard[]> {
+  if (!isDesktop) return [];
+  return invoke<DetectedBoard[]>('arduino_boards');
+}
+
+export interface UploadRequest {
+  /** The kind of board, as arduino-cli names it: arduino:avr:uno, esp32:esp32:esp32. */
+  readonly fqbn: string;
+  readonly port: string;
+  /** A sketch to compile and upload, or a compiled program (Intel HEX) to upload as it is. */
+  readonly sketch?: string;
+  readonly hex?: string;
+}
+
+/** Puts a program on a real board through arduino-cli.  A failed upload is ok: false with arduino-cli's messages. */
+export async function arduinoUpload(request: UploadRequest): Promise<{ ok: boolean; log: string }> {
+  if (!isDesktop) throw new Error('Uploading to a board needs the desktop app and arduino-cli (or Arduino IDE 2).');
+  return invoke<{ ok: boolean; log: string }>('arduino_upload', { request });
 }

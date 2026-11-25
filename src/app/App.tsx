@@ -1,21 +1,59 @@
 import { useEffect, useLayoutEffect, useState } from 'preact/hooks';
 import { APP_NAME } from '../brand';
 import { onDeskRequests, setQuickKey, setTray, watchClipboard } from '../platform/desk';
-import { findTool } from '../tools/registry';
+import { findTool, TOOLS } from '../tools/registry';
+import type { ToolEntry } from '../tools/types';
 import { Icon } from '../ui/icons';
 import { Toasts } from '../ui/toast';
 import { CommandPalette } from './CommandPalette';
 import { DropDialog } from './DropDialog';
 import { Home } from './Home';
-import { navigate, useRoute } from './router';
+import { startProjects, useActiveProject } from './projects';
+import { navigate, toolHref, useRoute } from './router';
 import { SettingsView } from './SettingsView';
 import { Sidebar } from './Sidebar';
 import { getSettings, updateSettings, useSettings } from './store';
 import { ToolHost } from './ToolHost';
 
+startProjects();
+
+/** The start screen: the notes, with the way to every other tool along the top. */
+function StartPage({ notes, onOpenPalette }: { notes: ToolEntry; onOpenPalette: () => void }) {
+  const settings = useSettings();
+  const shortcuts = [...settings.favorites, ...settings.recents]
+    .filter((id, i, all) => id !== notes.id && all.indexOf(id) === i)
+    .map(findTool)
+    .filter((tool): tool is ToolEntry => tool !== undefined)
+    .slice(0, 6);
+  return (
+    <div class="start">
+      <nav class="start-bar" aria-label="Other tools">
+        <a class="button button-small" href="#/tools" data-testid="start-all-tools">
+          <Icon name="menu" size={14} />
+          All {TOOLS.length} tools
+        </a>
+        <button type="button" class="button button-small" onClick={onOpenPalette}>
+          <Icon name="search" size={14} />
+          Find a tool <kbd>Ctrl K</kbd>
+        </button>
+        {shortcuts.map((tool) => (
+          <a key={tool.id} class="start-chip" href={toolHref(tool.id)} title={tool.description}>
+            {tool.name}
+          </a>
+        ))}
+      </nav>
+      <ToolHost entry={notes} />
+    </div>
+  );
+}
+
 export function App() {
   const route = useRoute();
   const sidebarHidden = useSettings((settings) => settings.sidebarHidden);
+  const startPage = useSettings((settings) => settings.startScreen);
+  const project = useActiveProject();
+  const notes = findTool('notes');
+  const startsOnNotes = startPage === 'notes' && notes !== undefined;
   const [palette, setPalette] = useState(false);
   const [dropped, setDropped] = useState<File[] | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -93,8 +131,9 @@ export function App() {
 
   const tool = route.page === 'tool' ? findTool(route.id) : undefined;
   useEffect(() => {
-    document.title = tool ? `${tool.name} – ${APP_NAME}` : route.page === 'settings' ? `Settings – ${APP_NAME}` : APP_NAME;
-  }, [tool, route.page]);
+    const page = tool ? tool.name : route.page === 'settings' ? 'Settings' : route.page === 'tools' || !startsOnNotes ? 'All tools' : 'Notes';
+    document.title = `${page} – ${APP_NAME}${project ? ` (${project.name})` : ''}`;
+  }, [tool, route.page, startsOnNotes, project?.name]);
 
   return (
     <div class={`app${sidebarHidden ? ' sidebar-hidden' : ''}`}>
@@ -115,16 +154,18 @@ export function App() {
             </button>
           </div>
         )}
-        {route.page === 'home' && <Home onOpenPalette={() => setPalette(true)} />}
+        {route.page === 'home' && startsOnNotes && <StartPage key={project?.id ?? 'none'} notes={notes} onOpenPalette={() => setPalette(true)} />}
+        {(route.page === 'tools' || (route.page === 'home' && !startsOnNotes)) && <Home onOpenPalette={() => setPalette(true)} />}
         {route.page === 'settings' && <SettingsView />}
         {route.page === 'tool' &&
           (tool ? (
-            <ToolHost entry={tool} />
+            // Tools read their saved options when they open, so a change of project starts them afresh.
+            <ToolHost key={project?.id ?? 'none'} entry={tool} />
           ) : (
             <div class="tool-failure">
               <h2>There is no tool called "{route.id}"</h2>
               <p>It may have been renamed. Use the search to find what you need.</p>
-              <a class="button button-primary" href="#/">
+              <a class="button button-primary" href="#/tools">
                 See all tools
               </a>
             </div>

@@ -1,0 +1,21 @@
+Benchtop Coated FOGRA39L (public/icc/Benchtop-Coated-FOGRA39L.icc)
+
+This ICC profile is made by Benchtop itself (scripts/make-cmyk-profile.mjs)
+from the FOGRA39L characterization data: 1617 measured patches of offset
+printing on coated paper (ISO 12647-2:2004/Amd 1, paper type 1 or 2),
+originated by Fogra (www.fogra.org) in December 2006.
+
+The data are taken from the colord project
+(https://github.com/hughsie/colord, data/profiles/FOGRA39L_coated.iccprofile.xml),
+where they are published with the statements "This profile is free of known
+copyright restrictions" and "license: CC0". They are kept in this project as
+scripts/data/FOGRA39L.ti3.
+
+The profile is released the same way: no copyright, use freely
+(CC0 1.0 Universal, https://creativecommons.org/publicdomain/zero/1.0/).
+The full text of CC0 1.0 is in icc/LICENSE.txt beside the profile.
+
+"Fogra" and "FOGRA39" are names of Fogra Forschungsinstitut für Medientechnologien e.V.
+This profile is not made, checked or endorsed by Fogra; it is a general-purpose
+profile for the FOGRA39L printing condition, not a replacement for the profile
+a printer names for a contract job.

@@ -1,14 +1,16 @@
 /**
  * Converters in the desktop shell (convert.rs).  They run programs already
  * installed on this computer (FFmpeg, LibreOffice, Pandoc, ImageMagick,
- * Inkscape, Calibre, qpdf, Ghostscript) on files chosen in the native dialog,
- * and write the results next to the originals or wherever the user chooses.
+ * Inkscape, Calibre, qpdf, Ghostscript, MuPDF, bsdtar) on files chosen in the
+ * native dialog, and write the results next to the originals or wherever the
+ * user chooses.  Conversions done in the page itself read the chosen file
+ * with readConvertInput and save their result with saveConverted.
  */
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { isDesktop } from './index';
 
-export type ProgramId = 'ffmpeg' | 'ffprobe' | 'libreoffice' | 'pandoc' | 'imagemagick' | 'inkscape' | 'calibre' | 'qpdf' | 'ghostscript' | 'espeak';
+export type ProgramId = 'ffmpeg' | 'ffprobe' | 'libreoffice' | 'pandoc' | 'imagemagick' | 'inkscape' | 'calibre' | 'qpdf' | 'ghostscript' | 'espeak' | 'mutool' | 'bsdtar';
 
 export interface Programs {
   readonly programs: Readonly<Record<ProgramId, string | null>>;
@@ -97,6 +99,28 @@ export async function videoFrame(token: string, seconds: number, width = 960): P
 export async function runConversion(job: ConvertJob): Promise<ConvertResult | null> {
   need('Converting files');
   const result = await invoke<ConvertResult | { cancelled: true }>('convert_run', { job });
+  return 'cancelled' in result ? null : result;
+}
+
+/** The bytes of a chosen file (up to 512 MB), for conversions done in the page. */
+export async function readConvertInput(token: string): Promise<Uint8Array> {
+  need('Converting files');
+  return new Uint8Array(await invoke<ArrayBuffer>('convert_read', { token }));
+}
+
+export interface SaveRequest {
+  /** Token of the file the result was made from: its name and folder are used. */
+  readonly input: string;
+  readonly ext: string;
+  readonly suffix?: string;
+  readonly destination: Destination;
+  readonly folder?: string;
+}
+
+/** Saves a result made in the page the way conversions are saved.  Null when the Save dialog was cancelled. */
+export async function saveConverted(request: SaveRequest, bytes: Uint8Array): Promise<ConvertResult | null> {
+  need('Converting files');
+  const result = await invoke<ConvertResult | { cancelled: true }>('convert_save', bytes, { headers: { 'x-save': encodeURIComponent(JSON.stringify(request)) } });
   return 'cancelled' in result ? null : result;
 }
 
@@ -223,7 +247,7 @@ export const PROGRAMS: Readonly<Record<Exclude<ProgramId, 'ffprobe'>, ProgramInf
   },
   ghostscript: {
     name: 'Ghostscript',
-    use: 'shrinking PDFs',
+    use: 'PostScript and EPS, and shrinking PDFs',
     homepage: 'https://www.ghostscript.com',
     licence: 'AGPL-3.0',
     install: {
@@ -232,6 +256,32 @@ export const PROGRAMS: Readonly<Record<Exclude<ProgramId, 'ffprobe'>, ProgramInf
       arch: 'sudo pacman -S ghostscript',
       macos: 'brew install ghostscript',
       windows: 'winget install --id ArtifexSoftware.GhostScript -e',
+    },
+  },
+  mutool: {
+    name: 'MuPDF',
+    use: 'XPS and OpenXPS documents',
+    homepage: 'https://mupdf.com',
+    licence: 'AGPL-3.0',
+    install: {
+      debian: 'sudo apt install mupdf-tools',
+      fedora: 'sudo dnf install mupdf',
+      arch: 'sudo pacman -S mupdf-tools',
+      macos: 'brew install mupdf-tools',
+      windows: 'winget install --id ArtifexSoftware.mutool -e',
+    },
+  },
+  bsdtar: {
+    name: 'bsdtar',
+    use: 'RAR, 7z, TAR, CAB and ISO archives',
+    homepage: 'https://www.libarchive.org',
+    licence: 'BSD-2-Clause',
+    install: {
+      debian: 'sudo apt install libarchive-tools',
+      fedora: 'sudo dnf install bsdtar',
+      arch: 'sudo pacman -S libarchive',
+      macos: 'Built into macOS',
+      windows: 'Built into Windows 10 and later (tar.exe)',
     },
   },
 };

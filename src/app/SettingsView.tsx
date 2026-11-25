@@ -230,6 +230,19 @@ export function SettingsView() {
       </section>
 
       <section class="settings-group">
+        <h2>Start screen</h2>
+        <div class="settings-row">
+          <label for="setting-start">
+            Benchtop opens on
+            <small>The other one is always a click away in the sidebar.</small>
+          </label>
+          <select id="setting-start" class="input" value={settings.startScreen} onChange={(event) => updateSettings({ startScreen: event.currentTarget.value === 'notes' ? 'notes' : 'tools' })}>
+            <option value="tools">The list of all tools</option>
+            <option value="notes">Notes</option>
+          </select>
+        </div>
+      </section>
+      <section class="settings-group">
         <h2>Network</h2>
         <div class="settings-row">
           <label for="setting-network">

@@ -2,26 +2,49 @@
  * Circuit Simulator: draw a circuit on a grid and run it.  Resistors,
  * capacitors, transistors, op-amps and the 555 are solved as analog parts;
  * gates, flip-flops, counters and displays as logic; meters and an
- * oscilloscope show what happens; and Arduino Uno (emulated here) and ESP32
- * boards (in the desktop app's emulator) run real firmware against it.
+ * oscilloscope show what happens; Arduino Uno, Nano and Mega and ATtiny85
+ * boards (emulated here) and ESP32 boards (in the desktop app's emulator)
+ * run real firmware against it, with displays, sensors and motors wired to
+ * their pins and their I²C and SPI buses.  The analysis panel works out
+ * DC operating points, DC sweeps, time-domain runs and frequency response
+ * (Bode plots), with stepped part values, cursors and measurements.
  */
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { ESP32 } from '../../lib/circuit/boards';
+import { sendToTool } from '../../app/handoff';
+import { formatValue, mainTerminal, type OperatingPoint, partNames } from '../../lib/circuit/analysis';
+import { AvrMcu, isAvrChip } from '../../lib/circuit/avr';
+import { BOARD_SPECS, type BoardKind, isBoard } from '../../lib/circuit/boards';
 import { ESP_IMAGE_ADVICE, EspMcu, espImageKind } from '../../lib/circuit/esp32';
 import { ESP32_DEMO } from '../../lib/circuit/esp32-demo';
-import { EXAMPLES, type Example } from '../../lib/circuit/examples';
-import { type CircuitDoc, connect, type FirmwareRef, onSegment, type PlacedPart, parseDoc, rotate, terminalPoints, toSpice, type WireSegment } from '../../lib/circuit/netlist';
-import { defaultProps, GROUPS, PART_BY_TYPE, PARTS, type PartDef, type PropDef, type PropValue } from '../../lib/circuit/parts';
-import { firmwareFor, firmwareName, Session } from '../../lib/circuit/session';
-import { UNO_EXAMPLES } from '../../lib/circuit/uno-examples';
+import { EXAMPLE_GROUPS, EXAMPLES, type Example, MICROPYTHON_BLINK } from '../../lib/circuit/examples';
+import { type CircuitDoc, type Connectivity, connect, type FirmwareRef, onSegment, type PlacedPart, parseDoc, rotate, terminalPoints, toSpice, type WireSegment } from '../../lib/circuit/netlist';
+import { defaultProps, GROUPS, PART_BY_TYPE, PARTS, type PartDef, type PropDef, type PropValue, partOutline } from '../../lib/circuit/parts';
+import { PicoMcu, picoFlashImage } from '../../lib/circuit/rp2040';
+import { examplesFor, firmwareFor, firmwareName, picoImages, Session } from '../../lib/circuit/session';
+import { writeVcd } from '../../lib/logic';
 import { formatSi, minus, parseSi } from '../../lib/si';
 import { niceScale } from '../../lib/svg-chart';
 import { isDesktop, pickFile, readBinaryFile, readTextFile, saveFile } from '../../platform';
-import { type ArduinoInfo, arduinoCompile, arduinoInfo, type Esp32Info, esp32Firmware, esp32Info, esp32Send, esp32Start, esp32Stop, onEsp32Lines } from '../../platform/esp32';
+import {
+  type ArduinoInfo,
+  arduinoBoards,
+  arduinoCompile,
+  arduinoInfo,
+  arduinoUpload,
+  type DetectedBoard,
+  type Esp32Info,
+  esp32Firmware,
+  esp32Info,
+  esp32Send,
+  esp32Start,
+  esp32Stop,
+  onEsp32Lines,
+} from '../../platform/esp32';
 import { CodeEditor } from '../../ui/CodeEditor';
 import { Icon } from '../../ui/icons';
 import { attempt, notify } from '../../ui/toast';
 import { defineCustomTool, type Values } from '../types';
+import { AnalysisPanel } from './_circuit-analysis';
 import { drawPart, GRID, TRACE_COLOURS } from './_circuit-draw';
 import { Segmented, usePersistentState } from './_shared';
 
@@ -32,7 +55,7 @@ type Point = readonly [number, number];
 interface SimState {
   readonly doc: CircuitDoc;
   readonly scope: number;
-  readonly panel: 'scope' | 'serial';
+  readonly panel: 'scope' | 'serial' | 'analysis';
 }
 
 const firstExample = EXAMPLES[0] as Example;
@@ -42,7 +65,7 @@ const readSim = (v: Values | undefined): SimState => {
   return {
     doc: parsed?.doc ?? firstExample.make(),
     scope: typeof v?.scope === 'number' && v.scope > 0 ? v.scope : 0.02,
-    panel: v?.panel === 'serial' ? 'serial' : 'scope',
+    panel: v?.panel === 'serial' || v?.panel === 'analysis' ? v.panel : 'scope',
   };
 };
 
@@ -74,7 +97,7 @@ const WINDOWS: readonly (readonly [number, string])[] = [
 
 /** A part's outline in grid units after turning and flipping: [x0, y0, x1, y1]. */
 function partBox(part: PlacedPart, def = PART_BY_TYPE.get(part.type)): [number, number, number, number] {
-  const [bx0, by0, bx1, by1] = def?.box ?? [0, -1, 3, 1];
+  const [bx0, by0, bx1, by1] = def ? partOutline(def, part.props) : [0, -1, 3, 1];
   const corners = [rotate(bx0, by0, part.rot, part.flip), rotate(bx1, by0, part.rot, part.flip), rotate(bx0, by1, part.rot, part.flip), rotate(bx1, by1, part.rot, part.flip)];
   const xs = corners.map((c) => c[0] + part.x);
   const ys = corners.map((c) => c[1] + part.y);
@@ -102,6 +125,14 @@ function hitTerminal(doc: CircuitDoc, x: number, y: number): Point | null {
     }
   }
   return best;
+}
+
+/** A point on the drawing in a part's own grid units (before it was turned and mirrored). */
+function localPoint(part: PlacedPart, [wx, wy]: Point): [number, number] {
+  let x = wx - part.x;
+  let y = wy - part.y;
+  for (let i = 0; i < ((part.rot % 4) + 4) % 4; i++) [x, y] = [y, -x];
+  return [part.flip ? -x : x, y];
 }
 
 function hitPart(doc: CircuitDoc, x: number, y: number): PlacedPart | null {
@@ -248,6 +279,11 @@ function labelPlace(part: PlacedPart, [x0, y0, x1, y1]: readonly [number, number
     const [bx, by] = rotate(0, -0.8, part.rot, part.flip);
     return { x: part.x + bx + 0.8, y: part.y + by, anchor: 'start' };
   }
+  if (part.type === 'probe') {
+    // Beside the flag, clear of its trace number.
+    const [bx, by] = rotate(1.9, -1.1, part.rot, part.flip);
+    return { x: part.x + bx, y: part.y + by, anchor: 'start' };
+  }
   const top = { x: (x0 + x1) / 2, y: y0 - 0.45, anchor: 'middle' as const };
   if (y1 - y0 <= x1 - x0) return top;
   const cx = (x0 + x1) / 2;
@@ -257,6 +293,100 @@ function labelPlace(part: PlacedPart, [x0, y0, x1, y1]: readonly [number, number
   if (!right) return { x: x1 + 0.4, y: (y0 + y1) / 2, anchor: 'start' };
   if (!left) return { x: x0 - 0.4, y: (y0 + y1) / 2, anchor: 'end' };
   return top;
+}
+
+/* -------------------------------------------------- operating point labels -- */
+
+interface OpLabel {
+  readonly key: string;
+  readonly kind: 'node' | 'part';
+  readonly x: number;
+  readonly y: number;
+  readonly anchor: 'start' | 'middle' | 'end';
+  readonly text: string;
+}
+
+/** Labels for an operating point: each node's voltage on a wire clear of the parts, each part's current beside its value (an arrow shows the way it flows). */
+function operatingLabels(doc: CircuitDoc, op: OperatingPoint, connectivity: Connectivity): OpLabel[] {
+  const out: OpLabel[] = [];
+  const boxes = doc.parts.map((p) => partBox(p));
+  /** How far a point is from the nearest part outline (0 inside one). */
+  const clearance = (x: number, y: number) => {
+    let best = 4;
+    for (const [x0, y0, x1, y1] of boxes) {
+      const dx = Math.max(x0 - x, 0, x - x1);
+      const dy = Math.max(y0 - y, 0, y - y1);
+      best = Math.min(best, Math.hypot(dx, dy));
+    }
+    return best;
+  };
+  const railNodes = new Set<number>();
+  for (const p of doc.parts) if (p.type === 'rail') railNodes.add(connectivity.partNodes.get(p.id)?.[0] ?? -1);
+  const candidates = new Map<number, { x: number; y: number; anchor: OpLabel['anchor']; score: number }>();
+  for (const w of doc.wires) {
+    const n = connectivity.wireNodes.get(w.id);
+    if (n === undefined || n <= 0 || railNodes.has(n)) continue;
+    const horizontal = w.y1 === w.y2;
+    const length = Math.abs(w.x2 - w.x1) + Math.abs(w.y2 - w.y1);
+    const mx = (w.x1 + w.x2) / 2;
+    const my = (w.y1 + w.y2) / 2;
+    const spots: { x: number; y: number; anchor: OpLabel['anchor'] }[] = horizontal
+      ? [
+          { x: mx, y: my - 0.45, anchor: 'middle' },
+          { x: mx, y: my + 0.55, anchor: 'middle' },
+        ]
+      : [
+          { x: mx + 0.3, y: my, anchor: 'start' },
+          { x: mx - 0.3, y: my, anchor: 'end' },
+        ];
+    for (const spot of spots) {
+      // Text runs about 1.6 grid squares: test its far end too.
+      const reach = spot.anchor === 'start' ? 1.6 : spot.anchor === 'end' ? -1.6 : 0;
+      const score =
+        Math.min(
+          clearance(spot.x, spot.y),
+          clearance(spot.x + reach, spot.y),
+          clearance(spot.x - (spot.anchor === 'middle' ? 0.8 : 0), spot.y),
+          clearance(spot.x + (spot.anchor === 'middle' ? 0.8 : 0), spot.y),
+        ) +
+        0.05 * Math.min(length, 10);
+      const previous = candidates.get(n);
+      if (!previous || score > previous.score) candidates.set(n, { ...spot, score });
+    }
+  }
+  for (let n = 1; n < op.nodes.length && n <= connectivity.nodeCount; n++) {
+    const spot = candidates.get(n);
+    if (!spot) continue;
+    const raw = op.nodes[n] as number;
+    out.push({ key: `n${n}`, kind: 'node', x: spot.x, y: spot.y, anchor: spot.anchor, text: minus(formatValue(Math.abs(raw) < 1e-9 ? 0 : raw, 'V', 3)) });
+  }
+  for (const part of doc.parts) {
+    const r = op.parts.get(part.id);
+    const def = PART_BY_TYPE.get(part.type);
+    if (!r || !def || def.ground || def.terminals.length < 2 || BOARD_SPECS.has(part.type) || def.group === 'Meters') continue;
+    const k = mainTerminal(part.type);
+    const i = r.currents[k] as number;
+    if (!Number.isFinite(i) || Math.abs(i) < 1e-12) continue;
+    let text: string;
+    if (def.terminals.length === 2) {
+      const [a, b] = terminalPoints(part, def) as [[number, number], [number, number]];
+      const dx = (b[0] - a[0]) * Math.sign(i);
+      const dy = (b[1] - a[1]) * Math.sign(i);
+      const arrow = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? '→' : '←') : dy > 0 ? '↓' : '↑';
+      text = `${arrow} ${formatValue(Math.abs(i), 'A', 3)}`;
+    } else {
+      const which = def.terminals[k]?.name ?? '';
+      const short = which === 'collector' ? 'Ic' : which === 'drain' ? 'Id' : which === 'out' ? 'Iout' : `I(${which})`;
+      text = `${short} ${minus(formatValue(i, 'A', 3))}`;
+    }
+    const box = partBox(part, def);
+    const [x0, , x1, y1] = box;
+    const value = labelPlace(part, box);
+    // Under the part's name and value: beside a tall part, below a wide one.
+    const place: Pick<OpLabel, 'x' | 'y' | 'anchor'> = value.anchor === 'middle' ? { x: (x0 + x1) / 2, y: y1 + 0.5, anchor: 'middle' } : { x: value.x, y: value.y + 0.75, anchor: value.anchor };
+    out.push({ key: `p${part.id}`, kind: 'part', ...place, text });
+  }
+  return out;
 }
 
 /* --------------------------------------------------------------- the boards -- */
@@ -330,6 +460,23 @@ void loop() {
 }
 `;
 
+const PICO_SKETCH = `// The Pico's LED (GP25) blinks; built with Earle Philhower's Arduino-Pico core.
+// Serial is the USB port and Serial1 is UART0 on GP0 and GP1: the serial monitor reads both.
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  Serial.begin(115200);
+}
+
+void loop() {
+  digitalWrite(LED_BUILTIN, HIGH);
+  Serial.println("on");
+  delay(500);
+  digitalWrite(LED_BUILTIN, LOW);
+  Serial.println("off");
+  delay(500);
+}
+`;
+
 const ESP_SKETCH = `// GPIO2 blinks; messages appear in the serial monitor.
 void setup() {
   pinMode(2, OUTPUT);
@@ -346,18 +493,79 @@ void loop() {
 }
 `;
 
-function BoardProgram({ part, doc, espInfo, onFirmware }: { part: PlacedPart; doc: CircuitDoc; espInfo: Esp32Info | null; onFirmware: (ref: FirmwareRef) => void }) {
-  const uno = part.type === 'arduino-uno';
+/** Real boards a sketch for the simulated one can be uploaded to, as arduino-cli names them. */
+const REAL_BOARDS: Readonly<Record<BoardKind, readonly (readonly [string, string])[]>> = {
+  uno: [
+    ['arduino:avr:uno', 'Arduino Uno'],
+    ['arduino:avr:nano', 'Arduino Nano'],
+    ['arduino:avr:nano:cpu=atmega328old', 'Arduino Nano (old bootloader)'],
+    ['arduino:avr:mega', 'Arduino Mega 2560'],
+    ['arduino:avr:leonardo', 'Arduino Leonardo'],
+  ],
+  nano: [
+    ['arduino:avr:nano', 'Arduino Nano'],
+    ['arduino:avr:nano:cpu=atmega328old', 'Arduino Nano (old bootloader)'],
+    ['arduino:avr:uno', 'Arduino Uno'],
+  ],
+  mega: [['arduino:avr:mega', 'Arduino Mega 2560']],
+  pico: [
+    ['rp2040:rp2040:rpipico', 'Raspberry Pi Pico (Arduino-Pico)'],
+    ['rp2040:rp2040:rpipicow', 'Raspberry Pi Pico W (Arduino-Pico)'],
+  ],
+  attiny85: [
+    ['ATTinyCore:avr:attinyx5:chip=85,clock=8internal', 'ATtiny85 at 8 MHz (ATTinyCore, with a programmer)'],
+    ['digistump:avr:digispark-tiny', 'Digispark (Digistump core)'],
+  ],
+  esp32: [
+    ['esp32:esp32:esp32', 'ESP32 Dev Module'],
+    ['esp32:esp32:esp32doit-devkit-v1', 'DOIT ESP32 DevKit V1'],
+    ['esp32:esp32:nodemcu-32s', 'NodeMCU-32S'],
+  ],
+};
+
+function BoardProgram({
+  part,
+  doc,
+  espInfo,
+  onFirmware,
+  recording,
+  onRecord,
+  onPython,
+}: {
+  part: PlacedPart;
+  doc: CircuitDoc;
+  espInfo: Esp32Info | null;
+  onFirmware: (ref: FirmwareRef) => void;
+  /** The simulated board's pins are being recorded for the Logic Analyser. */
+  recording: boolean;
+  onRecord: (seconds: number) => void;
+  /** Runs a MicroPython program on the running Pico; false when it is not running. */
+  onPython: (code: string) => boolean;
+}) {
+  const spec = BOARD_SPECS.get(part.type);
+  const kind: BoardKind = spec?.kind ?? 'uno';
+  /** AVR boards are emulated here and take Intel HEX; the ESP32 runs in the desktop app's emulator. */
+  const uno = spec ? isAvrChip(spec.chip) : true;
+  /** The Pico is emulated here too, and takes UF2, ELF or binary firmware. */
+  const pico = spec?.chip === 'rp2040';
+  const boardName = spec?.name ?? 'board';
+  const examples = examplesFor(part.type);
+  const [ports, setPorts] = useState<DetectedBoard[] | null>(null);
+  const [port, setPort] = useState('');
+  const [fqbn, setFqbn] = useState(REAL_BOARDS[kind][0]?.[0] ?? 'arduino:avr:uno');
+  const [uploading, setUploading] = useState(false);
+  const [recordFor, setRecordFor] = useState(0.5);
   const ref = firmwareFor(doc, part.id, part.type);
   const [code, setCode] = useState<'hidden' | 'view' | 'edit'>('hidden');
   const [draft, setDraft] = useState('');
   const [compiling, setCompiling] = useState(false);
   const [log, setLog] = useState('');
   const [cli, setCli] = useState<ArduinoInfo | null>(null);
+  const [python, setPython] = useState(ref?.kind === 'pico-image' ? (ref.python ?? MICROPYTHON_BLINK) : MICROPYTHON_BLINK);
 
   const source = useMemo(() => {
     if (!ref) return '';
-    if (ref.kind === 'example') return UNO_EXAMPLES.find((e) => e.id === ref.id)?.sketch ?? '';
+    if (ref.kind === 'example') return examples.find((e) => e.id === ref.id)?.sketch ?? '';
     if (ref.kind === 'esp32-demo') return ESP32_DEMO.source;
     return ref.sketch ?? '';
   }, [ref]);
@@ -368,6 +576,16 @@ function BoardProgram({ part, doc, espInfo, onFirmware }: { part: PlacedPart; do
 
   const openFile = () =>
     attempt(async () => {
+      if (pico) {
+        const file = await pickFile('.uf2,.elf,.bin');
+        if (!file) return;
+        const { bytes } = await readBinaryFile(file);
+        picoImages.set(file.name, picoFlashImage(bytes));
+        // A MicroPython program set up for this board stays with the new firmware.
+        onFirmware({ kind: 'pico-image', name: file.name, ...(ref?.kind === 'pico-image' && ref.python ? { python: ref.python } : {}) });
+        notify(`Loaded ${file.name}.`);
+        return;
+      }
       if (uno) {
         const file = await pickFile('.hex,.ihex,.ihx');
         if (!file) return;
@@ -393,11 +611,15 @@ function BoardProgram({ part, doc, espInfo, onFirmware }: { part: PlacedPart; do
       setCompiling(true);
       setLog('Compiling…');
       try {
-        const result = await arduinoCompile(uno ? 'uno' : 'esp32', draft);
+        const result = await arduinoCompile(kind, draft);
         setLog(result.log.trim() || (result.ok ? 'Compiled.' : 'The sketch did not compile.'));
         if (!result.ok) return;
         if (uno && result.hex) onFirmware({ kind: 'hex', name: 'Compiled sketch', hex: result.hex, sketch: draft });
-        else if (result.token) {
+        else if (pico && result.uf2) {
+          const name = `Compiled sketch ${new Date().toLocaleTimeString()}`;
+          picoImages.set(name, picoFlashImage(Uint8Array.from(atob(result.uf2), (c) => c.charCodeAt(0))));
+          onFirmware({ kind: 'pico-image', name, sketch: draft });
+        } else if (result.token) {
           const name = `Compiled sketch ${new Date().toLocaleTimeString()}`;
           espImages.set(name, result.token);
           onFirmware({ kind: 'esp32-image', name, sketch: draft });
@@ -408,11 +630,40 @@ function BoardProgram({ part, doc, espInfo, onFirmware }: { part: PlacedPart; do
       }
     });
 
-  const choices: [string, string][] = uno ? UNO_EXAMPLES.map((e) => [`example:${e.id}`, `Example: ${sketchTitle(e.sketch) || e.id}`]) : [['esp32-demo', `${ESP32_DEMO.name} (built in)`]];
+  const findPorts = () =>
+    attempt(async () => {
+      const found = await arduinoBoards();
+      setPorts(found);
+      // A board that names itself is chosen, with its own kind.
+      const family = uno ? 'arduino:avr:' : pico ? 'rp2040:' : 'esp32:';
+      const known = found.find((b) => b.fqbn.startsWith(family)) ?? found[0];
+      if (known && !found.some((b) => b.port === port)) {
+        setPort(known.port);
+        if (known.fqbn.startsWith(family)) setFqbn(known.fqbn);
+      }
+    });
+
+  const upload = () =>
+    attempt(async () => {
+      setUploading(true);
+      setLog('Compiling and uploading…');
+      try {
+        const result = await arduinoUpload({ fqbn, port, sketch: draft });
+        setLog(result.log.trim() || (result.ok ? 'Uploaded.' : 'The upload failed.'));
+        if (result.ok) notify('The sketch is on the board.');
+      } finally {
+        setUploading(false);
+      }
+    });
+
+  const kinds = REAL_BOARDS[kind];
+
+  const choices: [string, string][] = uno || pico ? examples.map((e) => [`example:${e.id}`, `Example: ${sketchTitle(e.sketch) || e.id}`]) : [['esp32-demo', `${ESP32_DEMO.name} (built in)`]];
   const current = !ref ? '' : ref.kind === 'example' ? `example:${ref.id}` : ref.kind === 'esp32-demo' ? 'esp32-demo' : 'custom';
   if (current === 'custom') choices.push(['custom', firmwareName(ref)]);
 
-  const missingCore = cli?.path && !cli.cores.some((c) => c.id === (uno ? 'arduino:avr' : 'esp32:esp32'));
+  const core = kind === 'attiny85' ? 'ATTinyCore:avr' : uno ? 'arduino:avr' : pico ? 'rp2040:rp2040' : 'esp32:esp32';
+  const missingCore = cli?.path && !cli.cores.some((c) => c.id === core);
 
   return (
     <div class="cs-program" data-testid="cs-program">
@@ -437,8 +688,8 @@ function BoardProgram({ part, doc, espInfo, onFirmware }: { part: PlacedPart; do
       </label>
       {!uno && espInfo && !espInfo.available && <p class="control-help cs-warning">{espInfo.detail}</p>}
       <div class="button-row">
-        <button type="button" class="button button-small" onClick={openFile} disabled={!uno && !isDesktop}>
-          <Icon name="open" size={14} /> {uno ? 'Open .hex…' : 'Open .bin…'}
+        <button type="button" class="button button-small" onClick={openFile} disabled={!uno && !pico && !isDesktop} data-testid="cs-open-firmware">
+          <Icon name="open" size={14} /> {uno ? 'Open .hex…' : pico ? 'Open .uf2…' : 'Open .bin…'}
         </button>
         {source && (
           <button type="button" class="button button-small" onClick={() => setCode(code === 'view' ? 'hidden' : 'view')} aria-pressed={code === 'view'}>
@@ -449,7 +700,7 @@ function BoardProgram({ part, doc, espInfo, onFirmware }: { part: PlacedPart; do
           type="button"
           class="button button-small"
           onClick={() => {
-            setDraft(ref && ref.kind !== 'esp32-demo' && source ? source : uno ? BLANK_SKETCH : ESP_SKETCH);
+            setDraft(ref && ref.kind !== 'esp32-demo' && source ? source : uno ? BLANK_SKETCH : pico ? PICO_SKETCH : ESP_SKETCH);
             setCode(code === 'edit' ? 'hidden' : 'edit');
           }}
           aria-pressed={code === 'edit'}
@@ -460,9 +711,52 @@ function BoardProgram({ part, doc, espInfo, onFirmware }: { part: PlacedPart; do
       </div>
       <p class="control-help">
         {uno
-          ? 'Examples run as built in. For your own sketch, export it from Arduino IDE (Sketch → Export Compiled Binary) and open the .hex, or write it here and compile with arduino-cli.'
-          : 'Open the .merged.bin that Arduino IDE 2 exports (Sketch → Export Compiled Binary), or write a sketch here and compile it with arduino-cli and the ESP32 boards package.'}
+          ? `Examples run as built in. For your own sketch, export it from Arduino IDE for the ${boardName} (Sketch → Export Compiled Binary) and open the .hex, or write it here and compile with arduino-cli.`
+          : pico
+            ? 'Examples run as built in. Open a .uf2 (MicroPython or CircuitPython from their websites, or a sketch exported from Arduino IDE with the Arduino-Pico core), an .elf from the Pico SDK, or write a sketch here and compile it with arduino-cli.'
+            : 'Open the .merged.bin that Arduino IDE 2 exports (Sketch → Export Compiled Binary), or write a sketch here and compile it with arduino-cli and the ESP32 boards package.'}
       </p>
+      {pico && ref?.kind === 'pico-image' && (
+        <div class="cs-python" data-testid="cs-python">
+          <div class="cs-code">
+            <CodeEditor value={python} onChange={setPython} language="python" label="MicroPython program" testId="cs-python-code" />
+          </div>
+          <div class="button-row">
+            <button
+              type="button"
+              class="button button-small button-primary"
+              onClick={() => {
+                onFirmware({ ...ref, python });
+                if (onPython(python)) notify('Sent to the Pico.');
+                else notify('Kept with the board: it runs when the circuit runs and MicroPython starts.');
+              }}
+              data-testid="cs-python-run"
+            >
+              <Icon name="play" size={14} /> Run on the Pico
+            </button>
+          </div>
+          <p class="control-help">
+            For firmware with MicroPython: the program is pasted at its prompt (paste mode) when the board starts and whenever you press Run. Type at the prompt in the serial monitor too.
+          </p>
+        </div>
+      )}
+      {uno && (
+        <div class="control-row cs-record">
+          <label class="control">
+            <span class="control-label">Record pins {kind === 'attiny85' ? '0 to 5' : '0 to 13'} for</span>
+            <select class="select" value={recordFor} onChange={(e) => setRecordFor(Number(e.currentTarget.value))} data-testid="cs-record-for">
+              <option value={0.05}>50 ms</option>
+              <option value={0.2}>0.2 s</option>
+              <option value={0.5}>0.5 s</option>
+              <option value={1}>1 s</option>
+              <option value={2}>2 s</option>
+            </select>
+          </label>
+          <button type="button" class="button button-small" disabled={recording} onClick={() => onRecord(recordFor)} data-testid="cs-record">
+            <Icon name="play" size={14} /> {recording ? 'Recording…' : 'Record, and open in the Logic Analyser'}
+          </button>
+        </div>
+      )}
       {code === 'view' && source && (
         <div class="cs-code">
           <CodeEditor value={source} readOnly language={ref?.kind === 'esp32-demo' ? 'text' : 'cpp'} label="Program source" />
@@ -479,8 +773,9 @@ function BoardProgram({ part, doc, espInfo, onFirmware }: { part: PlacedPart; do
           )}
           {isDesktop && missingCore && (
             <p class="control-help cs-warning">
-              The {uno ? 'Arduino AVR' : 'ESP32'} boards package is not installed. Add it in Arduino IDE (Tools → Board → Boards Manager) or run: arduino-cli core install{' '}
-              {uno ? 'arduino:avr' : 'esp32:esp32'}
+              The {kind === 'attiny85' ? 'ATTinyCore' : uno ? 'Arduino AVR' : pico ? 'Raspberry Pi Pico (Arduino-Pico)' : 'ESP32'} boards package is not installed. Add it in Arduino IDE (Tools → Board
+              → Boards Manager) or run: arduino-cli core install {core}
+              {pico ? ' (after adding https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json to the board manager URLs)' : ''}
             </p>
           )}
           <div class="button-row">
@@ -489,6 +784,43 @@ function BoardProgram({ part, doc, espInfo, onFirmware }: { part: PlacedPart; do
             </button>
             {cli?.path && <span class="tone-muted">arduino-cli {cli.version}</span>}
           </div>
+          {isDesktop && cli?.path && (
+            <fieldset class="cs-upload" data-testid="cs-upload">
+              <legend class="control-label">The same sketch on a real board</legend>
+              <div class="control-row">
+                <label class="control">
+                  <span class="control-label">Port</span>
+                  <select class="select" value={port} onChange={(e) => setPort(e.currentTarget.value)} data-testid="cs-upload-port">
+                    {!ports?.length && <option value="">{ports ? 'no board found' : 'not looked for yet'}</option>}
+                    {ports?.map((b) => (
+                      <option key={b.port} value={b.port}>
+                        {b.port}
+                        {b.name ? ` (${b.name})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label class="control">
+                  <span class="control-label">Board</span>
+                  <select class="select" value={fqbn} onChange={(e) => setFqbn(e.currentTarget.value)} data-testid="cs-upload-board">
+                    {!kinds.some(([id]) => id === fqbn) && <option value={fqbn}>{ports?.find((b) => b.fqbn === fqbn)?.name || fqbn}</option>}
+                    {kinds.map(([id, name]) => (
+                      <option key={id} value={id}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" class="button button-small button-quiet" onClick={findPorts}>
+                  <Icon name="refresh" size={14} /> Look for boards
+                </button>
+                <button type="button" class="button button-small" onClick={upload} disabled={uploading || compiling || !port || !draft.trim()} data-testid="cs-upload-go">
+                  {uploading ? 'Uploading…' : 'Upload to the board'}
+                </button>
+              </div>
+              <p class="control-help">The sketch is compiled for the board chosen here and written to it over USB. Pins and timing of other boards can differ from the simulated {boardName}.</p>
+            </fieldset>
+          )}
           {log && <pre class="cs-log">{log}</pre>}
         </div>
       )}
@@ -540,6 +872,82 @@ function NumberField({ def, value, onCommit }: { def: PropDef; value: number; on
   );
 }
 
+/** A reading that changes while the circuit runs (a sensor's temperature): a slider and a box for an exact value. */
+function LiveField({ def, value, onChange }: { def: PropDef; value: number; onChange: (v: number) => void }) {
+  const lo = def.min ?? 0;
+  const hi = def.max ?? 100;
+  const log = def.scale === 'log';
+  const toSlider = (x: number) => (log ? Math.log10(Math.max(lo, x)) : x);
+  const fromSlider = (x: number) => (log ? Number((10 ** x).toPrecision(3)) : Math.round(x / (def.step ?? 1)) * (def.step ?? 1));
+  const decimals = log ? 0 : Math.max(0, -Math.floor(Math.log10(def.step ?? 1)));
+  const shown = log && value < 10 ? String(Number(value.toPrecision(2))) : value.toFixed(decimals);
+  const [text, setText] = useState(shown);
+  useEffect(() => setText(shown), [shown]);
+  const commit = () => {
+    const v = Number(text.replace(',', '.'));
+    if (Number.isFinite(v) && v >= lo && v <= hi) onChange(v);
+    else setText(shown);
+  };
+  return (
+    <div class="control cs-live">
+      <span class="control-label">{def.label}</span>
+      <div class="cs-live-row">
+        <input
+          type="range"
+          min={toSlider(lo)}
+          max={toSlider(hi)}
+          step={log ? 0.01 : (def.step ?? 1)}
+          value={toSlider(value)}
+          onInput={(e) => onChange(fromSlider(Number(e.currentTarget.value)))}
+          aria-label={def.label}
+          data-testid={`cs-live-${def.key}`}
+        />
+        <input
+          class="input cs-live-value"
+          value={text}
+          onInput={(e) => setText(e.currentTarget.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+          }}
+          aria-label={`${def.label}${def.unit ? ` in ${def.unit}` : ''}`}
+          inputMode="decimal"
+          spellcheck={false}
+        />
+        {def.unit && <span class="tone-muted">{def.unit}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** A text property (a transfer function), with the part's own check of what is typed. */
+function TextField({ def, value, onCommit }: { def: PropDef; value: string; onCommit: (v: string) => void }) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  const problem = def.check?.(text) ?? null;
+  const commit = () => {
+    if (text !== value) onCommit(text);
+  };
+  return (
+    <label class="control">
+      <span class="control-label">{def.label}</span>
+      <input
+        class={`input${problem ? ' is-invalid' : ''}`}
+        value={text}
+        onInput={(e) => setText(e.currentTarget.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+        }}
+        aria-invalid={!!problem}
+        spellcheck={false}
+        data-testid={`cs-text-${def.key}`}
+      />
+      {problem ? <span class="control-help cs-warning">{problem}</span> : <span class="control-help">In s, for example 1/(1 + s/1k) or 100/(s^2 + 10s + 100); k, M, m, u, n and p work.</span>}
+    </label>
+  );
+}
+
 function PartProps({ part, onProp, onLive }: { part: PlacedPart; onProp: (key: string, value: PropValue) => void; onLive: (key: string, value: PropValue) => void }) {
   const def = PART_BY_TYPE.get(part.type);
   if (!def?.props.length) return null;
@@ -567,6 +975,8 @@ function PartProps({ part, onProp, onLive }: { part: PlacedPart; onProp: (key: s
               </select>
             </label>
           );
+        if (p.kind === 'text') return <TextField key={p.key} def={p} value={typeof value === 'string' ? value : String(p.default)} onCommit={(v) => onProp(p.key, v)} />;
+        if (p.kind === 'number' && p.live) return <LiveField key={p.key} def={p} value={typeof value === 'number' ? value : (p.default as number)} onChange={(v) => onLive(p.key, v)} />;
         if (p.key === 'position')
           return (
             <label key={p.key} class="control">
@@ -629,7 +1039,17 @@ function readings(part: PlacedPart, session: Session): [string, string][] {
     default:
       break;
   }
-  if (def && part.type !== 'arduino-uno' && part.type !== 'esp32')
+  // Modules: what their devices report.
+  if (live.powered === false) rows.push(['Power', 'none: connect its supply and ground']);
+  if (typeof live.angle === 'number') rows.push(['Angle', `${live.angle.toFixed(1)}°`]);
+  if (typeof live.pulse === 'number' && live.pulse > 0) rows.push(['Pulse', formatSi(live.pulse, 's')]);
+  if (typeof live.steps === 'number') rows.push(['Steps', String(live.steps)]);
+  if (typeof live.time === 'string') rows.push(['Clock', live.time]);
+  if (typeof live.reads === 'number') rows.push(['Readings sent', String(live.reads)]);
+  if (typeof live.pings === 'number') rows.push(['Pings answered', String(live.pings)]);
+  if (typeof live.resistance === 'number') rows.push(['Resistance', formatSi(live.resistance, 'Ω')]);
+  if (typeof live.position === 'number' && part.type === 'encoder') rows.push(['Position', `${live.position} steps`]);
+  if (def && !isBoard(part.type))
     def.terminals.forEach((t, i) => {
       const n = nodes[i] ?? 0;
       if (n >= 0) rows.push([`Voltage at ${t.name}`, volts(v(n))]);
@@ -753,7 +1173,7 @@ function SerialView({
   useEffect(() => {
     if (box.current) box.current.scrollTop = box.current.scrollHeight;
   }, [version, board?.id]);
-  if (!board) return <p class="tone-muted cs-empty">Add an Arduino Uno or ESP32 board to see what it prints here.</p>;
+  if (!board) return <p class="tone-muted cs-empty">Add a board (an Arduino, an ATtiny85 or an ESP32) to see what it prints here.</p>;
   const send = () => {
     onSend(board.id, text + ending);
     setText('');
@@ -806,7 +1226,7 @@ function SerialView({
 
 function PaletteIcon({ def }: { def: PartDef }) {
   const part: PlacedPart = { id: 'icon', type: def.type, x: 0, y: 0, rot: 0, props: defaultProps(def) };
-  const [x0, y0, x1, y1] = def.box;
+  const [x0, y0, x1, y1] = partOutline(def, part.props);
   const pad = 0.4;
   return (
     <svg class="cs-icon" viewBox={`${(x0 - pad) * GRID} ${(y0 - pad) * GRID} ${(x1 - x0 + 2 * pad) * GRID} ${(y1 - y0 + 2 * pad) * GRID}`} aria-hidden="true">
@@ -898,6 +1318,24 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
   const [espInfo, setEspInfo] = useState<Esp32Info | null>(null);
   const [boardProblems, setBoardProblems] = useState<Record<string, string>>({});
   const session = useRef<Session | null>(null);
+  /** An operating point to label on the drawing (from the analysis panel). */
+  const [opOverlay, setOpOverlay] = useState<OperatingPoint | null>(null);
+  const [recordingPart, setRecordingPart] = useState('');
+  /** Records the simulated Uno's pins for a while, then hands the recording to the Logic Analyser as a VCD file. */
+  const recordPins = (partId: string, seconds: number) => {
+    const mcu = session.current?.mcu(partId);
+    if (!(mcu instanceof AvrMcu)) {
+      notify('Run the circuit first: the board has to be running for its pins to be recorded.', 'error');
+      return;
+    }
+    setRecordingPart(partId);
+    mcu.record(seconds, (capture) => {
+      setRecordingPart('');
+      sendToTool('logic-analyser', {
+        files: [new File([writeVcd(capture, new Date().toISOString())], `${docRef.current.parts.find((p) => p.id === partId)?.type ?? 'board'}-pins.vcd`, { type: 'text/plain' })],
+      });
+    });
+  };
   const serialLogs = useRef(new Map<string, string>());
   const drag = useRef<Drag | null>(null);
   const clipboard = useRef<{ parts: PlacedPart[]; wires: WireSegment[] } | null>(null);
@@ -1051,7 +1489,7 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
     if (!def?.interactive || !session.current) return;
     if (def.interactive === 'toggle') {
       session.current.interact(part.id, 'toggle');
-      const key = part.type === 'switch' ? 'closed' : part.type === 'spdt' ? 'toB' : 'high';
+      const key = def.toggleProp ?? 'high';
       interactProp(part, key, part.props[key] !== true);
     }
   };
@@ -1098,7 +1536,7 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
     const next = e.make();
     apply(next);
     if (e.scope) setSim((s) => ({ ...s, scope: e.scope as number }));
-    setSim((s) => ({ ...s, panel: next.parts.some((p) => p.type === 'arduino-uno' || p.type === 'esp32') ? 'serial' : 'scope' }));
+    setSim((s) => ({ ...s, panel: e.analysis ? 'analysis' : next.parts.some((p) => isBoard(p.type)) ? 'serial' : 'scope' }));
     setSelection(new Set());
     setTimeout(() => fitView(next), 0);
   };
@@ -1166,8 +1604,8 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
       const def = part ? PART_BY_TYPE.get(part.type) : undefined;
       if (part && def?.interactive) {
         if (def.interactive === 'toggle') interact(part);
-        else if (def.interactive === 'press') {
-          session.current.interact(part.id, 'press');
+        else if (def.interactive === 'press' || def.interactive === 'point') {
+          session.current.interact(part.id, 'press', def.interactive === 'point' ? localPoint(part, world) : undefined);
           drag.current = { kind: 'press', partId: part.id };
         } else drag.current = { kind: 'adjust', partId: part.id, startY: e.clientY, start: typeof part.props.position === 'number' ? part.props.position : 0.5 };
         setSelection(new Set([part.id]));
@@ -1418,16 +1856,34 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
   const selectedWires = shown.wires.filter((w) => selection.has(w.id));
   const one = selectedParts.length === 1 && selectedWires.length === 0 ? selectedParts[0] : null;
   const oneWire = selectedWires.length === 1 && selectedParts.length === 0 ? selectedWires[0] : null;
-  const boards = shown.parts.filter((p) => p.type === 'arduino-uno' || p.type === 'esp32');
+  const boards = shown.parts.filter((p) => isBoard(p.type));
   const hasEsp = boards.some((p) => p.type === 'esp32');
   const labels = shown.labels !== false;
+  const analysing = sim.panel === 'analysis';
+  const showNames = shown.names === true || analysing;
+  const names = useMemo(() => partNames(shown), [shown.parts]);
+  const overlay = analysing && opOverlay && !preview ? operatingLabels(shown, opOverlay, connectivity) : null;
 
   const problems: string[] = [];
   if (!connectivity.grounded && shown.parts.some((p) => p.type === 'battery' || p.type === 'ac-source' || p.type === 'current-source'))
     problems.push('Add a ground symbol to the negative side of the supply.');
+  for (const part of shown.parts) {
+    const def = PART_BY_TYPE.get(part.type);
+    for (const p of def?.props ?? []) {
+      if (p.kind !== 'text' || !p.check) continue;
+      const value = part.props[p.key];
+      const why = p.check(typeof value === 'string' ? value : String(p.default));
+      if (why) problems.push(`${def?.name}: ${why}`);
+    }
+  }
   if (hasEsp && espInfo && !espInfo.available) problems.push(espInfo.detail);
   for (const [id, message] of Object.entries(boardProblems)) problems.push(`${PART_BY_TYPE.get(shown.parts.find((p) => p.id === id)?.type ?? '')?.name ?? 'Board'}: ${message}`);
   for (const h of s?.halted() ?? []) problems.push(`ESP32: ${h.reason}`);
+  for (const c of s?.clashes() ?? []) problems.push(`Two devices answer at I²C address 0x${c.address.toString(16).toUpperCase()} on the same board; change one's address.`);
+  if (s)
+    for (const part of shown.parts) {
+      if (s.built.runtimes.get(part.id)?.view().powered === false) problems.push(`${PART_BY_TYPE.get(part.type)?.name ?? part.type} has no power: wire its supply and ground terminals.`);
+    }
   if (s?.failure) problems.push(s.failure);
 
   // Hovered node voltage while running.
@@ -1476,7 +1932,7 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
             data-testid="cs-examples"
           >
             <option value="">Choose…</option>
-            {(['Basics', 'Analog', 'Digital', 'Arduino Uno', 'ESP32'] as const).map((group) => (
+            {EXAMPLE_GROUPS.map((group) => (
               <optgroup key={group} label={group}>
                 {EXAMPLES.filter((x) => x.group === group).map((x) => (
                   <option key={x.id} value={x.id}>
@@ -1636,7 +2092,9 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
               {shown.parts.map((part) => {
                 const selected = selection.has(part.id);
                 const [x0, y0, x1, y1] = partBox(part);
-                const text = liveLabel(part, live(part.id)) || (labels ? valueLabel(part) : '');
+                const value = liveLabel(part, live(part.id)) || (labels ? valueLabel(part) : '');
+                const name = showNames && !PART_BY_TYPE.get(part.type)?.ground ? (names.get(part.id) ?? '') : '';
+                const text = [name, value].filter(Boolean).join(' ');
                 const place = text ? labelPlace(part, [x0, y0, x1, y1]) : null;
                 const flipScale = part.flip ? ' scale(-1 1)' : '';
                 return (
@@ -1651,6 +2109,15 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
                   </g>
                 );
               })}
+              {overlay && (
+                <g class="cs-op" data-testid="cs-op-labels">
+                  {overlay.map((l) => (
+                    <text key={l.key} x={l.x * GRID} y={l.y * GRID} text-anchor={l.anchor} dominant-baseline="middle" class={l.kind === 'node' ? 'cs-op-volts' : 'cs-op-amps'}>
+                      {l.text}
+                    </text>
+                  ))}
+                </g>
+              )}
               {ghost && (
                 <g class="cs-overlay cs-ghost" transform={`translate(${ghost.x * GRID} ${ghost.y * GRID}) rotate(${ghost.rot * 90})${ghost.flip ? ' scale(-1 1)' : ''}`}>
                   {drawPart(ghost, null)}
@@ -1698,6 +2165,7 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
                 choices={[
                   { value: 'scope', label: 'Oscilloscope' },
                   { value: 'serial', label: `Serial monitor${boards.length ? '' : ' (no boards)'}` },
+                  { value: 'analysis', label: 'Analysis' },
                 ]}
               />
               {sim.panel === 'scope' && (
@@ -1714,7 +2182,9 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
                 </label>
               )}
             </div>
-            {sim.panel === 'scope' ? (
+            {sim.panel === 'analysis' ? (
+              <AnalysisPanel doc={shown} selected={one ?? null} onSettings={(analysis) => apply({ ...docRef.current, analysis }, { history: false, rebuild: false })} onOperatingPoint={setOpOverlay} />
+            ) : sim.panel === 'scope' ? (
               <ScopeView session={s} window={sim.scope} />
             ) : (
               <SerialView
@@ -1744,21 +2214,67 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
           {one ? (
             <>
               <h3 class="cs-inspector-title">{PART_BY_TYPE.get(one.type)?.name}</h3>
+              {!PART_BY_TYPE.get(one.type)?.ground && (
+                <label class="control">
+                  <span class="control-label">Name</span>
+                  <input
+                    class="input"
+                    value={one.name ?? ''}
+                    placeholder={names.get(one.id)}
+                    maxLength={40}
+                    onInput={(e) => {
+                      const name = e.currentTarget.value.trim();
+                      apply(
+                        {
+                          ...docRef.current,
+                          parts: docRef.current.parts.map((p) => {
+                            if (p.id !== one.id) return p;
+                            const { name: _, ...rest } = p;
+                            return name ? { ...rest, name } : rest;
+                          }),
+                        },
+                        { key: `name:${one.id}`, rebuild: false },
+                      );
+                    }}
+                    spellcheck={false}
+                    data-testid="cs-name"
+                  />
+                </label>
+              )}
               <PartProps
                 part={one}
                 onProp={(key, value) =>
                   apply({ ...docRef.current, parts: docRef.current.parts.map((p) => (p.id === one.id ? { ...p, props: { ...p.props, [key]: value } } : p)) }, { key: `prop:${one.id}:${key}` })
                 }
                 onLive={(key, value) => {
+                  const def = PART_BY_TYPE.get(one.type);
+                  const prop = def?.props.find((d) => d.key === key);
                   if (session.current) {
+                    const toggled = def?.toggleProp === key;
                     if (key === 'position') session.current.adjust(one.id, value as number);
-                    else if (one.props[key] !== value && PART_BY_TYPE.get(one.type)?.interactive === 'toggle') session.current.interact(one.id, 'toggle');
+                    else if (prop?.live) session.current.setLive(one.id, { ...one.props, [key]: value });
+                    else if (toggled && one.props[key] !== value) session.current.interact(one.id, 'toggle');
                     interactProp(one, key, value);
-                    if (key !== 'position' && PART_BY_TYPE.get(one.type)?.interactive !== 'toggle') session.current.update(docRef.current);
+                    if (key !== 'position' && !prop?.live && !toggled) session.current.update(docRef.current);
                   } else interactProp(one, key, value);
                 }}
               />
-              {(one.type === 'arduino-uno' || one.type === 'esp32') && <BoardProgram part={one} doc={shown} espInfo={espInfo} onFirmware={(ref) => setFirmware(one.id, ref)} />}
+              {isBoard(one.type) && (
+                <BoardProgram
+                  part={one}
+                  doc={shown}
+                  espInfo={espInfo}
+                  onFirmware={(ref) => setFirmware(one.id, ref)}
+                  recording={recordingPart === one.id}
+                  onRecord={(seconds) => recordPins(one.id, seconds)}
+                  onPython={(code) => {
+                    const mcu = session.current?.mcu(one.id);
+                    if (!(mcu instanceof PicoMcu) || !mcu.usbSerial) return false;
+                    mcu.runPython(code);
+                    return true;
+                  }}
+                />
+              )}
               {s && (
                 <dl class="cs-readings" data-testid="cs-readings">
                   {readings(one, s).map(([k, v]) => (
@@ -1767,15 +2283,16 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
                       <dd>{v}</dd>
                     </div>
                   ))}
-                  {(one.type === 'arduino-uno' || one.type === 'esp32') &&
+                  {isBoard(one.type) &&
                     (() => {
                       const volts = (live(one.id)?.volts as readonly number[] | undefined) ?? [];
-                      const spec = one.type === 'esp32' ? ESP32.pins : null;
+                      const spec = BOARD_SPECS.get(one.type);
+                      const base = spec?.power.length ?? 3;
                       const used = connectivity.partNodes.get(one.id) ?? [];
                       return volts.map((v, i) =>
-                        (used[i + 3] ?? -1) >= 0 ? (
+                        (used[i + base] ?? -1) >= 0 ? (
                           <div key={`pin${i}`}>
-                            <dt>{spec ? spec[i]?.name : PART_BY_TYPE.get(one.type)?.terminals[i + 3]?.name}</dt>
+                            <dt>{spec?.pins[i]?.name}</dt>
                             <dd>{minus(formatSi(v, 'V'))}</dd>
                           </div>
                         ) : null,
@@ -1811,6 +2328,17 @@ function CircuitSimulator({ toolId }: { toolId: string }) {
               <label class="check">
                 <input type="checkbox" checked={labels} onChange={(e) => apply({ ...docRef.current, labels: e.currentTarget.checked }, { rebuild: false })} />
                 <span>Show part values</span>
+              </label>
+              <label class="check">
+                <input
+                  type="checkbox"
+                  checked={shown.names === true}
+                  onChange={(e) => {
+                    const { names: _, ...rest } = docRef.current;
+                    apply(e.currentTarget.checked ? { ...rest, names: true } : rest, { rebuild: false });
+                  }}
+                />
+                <span>Show part names (always shown with the analysis panel)</span>
               </label>
               <p class="control-help">
                 {shown.parts.length} parts, {shown.wires.length} wires, {connectivity.nodeCount} connected points. A smaller time step is more accurate for fast signals but runs slower; the Arduino

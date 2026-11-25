@@ -60,14 +60,33 @@ export async function readClipboardText(): Promise<string> {
 
 export type SaveOutcome = { readonly saved: true; readonly location: string } | { readonly saved: false };
 
+/** Told about every file a tool saves and every file opened through the pickers, so an open project can keep copies. */
+export interface FileHooks {
+  saved?(file: { readonly name: string; readonly bytes: Uint8Array; readonly mime: string }): void;
+  picked?(files: readonly File[]): void;
+}
+let hooks: FileHooks = {};
+export function setFileHooks(next: FileHooks): void {
+  hooks = next;
+}
+/** Pass `{ record: false }` for files that are not part of the user's work (settings, bundles). */
+export interface FileOptions {
+  readonly record?: boolean;
+}
+
 /** Saves through a native "Save as" dialog on the desktop, or as a download in a browser. */
-export async function saveFile(name: string, data: string | Uint8Array | Blob, mime = 'application/octet-stream'): Promise<SaveOutcome> {
+export async function saveFile(name: string, data: string | Uint8Array | Blob, mime = 'application/octet-stream', options: FileOptions = {}): Promise<SaveOutcome> {
   const bytes = typeof data === 'string' ? utf8Encode(data) : data instanceof Blob ? new Uint8Array(await data.arrayBuffer()) : data;
+  const record = () => {
+    if (options.record !== false) hooks.saved?.({ name, bytes, mime });
+  };
   if (isDesktop) {
     // The bytes travel as a raw IPC body (no Base64 or JSON overhead); the name goes in a header.
     const path = await invoke<string | null>('save_file', bytes, { headers: { 'X-File-Name': encodeURIComponent(name) } });
+    if (path !== null) record();
     return path === null ? { saved: false } : { saved: true, location: path };
   }
+  record();
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mime }));
   const link = document.createElement('a');
   link.href = url;
@@ -80,15 +99,17 @@ export async function saveFile(name: string, data: string | Uint8Array | Blob, m
 }
 
 /** Opens the system file picker for several files.  Resolves with an empty list when dismissed. */
-export function pickFiles(accept = ''): Promise<File[]> {
-  return new Promise((resolve) => {
+export function pickFiles(accept = '', options: FileOptions = {}): Promise<File[]> {
+  return new Promise<File[]>((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.multiple = true;
     if (accept !== '') input.accept = accept;
     input.style.display = 'none';
     input.addEventListener('change', () => {
-      resolve(Array.from(input.files ?? []));
+      const files = Array.from(input.files ?? []);
+      if (options.record !== false && files.length) hooks.picked?.(files);
+      resolve(files);
       input.remove();
     });
     input.addEventListener('cancel', () => {
@@ -101,14 +122,16 @@ export function pickFiles(accept = ''): Promise<File[]> {
 }
 
 /** Opens the system file picker.  Resolves with `null` when the dialog is dismissed. */
-export function pickFile(accept = ''): Promise<File | null> {
-  return new Promise((resolve) => {
+export function pickFile(accept = '', options: FileOptions = {}): Promise<File | null> {
+  return new Promise<File | null>((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     if (accept !== '') input.accept = accept;
     input.style.display = 'none';
     input.addEventListener('change', () => {
-      resolve(input.files?.[0] ?? null);
+      const file = input.files?.[0] ?? null;
+      if (options.record !== false && file) hooks.picked?.([file]);
+      resolve(file);
       input.remove();
     });
     input.addEventListener('cancel', () => {

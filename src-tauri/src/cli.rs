@@ -97,7 +97,10 @@ const RECIPES: &[(&str, &str)] = &[
     ("audio-merge", "Join recordings end to end (all files in one job)"),
     ("audio-waveform", "Waveform picture (-s colour=#53c9a0)"),
     ("audio-spectrogram", "Spectrogram picture"),
-    ("document", "Office documents with LibreOffice (-s to=pdf|docx|odt|rtf|txt|html|xlsx|ods|csv|pptx|odp)"),
+    ("document", "Office documents, Visio, Publisher and PDF (to Word) with LibreOffice (-s to=pdf|docx|odt|rtf|txt|html|xlsx|ods|csv|pptx|odp|png|svg|odg)"),
+    ("postscript", "PostScript and EPS with Ghostscript (-s to=pdf|png dpi=150)"),
+    ("xps", "XPS and OpenXPS to PDF with MuPDF (mutool)"),
+    ("archive", "RAR, 7z, TAR, CAB, ISO and other archives to ZIP, 7z or .tar.gz with bsdtar (-s to=zip|7z|tgz)"),
     ("markup", "Markup with Pandoc (-s to=html|md|docx|odt|rtf|epub|rst|tex|txt)"),
     ("image", "Pictures with ImageMagick (-s to=png|jpg|webp|avif|heic|tiff|ico size=1600 quality=85 strip=true)"),
     ("vector", "SVG, PDF, EPS with Inkscape (-s to=png|pdf|svg|eps|emf dpi=192)"),
@@ -106,6 +109,9 @@ const RECIPES: &[(&str, &str)] = &[
     ("pdf-unlock", "Remove a PDF's password with qpdf (-s password=…)"),
     ("pdf-optimise", "Linearise for fast web viewing with qpdf"),
     ("pdf-compress", "Smaller PDF with Ghostscript (-s quality=ebook|screen|printer|prepress)"),
+    ("pdf-repair", "Repair a damaged PDF with qpdf"),
+    ("pdf-remove-images", "Remove every picture from a PDF with Ghostscript"),
+    ("pdf-grayscale", "Convert a PDF to shades of grey with Ghostscript, keeping text as text"),
 ];
 
 /// Recipes that take all the files as one job (the rest run once per file).
@@ -209,6 +215,15 @@ fn attach_console() {}
 
 // ------------------------------------------------------------------ arguments
 
+/// `name=value` where the name is a setting's (letters, digits, `_` and `-`, starting with a letter).
+fn setting_pair(arg: &str) -> Option<(&str, &str)> {
+    let (key, value) = arg.split_once('=')?;
+    let mut chars = key.chars();
+    let starts = chars.next().is_some_and(|c| c.is_ascii_alphabetic());
+    (starts && chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+        .then_some((key, value))
+}
+
 #[derive(Default, Debug)]
 struct Args {
     positional: Vec<String>,
@@ -219,10 +234,12 @@ struct Args {
 
 impl Args {
     /// Splits arguments into files, `--name value` options (for the names in `takes_value`),
-    /// switches and `-s key=value` settings.
+    /// switches and `-s key=value` settings.  One `-s` may be followed by several settings
+    /// (`-s crf=28 height=720`): arguments that start with a name and `=` are taken as settings
+    /// until the next option or file (`--` or `./` before a file whose name looks like one).
     fn parse(raw: &[String], takes_value: &[&str]) -> Result<Args, String> {
         let mut args = Args::default();
-        let mut iter = raw.iter();
+        let mut iter = raw.iter().peekable();
         while let Some(arg) = iter.next() {
             let name = match arg.as_str() {
                 "-o" => "--out",
@@ -248,6 +265,10 @@ impl Args {
                         .split_once('=')
                         .ok_or_else(|| format!("--set needs key=value, not \"{pair}\""))?;
                     args.settings.insert(k.trim().to_string(), typed(v.trim()));
+                    while let Some((k, v)) = iter.peek().and_then(|next| setting_pair(next)) {
+                        args.settings.insert(k.to_string(), typed(v.trim()));
+                        iter.next();
+                    }
                 } else if key == "out" || takes_value.contains(&key) {
                     let value = match inline {
                         Some(value) => value,
@@ -1064,6 +1085,30 @@ mod tests {
         assert_eq!(args.settings["crf"], json!(30.0));
         assert_eq!(args.settings["preset"], json!("slow"));
         assert_eq!(args.settings["exact"], json!(true));
+        // Several settings after one -s, as the help and the documentation write them.
+        let args = Args::parse(
+            &strings(&[
+                "clip.mp4",
+                "-s",
+                "crf=28",
+                "height=720",
+                "start=0:10",
+                "-o",
+                "small",
+                "next.mp4",
+                "-s",
+                "to=png",
+                "./dpi=2.mp4",
+            ]),
+            &[],
+        )
+        .expect("parses");
+        assert_eq!(args.positional, ["clip.mp4", "next.mp4", "./dpi=2.mp4"]);
+        assert_eq!(args.settings["crf"], json!(28.0));
+        assert_eq!(args.settings["height"], json!(720.0));
+        assert_eq!(args.settings["start"], json!("0:10"));
+        assert_eq!(args.settings["to"], json!("png"));
+        assert_eq!(args.value("out"), Some("small"));
         assert!(Args::parse(&strings(&["--bogus=1"]), &[]).is_err());
         assert!(Args::parse(&strings(&["-x"]), &[]).is_err());
         assert!(Args::parse(&strings(&["--set", "novalue"]), &[]).is_err());

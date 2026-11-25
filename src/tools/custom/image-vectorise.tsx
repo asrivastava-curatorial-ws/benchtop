@@ -1,30 +1,15 @@
 /** Traces a picture into an SVG with ImageTracer (public domain), in the page. */
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { formatBytes } from '../../lib/bytes';
+import { PRESETS, type TraceSettings, traceToSvg } from '../../lib/trace';
 import { copyText, saveFile } from '../../platform';
-import { cjs } from '../../recipe/core';
-import { context2d, createCanvas, replaceExtension } from '../../ui/canvas';
+import { replaceExtension } from '../../ui/canvas';
 import { ImageDrop, type LoadedImage } from '../../ui/ImageDrop';
 import { attempt, notify } from '../../ui/toast';
 import { defineCustomTool, type Values } from '../types';
 import { Segmented, usePersistentState } from './_shared';
 
-type Preset = 'logo' | 'artwork' | 'poster' | 'lineart';
-
-interface Settings {
-  readonly preset: Preset;
-  readonly colours: number;
-  readonly detail: number;
-  readonly speckles: number;
-  readonly smooth: number;
-}
-
-const PRESETS: Record<Preset, Omit<Settings, 'preset'>> = {
-  logo: { colours: 6, detail: 1, speckles: 8, smooth: 0 },
-  artwork: { colours: 16, detail: 0.5, speckles: 4, smooth: 0 },
-  poster: { colours: 8, detail: 1, speckles: 16, smooth: 2 },
-  lineart: { colours: 2, detail: 1, speckles: 8, smooth: 0 },
-};
+type Settings = TraceSettings;
 
 const read = (s: Values | undefined): Settings => {
   const preset = (['logo', 'artwork', 'poster', 'lineart'] as const).find((p) => p === s?.preset) ?? 'logo';
@@ -38,36 +23,6 @@ const read = (s: Values | undefined): Settings => {
     smooth: num('smooth', base.smooth, 0, 5),
   };
 };
-
-/** Largest side traced; bigger pictures are scaled down first (tracing time grows with area). */
-const TRACE_EDGE = 1200;
-
-export async function traceToSvg(canvas: HTMLCanvasElement, settings: Settings): Promise<string> {
-  const tracer = cjs(await import('imagetracerjs'));
-  const scale = Math.min(1, TRACE_EDGE / Math.max(canvas.width, canvas.height));
-  const work = createCanvas(canvas.width * scale, canvas.height * scale);
-  const context = context2d(work, true);
-  context.imageSmoothingQuality = 'high';
-  context.drawImage(canvas, 0, 0, work.width, work.height);
-  const data = context.getImageData(0, 0, work.width, work.height);
-  const svg = tracer.imagedataToSVG(data, {
-    numberofcolors: settings.colours,
-    ltres: settings.detail,
-    qtres: settings.detail,
-    pathomit: settings.speckles,
-    blurradius: settings.smooth,
-    blurdelta: 20,
-    colorsampling: 2,
-    colorquantcycles: settings.colours <= 2 ? 1 : 3,
-    roundcoords: 1,
-    rightangleenhance: settings.preset !== 'artwork',
-    scale: 1 / scale,
-    viewbox: true,
-    strokewidth: 0,
-    linefilter: true,
-  });
-  return svg.replace('desc="Created with imagetracer.js version 1.2.6" ', '');
-}
 
 function Vectorise({ toolId }: { toolId: string }) {
   const [settings, setSettings] = usePersistentState<Settings>(toolId, read, (s) => ({ ...s }));

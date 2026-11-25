@@ -2,6 +2,7 @@
  * Removes metadata (EXIF, XMP, IPTC, comments, text chunks) from JPEG, PNG
  * and WebP files without re-encoding, so image quality is untouched.
  */
+import { zlibSync } from 'fflate';
 import { concatBytes } from './bytes';
 import { ToolError } from './errors';
 
@@ -94,7 +95,7 @@ function crc32(bytes: Uint8Array): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function pngChunk(type: string, data: Uint8Array): Uint8Array {
+export function pngChunk(type: string, data: Uint8Array): Uint8Array {
   const chunk = new Uint8Array(12 + data.length);
   const view = new DataView(chunk.buffer);
   view.setUint32(0, data.length);
@@ -102,6 +103,22 @@ function pngChunk(type: string, data: Uint8Array): Uint8Array {
   chunk.set(data, 8);
   view.setUint32(8 + data.length, crc32(chunk.subarray(4, 8 + data.length)));
   return chunk;
+}
+
+/** RGBA pixels (8 bits a channel, rows top to bottom) as a PNG file. */
+export function encodePng(width: number, height: number, rgba: Uint8Array): Uint8Array {
+  if (rgba.length !== width * height * 4) throw new ToolError('The picture has the wrong number of pixels.');
+  const stride = width * 4 + 1;
+  const raw = new Uint8Array(stride * height);
+  // Each row starts with filter type 0 (none).
+  for (let y = 0; y < height; y++) raw.set(rgba.subarray(y * width * 4, (y + 1) * width * 4), y * stride + 1);
+  const header = new Uint8Array(13);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, width);
+  view.setUint32(4, height);
+  header.set([8, 6, 0, 0, 0], 8);
+  const signature = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+  return concatBytes(signature, pngChunk('IHDR', header), pngChunk('IDAT', zlibSync(raw)), pngChunk('IEND', new Uint8Array(0)));
 }
 
 /** A minimal JPEG EXIF segment holding only the orientation tag. */

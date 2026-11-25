@@ -1,5 +1,6 @@
 /** Canvas helpers shared by previews and the image tools. */
 
+import { decodeHeif, isHeif } from '../lib/heic';
 import type { ImageFormat } from '../tools/types';
 import { encodeImage } from '../worker/client';
 
@@ -32,17 +33,28 @@ export function context2d(canvas: HTMLCanvasElement, readsOften = false): Canvas
   return context;
 }
 
-/** Decodes any image the platform understands (PNG, JPEG, WebP, AVIF, GIF, BMP, ICO, SVG). */
+/**
+ * Decodes any image the platform understands (PNG, JPEG, WebP, AVIF, GIF, BMP, ICO, SVG),
+ * and HEIC/HEIF photos with libheif when the web view cannot.
+ */
 export async function loadImage(source: Blob): Promise<HTMLCanvasElement> {
   const url = URL.createObjectURL(source);
   try {
     const image = new Image();
     image.decoding = 'async';
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error('This file could not be read as an image.'));
-      image.src = url;
-    });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error('This file could not be read as an image.'));
+        image.src = url;
+      });
+    } catch (error) {
+      if (!isHeif(new Uint8Array(await source.slice(0, 256).arrayBuffer()))) throw error;
+      const pixels = await decodeHeif(new Uint8Array(await source.arrayBuffer()));
+      const canvas = createCanvas(pixels.width, pixels.height);
+      context2d(canvas).putImageData(new ImageData(new Uint8ClampedArray(pixels.data), pixels.width, pixels.height), 0, 0);
+      return canvas;
+    }
     // SVG without intrinsic size reports 0; fall back to a sensible default.
     const width = image.naturalWidth || 512;
     const height = image.naturalHeight || 512;

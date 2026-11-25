@@ -1,20 +1,29 @@
 /**
- * File converter in the spirit of ConvertX: choose any mix of files and turn
- * each into another format with the right program on this computer (FFmpeg,
- * LibreOffice, Pandoc, ImageMagick, Inkscape or Calibre).
+ * File converter in the spirit of ConvertX and FreeConvert: choose any mix of
+ * files and turn each into another format with the right program on this
+ * computer (FFmpeg, LibreOffice, Pandoc, ImageMagick, Inkscape, Calibre,
+ * Ghostscript, MuPDF or bsdtar), or here in the app for e-mails, HEIC photos,
+ * TAR archives and pictures traced into SVG.
  */
 
 import { useMemo } from 'preact/hooks';
 import { useIncomingFiles } from '../../app/handoff';
-import { isDesktop } from '../../platform';
+import { archiveToZip } from '../../lib/archives';
+import type { Preset } from '../../lib/trace';
+import { htmlToPdf, isDesktop } from '../../platform';
 import { stageFile } from '../../platform/ai';
 import { PROGRAMS, type ProgramId } from '../../platform/convert';
+import { context2d, createCanvas, downscale, encodeCanvas, loadImage } from '../../ui/canvas';
 import { attempt } from '../../ui/toast';
 import { defineCustomTool, type Values } from '../types';
-import { chooseFiles, DestinationControl, extensionOf, has, InstallHint, type QueueItem, QueueList, useDestination, usePrograms, useQueue } from './_convert';
+import { chooseFiles, DestinationControl, extensionOf, has, InstallHint, type LocalResult, type QueueItem, QueueList, useDestination, usePrograms, useQueue } from './_convert';
 import { usePersistentState } from './_shared';
 
-type Program = Exclude<ProgramId, 'ffprobe'>;
+type External = Exclude<ProgramId, 'ffprobe'>;
+/** An installed program, or 'builtin' for conversions done here in the app. */
+type Program = External | 'builtin';
+
+const programName = (program: Program) => (program === 'builtin' ? 'Benchtop' : PROGRAMS[program].name);
 
 interface Family {
   readonly id: string;
@@ -24,7 +33,18 @@ interface Family {
   readonly inputs: readonly string[];
   readonly outputs: readonly (readonly [string, string])[];
   readonly defaultTo: string;
+  /** For 'builtin' families: the conversion itself. */
+  readonly local?: (bytes: Uint8Array, name: string, to: string, settings: Settings) => Promise<LocalResult>;
+  /** A word on what to expect. */
+  readonly note?: string;
 }
+
+const TRACE_PRESETS: readonly (readonly [Preset, string])[] = [
+  ['logo', 'Logo or icon'],
+  ['artwork', 'Artwork (many colours)'],
+  ['poster', 'Poster (smooth shapes)'],
+  ['lineart', 'Line art (two colours)'],
+];
 
 const VIDEO_IN = ['mp4', 'm4v', 'mkv', 'webm', 'mov', 'avi', 'wmv', 'flv', 'mpg', 'mpeg', 'ts', 'mts', 'm2ts', '3gp', 'ogv'];
 const AUDIO_IN = ['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'oga', 'opus', 'wma', 'aiff', 'aif', 'amr', 'ac3', 'mka'];
@@ -40,6 +60,48 @@ const AUDIO_OUT = [
 
 /** Families in order of preference for files more than one can read. */
 export const FAMILIES: readonly Family[] = [
+  {
+    id: 'heic',
+    label: 'HEIC photos',
+    program: 'builtin',
+    recipe: 'local',
+    inputs: ['heic', 'heif', 'hif'],
+    outputs: [
+      ['jpg', 'JPEG'],
+      ['png', 'PNG'],
+      ['webp', 'WebP'],
+    ],
+    defaultTo: 'jpg',
+    note: 'Decoded here with libheif; camera details and location are left out.',
+    local: async (bytes, _name, to, settings) => {
+      const { decodeHeif } = await import('../../lib/heic');
+      const pixels = await decodeHeif(bytes);
+      let canvas = createCanvas(pixels.width, pixels.height);
+      context2d(canvas).putImageData(new ImageData(new Uint8ClampedArray(pixels.data), pixels.width, pixels.height), 0, 0);
+      if (settings.size > 0) canvas = downscale(canvas, settings.size).canvas;
+      const blob = await encodeCanvas(canvas, { format: to === 'png' ? 'png' : to === 'webp' ? 'webp' : 'jpeg', quality: settings.imageQuality });
+      return { bytes: new Uint8Array(await blob.arrayBuffer()), ext: to };
+    },
+  },
+  {
+    id: 'email',
+    label: 'E-mails and saved web pages',
+    program: 'builtin',
+    recipe: 'local',
+    inputs: ['eml', 'mht', 'mhtml'],
+    outputs: [
+      ['html', 'HTML page (pictures and attachments inside)'],
+      ['pdf', 'PDF'],
+    ],
+    defaultTo: 'html',
+    note: 'Remote pictures and scripts in messages are blocked.',
+    local: async (bytes, _name, to) => {
+      const { messageToHtml } = await import('../../lib/eml');
+      const page = messageToHtml(bytes, { embedAttachments: to === 'html' });
+      if (to === 'pdf') return { bytes: await htmlToPdf(page.html, { paper: 'A4', background: true }), ext: 'pdf' };
+      return { bytes: new TextEncoder().encode(page.html), ext: 'html' };
+    },
+  },
   {
     id: 'video',
     label: 'Video',
@@ -99,6 +161,43 @@ export const FAMILIES: readonly Family[] = [
     defaultTo: 'png',
   },
   {
+    id: 'trace',
+    label: 'Pictures traced into drawings',
+    program: 'builtin',
+    recipe: 'local',
+    inputs: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'],
+    outputs: [['svg', 'SVG (traced shapes)']],
+    defaultTo: 'svg',
+    note: 'Best for logos, icons and drawings; photos become many small shapes.',
+    local: async (bytes, _name, _to, settings) => {
+      const canvas = await loadImage(new Blob([bytes as BlobPart]));
+      const { PRESETS, traceToSvg } = await import('../../lib/trace');
+      const svg = await traceToSvg(canvas, { preset: settings.trace, ...PRESETS[settings.trace] });
+      return { bytes: new TextEncoder().encode(svg), ext: 'svg', suffix: ' (traced)' };
+    },
+  },
+  {
+    id: 'postscript',
+    label: 'PostScript and EPS',
+    program: 'ghostscript',
+    recipe: 'postscript',
+    inputs: ['ps', 'eps', 'epsi', 'epsf'],
+    outputs: [
+      ['pdf', 'PDF'],
+      ['png', 'PNG (first page)'],
+    ],
+    defaultTo: 'pdf',
+  },
+  {
+    id: 'xps',
+    label: 'XPS documents',
+    program: 'mutool',
+    recipe: 'xps',
+    inputs: ['xps', 'oxps'],
+    outputs: [['pdf', 'PDF']],
+    defaultTo: 'pdf',
+  },
+  {
     id: 'vector',
     label: 'Drawings',
     program: 'inkscape',
@@ -137,7 +236,7 @@ export const FAMILIES: readonly Family[] = [
     label: 'Documents',
     program: 'libreoffice',
     recipe: 'document',
-    inputs: ['doc', 'docx', 'docm', 'dot', 'dotx', 'odt', 'ott', 'fodt', 'rtf', 'wpd', 'wps', 'pages', 'txt', 'html', 'htm', 'xml'],
+    inputs: ['doc', 'docx', 'docm', 'dot', 'dotx', 'dotm', 'odt', 'ott', 'fodt', 'rtf', 'wpd', 'wps', 'pages', 'hwp', 'lwp', 'abw', 'zabw', 'sxw', 'uot', 'txt', 'html', 'htm', 'xml'],
     outputs: [
       ['pdf', 'PDF'],
       ['docx', 'Word (DOCX)'],
@@ -153,7 +252,7 @@ export const FAMILIES: readonly Family[] = [
     label: 'Spreadsheets',
     program: 'libreoffice',
     recipe: 'document',
-    inputs: ['xls', 'xlsx', 'xlsm', 'xlsb', 'ods', 'fods', 'csv', 'numbers', 'dbf'],
+    inputs: ['xls', 'xlsx', 'xlsm', 'xlsb', 'xlt', 'xltx', 'xltm', 'ods', 'ots', 'fods', 'sxc', 'uos', 'csv', 'numbers', 'dbf'],
     outputs: [
       ['pdf', 'PDF'],
       ['xlsx', 'Excel (XLSX)'],
@@ -168,7 +267,7 @@ export const FAMILIES: readonly Family[] = [
     label: 'Presentations',
     program: 'libreoffice',
     recipe: 'document',
-    inputs: ['ppt', 'pptx', 'pptm', 'pps', 'ppsx', 'odp', 'fodp', 'key'],
+    inputs: ['ppt', 'pptx', 'pptm', 'pps', 'ppsx', 'ppsm', 'pot', 'potx', 'potm', 'odp', 'otp', 'fodp', 'sxi', 'uop', 'key'],
     outputs: [
       ['pdf', 'PDF'],
       ['pptx', 'PowerPoint (PPTX)'],
@@ -176,6 +275,58 @@ export const FAMILIES: readonly Family[] = [
       ['png', 'PNG (first slide)'],
     ],
     defaultTo: 'pdf',
+  },
+  {
+    id: 'draw',
+    label: 'Diagrams and publications',
+    program: 'libreoffice',
+    recipe: 'document',
+    inputs: ['vsd', 'vsdx', 'vsdm', 'vdx', 'pub', 'odg', 'otg', 'fodg', 'wpg', 'cdr'],
+    outputs: [
+      ['pdf', 'PDF'],
+      ['png', 'PNG (first page)'],
+      ['svg', 'SVG (first page)'],
+      ['odg', 'OpenDocument drawing'],
+    ],
+    defaultTo: 'pdf',
+  },
+  {
+    id: 'pdf-word',
+    label: 'PDFs to edit',
+    program: 'libreoffice',
+    recipe: 'document',
+    inputs: ['pdf'],
+    outputs: [
+      ['docx', 'Word (DOCX)'],
+      ['odt', 'OpenDocument text'],
+      ['rtf', 'RTF'],
+    ],
+    defaultTo: 'docx',
+    note: 'The text becomes editable and keeps its places in text frames; scanned pages stay pictures (PDF Studio reads them with OCR).',
+  },
+  {
+    id: 'archive',
+    label: 'Archives',
+    program: 'bsdtar',
+    recipe: 'archive',
+    inputs: ['rar', '7z', 'zip', 'tar', 'tgz', 'gz', 'tbz', 'tbz2', 'bz2', 'txz', 'xz', 'tzst', 'zst', 'cab', 'iso', 'lzh', 'lha', 'cpio', 'xar'],
+    outputs: [
+      ['zip', 'ZIP'],
+      ['7z', '7z'],
+      ['tgz', 'TAR.GZ'],
+    ],
+    defaultTo: 'zip',
+    note: 'Password-protected archives cannot be converted.',
+  },
+  {
+    id: 'tar',
+    label: 'TAR archives',
+    program: 'builtin',
+    recipe: 'local',
+    inputs: ['tar', 'tgz', 'gz', 'tbz', 'tbz2', 'bz2'],
+    outputs: [['zip', 'ZIP']],
+    defaultTo: 'zip',
+    local: async (bytes, name) => ({ bytes: await archiveToZip(name, bytes), ext: 'zip' }),
   },
   {
     id: 'markup',
@@ -205,7 +356,7 @@ export const FAMILIES: readonly Family[] = [
 
 const ALL_EXTENSIONS = [...new Set(FAMILIES.flatMap((f) => f.inputs))];
 
-/** Families that read this extension, best first; installed programs come first. */
+/** Families that read this extension, best first; installed programs (and the app itself) come first. */
 export function familiesFor(ext: string, installed: (program: Program) => boolean): Family[] {
   const all = FAMILIES.filter((f) => f.inputs.includes(ext));
   return [...all.filter((f) => installed(f.program)), ...all.filter((f) => !installed(f.program))];
@@ -222,6 +373,7 @@ interface Settings {
   readonly imageQuality: number;
   readonly strip: boolean;
   readonly dpi: number;
+  readonly trace: Preset;
 }
 
 const read = (s: Values | undefined): Settings => {
@@ -236,6 +388,7 @@ const read = (s: Values | undefined): Settings => {
     imageQuality: num(s?.imageQuality, 85, 1, 100),
     strip: typeof s?.strip === 'boolean' ? s.strip : true,
     dpi: num(s?.dpi, 192, 24, 1200),
+    trace: TRACE_PRESETS.find(([p]) => p === s?.trace)?.[0] ?? 'logo',
   };
 };
 
@@ -254,7 +407,7 @@ function FileConverter({ toolId }: { toolId: string }) {
       if (staged.length) queue.add(staged);
     }),
   );
-  const installed = (program: Program) => has(programs, program);
+  const installed = (program: Program) => program === 'builtin' || has(programs, program);
 
   const familyOf = (item: QueueItem): Family | null => {
     const ext = extensionOf(item.file.name);
@@ -302,6 +455,7 @@ function FileConverter({ toolId }: { toolId: string }) {
       case 'image':
         return { to, size: settings.size, quality: settings.imageQuality, strip: settings.strip };
       case 'vector':
+      case 'postscript':
         return { to, dpi: settings.dpi };
       default:
         return { to };
@@ -309,7 +463,7 @@ function FileConverter({ toolId }: { toolId: string }) {
   };
 
   const unsupported = queue.items.filter((i) => !familyOf(i));
-  const missing = [...new Set(groups.filter((g) => !installed(g.family.program)).map((g) => g.family.program))];
+  const missing = [...new Set(groups.filter((g) => !installed(g.family.program)).map((g) => g.family.program as External))];
   const convertible = queue.items.filter((i) => i.state !== 'running' && familyOf(i) && installed((familyOf(i) as Family).program));
   const pending = convertible.filter((i) => i.state !== 'done');
   const again = pending.length === 0 && convertible.length > 0;
@@ -319,7 +473,7 @@ function FileConverter({ toolId }: { toolId: string }) {
     const family = familyOf(item);
     if (!family) return `no converter reads .${extensionOf(item.file.name) || 'this'} files`;
     const label = family.outputs.find(([v]) => v === toFor(family))?.[1] ?? toFor(family);
-    return installed(family.program) ? `to ${label} with ${PROGRAMS[family.program].name}` : `needs ${PROGRAMS[family.program].name}`;
+    return installed(family.program) ? `to ${label} with ${programName(family.program)}` : `needs ${programName(family.program)}`;
   };
 
   const run = () =>
@@ -328,6 +482,8 @@ function FileConverter({ toolId }: { toolId: string }) {
         (item) => {
           const family = familyOf(item);
           if (!family || !installed(family.program)) return null;
+          const local = family.local;
+          if (local) return { recipe: family.recipe, local: (bytes) => local(bytes, item.file.name, toFor(family), settings) };
           return { recipe: family.recipe, options: optionsFor(family) };
         },
         target,
@@ -394,7 +550,7 @@ function FileConverter({ toolId }: { toolId: string }) {
                   <select id={`conv-using-${family.id}`} class="input" value={family.id} onChange={(e) => setUsing(extensions, e.currentTarget.value)}>
                     {[family, ...alternatives].map((f) => (
                       <option key={f.id} value={f.id}>
-                        {PROGRAMS[f.program].name} ({f.label.toLowerCase()}){installed(f.program) ? '' : ', not installed'}
+                        {programName(f.program)} ({f.label.toLowerCase()}){installed(f.program) ? '' : ', not installed'}
                       </option>
                     ))}
                   </select>
@@ -422,7 +578,22 @@ function FileConverter({ toolId }: { toolId: string }) {
                   )}
                 </div>
               )}
-              {family.id === 'image' && (
+              {family.note && <p class="tone-muted conv-note">{family.note}</p>}
+              {family.id === 'trace' && (
+                <div class="control">
+                  <label class="control-label" for="conv-trace">
+                    Picture type
+                  </label>
+                  <select id="conv-trace" class="input" value={settings.trace} onChange={(e) => setSettings((s) => ({ ...s, trace: e.currentTarget.value as Preset }))}>
+                    {TRACE_PRESETS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {(family.id === 'image' || family.id === 'heic') && (
                 <>
                   <div class="control">
                     <label class="control-label" for="conv-size">
@@ -444,21 +615,23 @@ function FileConverter({ toolId }: { toolId: string }) {
                     </label>
                     <input id="conv-iq" type="range" min={40} max={100} value={settings.imageQuality} onInput={(e) => setSettings((s) => ({ ...s, imageQuality: Number(e.currentTarget.value) }))} />
                   </div>
-                  <label class="toggle" for="conv-strip">
-                    <input
-                      id="conv-strip"
-                      type="checkbox"
-                      role="switch"
-                      aria-checked={settings.strip}
-                      checked={settings.strip}
-                      onChange={(e) => setSettings((s) => ({ ...s, strip: e.currentTarget.checked }))}
-                    />
-                    <span class="toggle-track" aria-hidden="true" />
-                    <span>Remove camera details and location (metadata)</span>
-                  </label>
+                  {family.id === 'image' && (
+                    <label class="toggle" for="conv-strip">
+                      <input
+                        id="conv-strip"
+                        type="checkbox"
+                        role="switch"
+                        aria-checked={settings.strip}
+                        checked={settings.strip}
+                        onChange={(e) => setSettings((s) => ({ ...s, strip: e.currentTarget.checked }))}
+                      />
+                      <span class="toggle-track" aria-hidden="true" />
+                      <span>Remove camera details and location (metadata)</span>
+                    </label>
+                  )}
                 </>
               )}
-              {family.id === 'vector' && toFor(family) === 'png' && (
+              {(family.id === 'vector' || family.id === 'postscript') && toFor(family) === 'png' && (
                 <div class="control">
                   <label class="control-label" for="conv-dpi">
                     Resolution (dpi)
@@ -496,20 +669,22 @@ function FileConverter({ toolId }: { toolId: string }) {
         {queue.items.length === 0 ? (
           <div class="conv-empty">
             <p>
-              Choose files of any kind: video, audio, pictures, drawings, Office documents, Markdown and other markup, or e-books. Each is converted on this computer by the program that reads it best.
+              Choose files of any kind: video, audio, pictures, drawings, Office documents, Visio and Publisher files, PDFs to edit in Word, PostScript and XPS, archives, e-mails, Markdown and other
+              markup, or e-books. Each is converted on this computer by the program that reads it best.
             </p>
+            <p class="tone-muted">Built into Benchtop: HEIC photos, e-mails (EML) and saved web pages (MHTML), TAR archives to ZIP, and pictures traced into SVG.</p>
             <ul class="conv-programs" data-testid="convert-programs">
-              {(Object.keys(PROGRAMS) as Program[]).map((id) => (
+              {(Object.keys(PROGRAMS) as External[]).map((id) => (
                 <li key={id} class={installed(id) ? 'is-found' : 'is-missing'}>
                   <strong>{PROGRAMS[id].name}</strong> <span>{installed(id) ? 'found' : 'not installed'}</span>
                   <span class="tone-muted">{PROGRAMS[id].use}</span>
                 </li>
               ))}
             </ul>
-            {(Object.keys(PROGRAMS) as Program[]).some((id) => !installed(id)) && (
+            {(Object.keys(PROGRAMS) as External[]).some((id) => !installed(id)) && (
               <details class="conv-missing">
                 <summary>How to install the missing programs</summary>
-                {(Object.keys(PROGRAMS) as Program[])
+                {(Object.keys(PROGRAMS) as External[])
                   .filter((id) => !installed(id))
                   .map((id) => (
                     <InstallHint key={id} id={id} os={programs.os} />

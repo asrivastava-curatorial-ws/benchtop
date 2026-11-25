@@ -2,11 +2,12 @@
 import { useEffect, useState } from 'preact/hooks';
 
 /** `query` carries what a shared link sets in the tool (a calculator and its values). */
-export type Route = { readonly page: 'home' } | { readonly page: 'settings' } | { readonly page: 'tool'; readonly id: string; readonly query?: string };
+export type Route = { readonly page: 'home' } | { readonly page: 'tools' } | { readonly page: 'settings' } | { readonly page: 'tool'; readonly id: string; readonly query?: string };
 
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, '');
   if (path === 'settings') return { page: 'settings' };
+  if (path === 'tools') return { page: 'tools' };
   const tool = /^tool\/([a-z0-9-]+)(?:\?([A-Za-z0-9\-_=&.~%+]*))?$/.exec(path);
   if (tool) return tool[2] ? { page: 'tool', id: tool[1] as string, query: tool[2] } : { page: 'tool', id: tool[1] as string };
   return { page: 'home' };

@@ -54,6 +54,25 @@ Blocks are drawn in order. Every block has an `id` (any string) and a `type`.
 | `divider`   | —                                               | A horizontal line.                                                                                                                                                                                                     |
 | `link`      | `url`, `title`, `note`, `snapshot?`, `savedAt?` | A web address. `snapshot` is the id of an attached PDF copy of the page, saved at `savedAt` (ISO 8601).                                                                                                                |
 | `file`      | `file`, `caption`, `width?`                     | An attached file, shown according to its type (picture, video, audio, PDF, 3D model, text or a plain file). `width` (percent) applies to pictures.                                                                     |
+| `sketch`    | `scene`                                         | A drawing or mind map (below).                                                                                                                                                                                         |
+
+### Sketches
+
+A `sketch` block's `scene` is `{version: 1, nodes, edges, strokes, hand, height, grid}`.
+Coordinates are pixels at 100 % zoom; `y` grows downwards. Colours are `#rgb` or
+`#rrggbb`; a fill may also be `none`.
+
+| Field     | Content                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nodes`   | Shapes: `{id, shape, x, y, w, h, text, stroke, fill, fillStyle, width, dash, font, seed, auto, parent?}`. `shape` is `rect`, `rounded`, `ellipse`, `diamond`, `cloud`, `sticky` or `text`; `fillStyle` is `hachure`, `cross-hatch` or `solid`; `dash` is `solid`, `dashed` or `dotted`; `font` is the text size in pixels; `auto` makes the size follow the text. A node with `parent` is a topic of a mind map, with a branch drawn from its parent. |
+| `edges`   | Connectors: `{id, from, to, stroke, width, dash, head, route, label, font, seed}`. `from` and `to` are `{x, y}` points, or `{node, x, y}` to stick to a node (the point is then only a fallback). `head` is `none`, `end` or `both`; `route` is `straight`, `curved` or `elbow`.                                                                                                                                                                      |
+| `strokes` | Pen strokes: `{id, points: [[x, y, pressure], …], color, size}`, pressure from 0 to 1.                                                                                                                                                                                                                                                                                                                                                                |
+| `hand`    | `true` for the hand-drawn look (Rough.js lines and the Kalam typeface), `false` for clean lines.                                                                                                                                                                                                                                                                                                                                                      |
+| `height`  | Height of the drawing area in the note, 200 to 1600.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `grid`    | `none`, `dots` or `lines`.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+`seed` keeps a hand-drawn shape's wobble the same every time it is drawn. In
+`index.html` a sketch is an SVG picture, with its fonts inside the page.
 
 Unknown block types should be skipped, not treated as errors, so newer notes
 still open in older readers as far as possible. A reader that meets a
@@ -62,3 +81,4 @@ still open in older readers as far as possible. A reader that meets a
 ## Version history
 
 - **1** (Benchtop 4.0): first version.
+- **1** (Benchtop 5.1): `sketch` blocks. Older readers skip them, as they skip any block type they do not know.

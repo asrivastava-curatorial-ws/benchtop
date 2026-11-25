@@ -3,7 +3,7 @@
  * diodes and LEDs, bipolar and MOS transistors, op-amps, the 555 timer,
  * logic gates, flip-flops, counters, decoders, displays, relays and meters.
  */
-import { type Context, type Element, limitJunction, type Stamp, stampDevice, VT } from './engine';
+import { type AcStamp, type Context, type Element, limitJunction, type Stamp, stampDevice, VT } from './engine';
 
 const exp = (x: number) => Math.exp(Math.min(x, 80));
 
@@ -47,23 +47,40 @@ export class Capacitor implements Element {
   }
 }
 
+/**
+ * An inductor (with optional series resistance) as a branch whose current
+ * is a solver unknown: v = R·i + L·di/dt by backward Euler.  At the DC
+ * operating point it is a short (plus its resistance).
+ */
 export class Inductor implements Element {
   nodes = [0, 0];
+  readonly sources = 1;
+  sourceBase?: number;
   private flowing = 0;
-  constructor(public inductance: number) {}
+  constructor(
+    public inductance: number,
+    public resistance = 0,
+  ) {}
   stamp(s: Stamp, ctx: Context): void {
-    const g = ctx.dt / Math.max(this.inductance, 1e-12);
-    const [a, b] = this.nodes as [number, number];
-    s.conductance(a, b, g);
-    s.current(a, b, this.flowing);
+    stampBranch(s, this, this.nodes[0] as number, this.nodes[1] as number, this.resistance, Math.max(this.inductance, 0) / ctx.dt, this.flowing);
   }
   end(ctx: Context): void {
-    const v = ctx.v(this.nodes[0] as number) - ctx.v(this.nodes[1] as number);
-    this.flowing += (ctx.dt / Math.max(this.inductance, 1e-12)) * v;
+    this.flowing = ctx.sourceCurrent(this, 0);
   }
-  current(): number {
-    return this.flowing;
+  current(ctx: Context): number {
+    return ctx.sourceCurrent(this, 0);
   }
+}
+
+/** A series R–L branch on source row 0 of `element`: v(a) − v(b) = R·i + z·(i − i₀), with i flowing in at a and z = L/dt. */
+function stampBranch(s: Stamp, element: Element, a: number, b: number, r: number, z: number, previous: number): void {
+  const row = s.sourceRow(element, 0);
+  s.matrix(s.nodeRow(a), row, 1);
+  s.matrix(s.nodeRow(b), row, -1);
+  s.matrix(row, s.nodeRow(a), 1);
+  s.matrix(row, s.nodeRow(b), -1);
+  s.matrix(row, row, -(r + z));
+  s.rhs(row, -z * previous);
 }
 
 /** Two resistors meeting at the wiper: terminals end, wiper, end. */
@@ -133,23 +150,20 @@ export class Lamp implements Element {
 /** A small DC motor: winding resistance and inductance; speed follows the current. */
 export class Motor implements Element {
   nodes = [0, 0];
+  readonly sources = 1;
+  sourceBase?: number;
   speed = 0;
   angle = 0;
   private flowing = 0;
   constructor(public resistance = 10) {}
   stamp(s: Stamp, ctx: Context): void {
-    // Winding resistance in series with 1 mH, as a Norton pair.
-    const g = 1 / (this.resistance + 0.001 / ctx.dt);
-    const [a, b] = this.nodes as [number, number];
-    s.conductance(a, b, g);
-    s.current(a, b, this.flowing * (0.001 / ctx.dt) * g);
+    // Winding resistance in series with 1 mH.
+    stampBranch(s, this, this.nodes[0] as number, this.nodes[1] as number, this.resistance, 0.001 / ctx.dt, this.flowing);
   }
   end(ctx: Context): void {
-    const v = ctx.v(this.nodes[0] as number) - ctx.v(this.nodes[1] as number);
-    const g = 1 / (this.resistance + 0.001 / ctx.dt);
-    this.flowing = g * v + this.flowing * (0.001 / ctx.dt) * g;
+    this.flowing = ctx.sourceCurrent(this, 0);
     this.speed = smooth(this.speed, this.flowing, ctx.dt, 0.15);
-    this.angle = (this.angle + this.speed * ctx.dt * 360 * 8) % 360;
+    this.angle = (this.angle + this.speed * Math.min(ctx.dt, 1) * 360 * 8) % 360;
   }
   current(): number {
     return this.flowing;
@@ -209,9 +223,17 @@ export class VoltageSource implements Element {
   value(t: number): number {
     return waveValue(this.shape, t, this.frequency, this.amplitude, this.offset, this.duty);
   }
+  /** The value at the DC operating point: a battery's voltage, a generator's offset. */
+  dcValue(): number {
+    return this.shape === 'dc' ? this.amplitude : this.offset;
+  }
+  /** The value now, allowing for the operating point and source stepping. */
+  at(ctx: Context): number {
+    return (ctx.dc ? this.dcValue() : this.value(ctx.t)) * (ctx.ramp ?? 1);
+  }
   stamp(s: Stamp, ctx: Context): void {
     const [p, n] = this.nodes as [number, number];
-    const v = this.value(ctx.t);
+    const v = this.at(ctx);
     if (this.internal > 0) {
       const g = 1 / this.internal;
       s.conductance(p, n, g);
@@ -220,7 +242,7 @@ export class VoltageSource implements Element {
   }
   /** Current delivered out of the + terminal into the circuit. */
   current(ctx: Context): number {
-    if (this.internal > 0) return (this.value(ctx.t) - (ctx.v(this.nodes[0] as number) - ctx.v(this.nodes[1] as number))) / this.internal;
+    if (this.internal > 0) return (this.at(ctx) - (ctx.v(this.nodes[0] as number) - ctx.v(this.nodes[1] as number))) / this.internal;
     return -ctx.sourceCurrent(this, 0);
   }
 }
@@ -228,8 +250,8 @@ export class VoltageSource implements Element {
 export class CurrentSource implements Element {
   nodes = [0, 0];
   constructor(public amps: number) {}
-  stamp(s: Stamp): void {
-    s.current(this.nodes[0] as number, this.nodes[1] as number, this.amps);
+  stamp(s: Stamp, ctx: Context): void {
+    s.current(this.nodes[0] as number, this.nodes[1] as number, this.amps * (ctx.ramp ?? 1));
   }
   current(): number {
     return this.amps;
@@ -459,19 +481,35 @@ export class Mosfet implements Element {
 /**
  * An op-amp with high gain and outputs limited (smoothly) to its supply
  * rails less a headroom; terminals non-inverting, inverting, output.  The
- * output is referenced to ground.
+ * output is referenced to ground.  With a gain–bandwidth product the gain
+ * falls from its DC value above the dominant pole (gain ÷ GBW gives its
+ * time constant), in the time domain and in frequency analysis alike.
  */
 export class OpAmp implements Element {
   nodes = [0, 0, 0];
   readonly sources = 1;
   sourceBase?: number;
   readonly nonlinear = true;
+  /** The amplified difference after the dominant pole, before the output limits. */
+  private lagged = 0;
+  /** Small-signal slope of the output limit at the latest solution (1 in the linear range). */
+  private slope0 = 1;
   constructor(
     public positiveRail = 15,
     public negativeRail = -15,
     public headroom = 1.5,
     public gain = 1e5,
+    /** Gain–bandwidth product in hertz; 0 for unlimited bandwidth. */
+    public gbw = 0,
   ) {}
+  private get tau(): number {
+    return this.gbw > 0 ? this.gain / (2 * Math.PI * this.gbw) : 0;
+  }
+  /** How much of the new difference reaches the output in one step. */
+  private alpha(dt: number): number {
+    const tau = this.tau;
+    return tau > 0 ? dt / (dt + tau) : 1;
+  }
   stamp(s: Stamp, ctx: Context): void {
     const [np, nn, no] = this.nodes as [number, number, number];
     const hi = this.positiveRail - this.headroom;
@@ -479,10 +517,13 @@ export class OpAmp implements Element {
     const mid = (hi + lo) / 2;
     const half = Math.max(1e-3, (hi - lo) / 2);
     const vd = ctx.v(np) - ctx.v(nn);
-    const u = (this.gain * vd) / half;
+    const a = this.alpha(ctx.dt);
+    const y = a * this.gain * vd + (1 - a) * this.lagged;
+    const u = y / half;
     const th = Math.tanh(Math.max(-40, Math.min(40, u)));
     const f = mid + half * th;
-    const slope = this.gain * (1 - th * th) + 1e-9;
+    this.slope0 = 1 - th * th;
+    const slope = a * this.gain * this.slope0 + 1e-9;
     const row = s.sourceRow(this, 0);
     // v(out) − slope·v(+) + slope·v(−) = f − slope·vd
     s.matrix(row, s.nodeRow(no), 1);
@@ -490,6 +531,25 @@ export class OpAmp implements Element {
     s.matrix(row, s.nodeRow(nn), slope);
     s.matrix(s.nodeRow(no), row, 1);
     s.rhs(row, f - slope * vd);
+  }
+  end(ctx: Context): void {
+    const vd = ctx.v(this.nodes[0] as number) - ctx.v(this.nodes[1] as number);
+    const a = this.alpha(ctx.dt);
+    this.lagged = a * this.gain * vd + (1 - a) * this.lagged;
+  }
+  ac(s: AcStamp, omega: number): void {
+    const [np, nn, no] = this.nodes as [number, number, number];
+    const row = s.sourceRow(this, 0);
+    // Gain g0 / (1 + jωτ).
+    const g0 = this.gain * this.slope0 + 1e-9;
+    const wt = omega * this.tau;
+    const d = 1 + wt * wt;
+    const re = g0 / d;
+    const im = (-g0 * wt) / d;
+    s.add(row, s.nodeRow(no), 1, 0);
+    s.add(s.nodeRow(no), row, 1, 0);
+    s.add(row, s.nodeRow(np), -re, -im);
+    s.add(row, s.nodeRow(nn), re, im);
   }
   current(ctx: Context): number {
     return -ctx.sourceCurrent(this, 0);

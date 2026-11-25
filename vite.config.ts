@@ -1,10 +1,12 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import preact from '@preact/preset-vite';
 import { defineConfig, type Plugin } from 'vite';
 import { collectCrates, collectLicenses, renderNotice } from './scripts/licenses.mjs';
+import { frameHtml } from './scripts/svgjs-frame.mjs';
+import { codeFrameHtml } from './src/lib/code-frames';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
@@ -30,6 +32,47 @@ export const CONTENT_SECURITY_POLICY = [
   "base-uri 'none'",
   "object-src 'none'",
 ].join('; ');
+
+/**
+ * Writes the SVG.js editor's drawing frame (public/svgjs/frame.html): a page with the
+ * SVG.js library inside it.  It is shown in a sandboxed frame and carries a policy of
+ * its own, because it runs the code typed into the editor.
+ */
+function svgjsFrame(): Plugin {
+  const write = () => {
+    const require = createRequire(import.meta.url);
+    const library = readFileSync(join(dirname(require.resolve('@svgdotjs/svg.js')), 'svg.min.js'), 'utf8').replace(/\n\/\/# sourceMappingURL=.*\s*$/, '\n');
+    const target = fileURLToPath(new URL('public/svgjs/frame.html', import.meta.url));
+    const html = frameHtml(library);
+    if (existsSync(target) && readFileSync(target, 'utf8') === html) return;
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, html);
+  };
+  return { name: 'benchtop:svgjs-frame', buildStart: write, configureServer: write };
+}
+
+/**
+ * Writes the D3.js and anime.js editors' frames (public/d3/frame.html and
+ * public/anime/frame.html), the same way: the library inside a page with a
+ * policy of its own.
+ */
+function codeFrames(): Plugin {
+  const write = () => {
+    const libraries: [string, string][] = [
+      ['d3', fileURLToPath(new URL('node_modules/d3/dist/d3.min.js', import.meta.url))],
+      ['anime', fileURLToPath(new URL('node_modules/animejs/dist/bundles/anime.umd.min.js', import.meta.url))],
+    ];
+    for (const [kind, file] of libraries) {
+      const library = readFileSync(file, 'utf8').replace(/\n\/\/# sourceMappingURL=.*\s*$/, '\n');
+      const target = fileURLToPath(new URL(`public/${kind}/frame.html`, import.meta.url));
+      const html = codeFrameHtml(kind as 'd3' | 'anime', library);
+      if (existsSync(target) && readFileSync(target, 'utf8') === html) continue;
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, html);
+    }
+  };
+  return { name: 'benchtop:code-frames', buildStart: write, configureServer: write };
+}
 
 function contentSecurityPolicy(): Plugin {
   return {
@@ -68,6 +111,36 @@ function ocrAssets(): Plugin {
   };
   // The config hook runs before Vite indexes the public folder, in dev and build alike.
   return { name: 'benchtop:ocr-assets', config: () => void copy() };
+}
+
+/**
+ * Copies the Code Runner's language runtimes from node_modules into
+ * public/coderun, so they load offline from the app's own origin: Pyodide
+ * (CPython compiled to WebAssembly, MPL-2.0), wasmoon (Lua 5.4, MIT) and
+ * sql.js (SQLite, MIT).  Workers load them with importScripts.
+ */
+function codeRuntimes(): Plugin {
+  const copy = () => {
+    const require = createRequire(import.meta.url);
+    const pyodide = dirname(require.resolve('pyodide/package.json'));
+    const wasmoon = dirname(require.resolve('wasmoon/package.json'));
+    // sql.js exports only its entry point, which sits beside the files wanted.
+    const sqljs = dirname(require.resolve('sql.js'));
+    const files: [string, string][] = [
+      ...['pyodide.js', 'pyodide.asm.mjs', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json'].map((name) => [join(pyodide, name), `public/coderun/pyodide/${name}`] as [string, string]),
+      [join(wasmoon, 'dist', 'index.js'), 'public/coderun/lua/wasmoon.js'],
+      [join(wasmoon, 'dist', 'glue.wasm'), 'public/coderun/lua/glue.wasm'],
+      [join(sqljs, 'sql-wasm.js'), 'public/coderun/sqljs/sql-wasm.js'],
+      [join(sqljs, 'sql-wasm.wasm'), 'public/coderun/sqljs/sql-wasm.wasm'],
+    ];
+    for (const [from, to] of files) {
+      const target = fileURLToPath(new URL(to, import.meta.url));
+      if (existsSync(target) && statSync(target).size === statSync(from).size && statSync(target).mtimeMs >= statSync(from).mtimeMs) continue;
+      mkdirSync(dirname(target), { recursive: true });
+      copyFileSync(from, target);
+    }
+  };
+  return { name: 'benchtop:code-runtimes', config: () => void copy() };
 }
 
 /**
@@ -128,7 +201,7 @@ function licenceNotices(): Plugin {
 
 export default defineConfig({
   base: './',
-  plugins: [preact(), ocrAssets(), contentSecurityPolicy(), workerSafeChunks(), licenceNotices()],
+  plugins: [preact(), ocrAssets(), codeRuntimes(), svgjsFrame(), codeFrames(), contentSecurityPolicy(), workerSafeChunks(), licenceNotices()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
@@ -150,8 +223,9 @@ export default defineConfig({
     // gains little, and the preloader needs a document, which workers lack.
     modulePreload: false,
     rolldownOptions: {
-      // deck.html is the Slide Deck tool's preview, a page of its own shown in a frame.
-      input: { index: 'index.html', deck: 'deck.html', ...WORKERS },
+      // deck.html is the Slide Deck tool's preview, a page of its own shown in a frame;
+      // join.html is the page people open to take part in a Live Quiz.
+      input: { index: 'index.html', deck: 'deck.html', join: 'join.html', ...WORKERS },
       output: {
         entryFileNames: (chunk) => (chunk.name in WORKERS ? 'assets/[name].js' : 'assets/[name]-[hash].js'),
       },

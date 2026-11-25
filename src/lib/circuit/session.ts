@@ -3,12 +3,27 @@
  * advanced frame by frame against the clock.  Kept apart from the editor so
  * tests can run circuits without a page.
  */
-import { BoardElement, type Mcu, UnoMcu } from './boards';
+import { AvrMcu, isAvrChip } from './avr';
+import { AVR_EXAMPLES } from './avr-examples';
+import { BOARD_SPECS, BoardElement, type Mcu } from './boards';
+import type { BoardPin, Device } from './bus';
 import { Probe } from './elements';
 import type { EspMcu } from './esp32';
 import { ESP32_DEMO } from './esp32-demo';
-import { type Built, build, type CircuitDoc, type FirmwareRef } from './netlist';
-import { UNO_EXAMPLES } from './uno-examples';
+import { type Built, build, type CircuitDoc, type DeviceStore, type FirmwareRef } from './netlist';
+import type { Props } from './parts';
+import { PICO_EXAMPLES } from './pico-examples';
+import { PicoMcu } from './rp2040';
+
+/** Pico firmware opened from files in this session, by name (too large to keep in the circuit). */
+export const picoImages = new Map<string, Uint8Array>();
+
+function base64Bytes(text: string): Uint8Array {
+  const raw = atob(text);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return bytes;
+}
 
 export const TRACE_COUNT = 4;
 const SCOPE_POINTS = 1200;
@@ -81,7 +96,18 @@ export interface SessionOptions {
 /** The program a board starts with when none is chosen. */
 export const DEFAULT_FIRMWARE: Readonly<Record<string, FirmwareRef>> = {
   'arduino-uno': { kind: 'example', id: 'blink' },
+  'arduino-nano': { kind: 'example', id: 'blink' },
+  'arduino-mega': { kind: 'example', id: 'mega-blink' },
+  attiny85: { kind: 'example', id: 'tiny-blink' },
+  'pi-pico': { kind: 'example', id: 'pico-blink' },
   esp32: { kind: 'esp32-demo' },
+};
+
+/** The examples built for a board's chip. */
+export const examplesFor = (type: string): readonly { readonly id: string; readonly sketch: string }[] => {
+  const chip = BOARD_SPECS.get(type)?.chip;
+  if (chip === 'rp2040') return PICO_EXAMPLES;
+  return AVR_EXAMPLES.filter((e) => e.chip === chip);
 };
 
 export function firmwareFor(doc: CircuitDoc, partId: string, type: string): FirmwareRef | null {
@@ -100,6 +126,8 @@ export function firmwareKey(ref: FirmwareRef | null): string {
       return 'esp32-demo';
     case 'esp32-image':
       return `esp32-image:${ref.name}`;
+    case 'pico-image':
+      return `pico-image:${ref.name}`;
   }
 }
 
@@ -113,6 +141,7 @@ export function firmwareName(ref: FirmwareRef | null): string {
     case 'esp32-demo':
       return ESP32_DEMO.name;
     case 'esp32-image':
+    case 'pico-image':
       return ref.name;
   }
 }
@@ -137,6 +166,8 @@ export class Session {
   failure = '';
   private readonly boards = new Map<string, Running>();
   private readonly starting = new Map<string, string>();
+  /** Modules' devices, kept while the circuit is edited. */
+  private readonly devices: DeviceStore = new Map();
   private carry = 0;
   private disposed = false;
 
@@ -145,8 +176,9 @@ export class Session {
     private readonly options: SessionOptions = {},
   ) {
     this.doc = doc;
-    this.built = build(doc);
+    this.built = build(doc, this.devices);
     this.startBoards();
+    this.linkDevices();
   }
 
   get time(): number {
@@ -172,17 +204,58 @@ export class Session {
   update(doc: CircuitDoc): void {
     const old = this.built;
     this.doc = doc;
-    this.built = build(doc);
+    this.built = build(doc, this.devices);
     const circuit = this.built.circuit;
     circuit.t = old.circuit.t;
     if (circuit.x.length === old.circuit.x.length && circuit.nodeCount === old.circuit.nodeCount) circuit.x.set(old.circuit.x);
     this.startBoards();
+    this.linkDevices();
+  }
+
+  /**
+   * Joins each module to the board pins and other modules its terminals
+   * touch.  Called after every rebuild and whenever a board starts or stops.
+   */
+  private linkDevices(): void {
+    const built = this.built;
+    const pinAt = new Map<number, BoardPin>();
+    for (const part of this.doc.parts) {
+      const spec = BOARD_SPECS.get(part.type);
+      const bus = this.boards.get(part.id)?.mcu.bus;
+      if (!spec || !bus) continue;
+      const nodes = built.connectivity.partNodes.get(part.id) ?? [];
+      spec.pins.forEach((_, pin) => {
+        const node = nodes[spec.power.length + pin] ?? -1;
+        if (node > 0 && !pinAt.has(node)) pinAt.set(node, { bus, pin });
+      });
+    }
+    const devices: { device: Device; nodes: readonly number[] }[] = [];
+    const at = new Map<number, [Device, number][]>();
+    for (const part of this.doc.parts) {
+      const device = built.runtimes.get(part.id)?.device;
+      if (!device) continue;
+      const nodes = built.connectivity.partNodes.get(part.id) ?? [];
+      devices.push({ device, nodes });
+      nodes.forEach((node, terminal) => {
+        if (node <= 0) return;
+        const list = at.get(node) ?? [];
+        list.push([device, terminal]);
+        at.set(node, list);
+      });
+    }
+    for (const { device } of devices) device.unlink();
+    for (const { device, nodes } of devices)
+      device.link({
+        nodes,
+        pins: nodes.map((node) => (node > 0 ? (pinAt.get(node) ?? null) : null)),
+        peers: nodes.map((node) => (node > 0 ? (at.get(node) ?? []).filter(([other]) => other !== device) : [])),
+      });
   }
 
   private startBoards(): void {
     const present = new Set<string>();
     for (const part of this.doc.parts) {
-      if (part.type !== 'arduino-uno' && part.type !== 'esp32') continue;
+      if (!BOARD_SPECS.has(part.type)) continue;
       present.add(part.id);
       const ref = firmwareFor(this.doc, part.id, part.type);
       const key = firmwareKey(ref);
@@ -209,6 +282,7 @@ export class Session {
           this.boards.set(part.id, { key, mcu });
           const current = boardOf(this.built, part.id);
           if (current) current.driver = mcu;
+          this.linkDevices();
         })
         .catch((error: unknown) => {
           if (this.starting.get(part.id) === key) this.starting.delete(part.id);
@@ -225,12 +299,27 @@ export class Session {
   }
 
   private async launch(partId: string, type: string, ref: FirmwareRef): Promise<Mcu> {
-    if (type === 'arduino-uno') {
+    const spec = BOARD_SPECS.get(type);
+    if (spec?.chip === 'rp2040') {
+      let image: Uint8Array | undefined;
+      if (ref.kind === 'example') {
+        const example = PICO_EXAMPLES.find((e) => e.id === ref.id);
+        image = example ? base64Bytes(example.image) : undefined;
+      } else if (ref.kind === 'pico-image') {
+        image = picoImages.get(ref.name);
+        if (!image) throw new Error(`Open ${ref.name} on the board (select it, then Open .uf2…): firmware files are not kept in the circuit.`);
+      }
+      if (!image) throw new Error('This program is not for the Raspberry Pi Pico.');
+      const mcu = await PicoMcu.load(image, spec);
+      if (ref.kind === 'pico-image' && ref.python) mcu.autorun(ref.python);
+      return mcu;
+    }
+    if (spec && isAvrChip(spec.chip)) {
       let hex: string | undefined;
-      if (ref.kind === 'example') hex = UNO_EXAMPLES.find((e) => e.id === ref.id)?.hex;
+      if (ref.kind === 'example') hex = AVR_EXAMPLES.find((e) => e.id === ref.id && e.chip === spec.chip)?.hex;
       else if (ref.kind === 'hex') hex = ref.hex;
-      if (!hex) throw new Error('This program is not for the Arduino Uno.');
-      return UnoMcu.fromHex(hex);
+      if (!hex) throw new Error(`This program is not for the ${spec.name}.`);
+      return AvrMcu.fromHex(hex, spec);
     }
     if (ref.kind !== 'esp32-demo' && ref.kind !== 'esp32-image') throw new Error('This program is not for the ESP32.');
     if (!this.options.launchEsp) throw new Error('ESP32 boards run in the desktop app.');
@@ -290,12 +379,24 @@ export class Session {
     return result;
   }
 
-  interact(partId: string, action: 'toggle' | 'press' | 'release'): void {
-    this.built.runtimes.get(partId)?.interact?.(action);
+  interact(partId: string, action: 'toggle' | 'press' | 'release', at?: readonly [number, number]): void {
+    this.built.runtimes.get(partId)?.interact?.(action, at);
   }
 
   adjust(partId: string, value: number): void {
     this.built.runtimes.get(partId)?.adjust?.(value);
+  }
+
+  /** Live properties of a part changed (sensor readings): applied without rebuilding. */
+  setLive(partId: string, props: Props): void {
+    this.built.runtimes.get(partId)?.live?.(props);
+  }
+
+  /** I²C addresses where two devices on one board would answer together. */
+  clashes(): { partId: string; address: number }[] {
+    const list: { partId: string; address: number }[] = [];
+    for (const [partId, { mcu }] of this.boards) if (mcu instanceof AvrMcu) for (const address of mcu.i2cClashes()) list.push({ partId, address });
+    return list;
   }
 
   serialSend(partId: string, text: string): void {
@@ -314,5 +415,7 @@ export class Session {
     for (const { mcu } of this.boards.values()) mcu.stop();
     this.boards.clear();
     this.starting.clear();
+    for (const { device } of this.devices.values()) device.unlink();
+    this.devices.clear();
   }
 }

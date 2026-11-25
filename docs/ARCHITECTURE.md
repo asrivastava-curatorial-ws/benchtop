@@ -41,7 +41,7 @@ The AI tools run in a second copy of the program started as `benchtop --ai-worke
 
 ## The calculator library
 
-`src/calc/` holds about 260 calculators as data: variables with dimensions and units (`units.ts`) and equations written as text (`library/*.ts`). `solver.ts` parses the equations with math.js and solves each one that has a single unknown, numerically (secant steps, then a bracketing search from 10⁻⁴⁰ to 10⁴⁰), repeating until nothing changes, so any field can be the result. When typed values contradict each other, the oldest gives way. `engine.ts` converts between the units on screen and the units in the formulas. `report.ts` encodes a calculation into a link (`#/tool/<id>?calc=…&s=…`, validated when read) and draws the PDF report.
+`src/calc/` holds about 300 calculators as data: variables with dimensions and units (`units.ts`) and equations written as text (`library/*.ts`). `solver.ts` parses the equations with math.js and solves each one that has a single unknown, numerically (secant steps, then a bracketing search from 10⁻⁴⁰ to 10⁴⁰), repeating until nothing changes, so any field can be the result. When typed values contradict each other, the oldest gives way. `engine.ts` converts between the units on screen and the units in the formulas. `report.ts` encodes a calculation into a link (`#/tool/<id>?calc=…&s=…`, validated when read) and draws the PDF report.
 
 ## Engineering references
 

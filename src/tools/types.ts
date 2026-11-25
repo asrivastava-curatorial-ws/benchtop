@@ -344,6 +344,7 @@ export type CategoryId =
   | 'docs'
   | 'files'
   | 'science'
+  | 'labs'
   | 'electronics'
   | 'misc';
 

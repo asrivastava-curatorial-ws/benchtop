@@ -1,0 +1,10 @@
+Compact ICC Profiles (public/icc/sRGB-v2-micro.icc, sRGB-v4.icc and CGATS001Compat-v2-micro.icc;
+the first is also built into the program for PDF/A files)
+
+Small ICC profiles by Clinton Ingram, from
+https://github.com/saucecontrol/Compact-ICC-Profiles
+
+To the extent possible under law, their author has waived all copyright and
+related or neighboring rights to them (CC0 1.0 Universal,
+https://creativecommons.org/publicdomain/zero/1.0/).
+The full text of CC0 1.0 is in icc/LICENSE.txt beside the profiles.

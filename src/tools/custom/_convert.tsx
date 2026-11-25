@@ -12,8 +12,10 @@ import {
   type ProgramId,
   type Programs,
   pickFolder,
+  readConvertInput,
   revealResult,
   runConversion,
+  saveConverted,
   stopConversion,
 } from '../../platform/convert';
 import { scrollRegion } from '../../ui/a11y';
@@ -213,7 +215,12 @@ export function useQueue() {
       update(item.key, { state: 'running', fraction: undefined, error: undefined });
       try {
         const inputs = job.inputs ?? (job.extra ? [item.file.token, job.extra] : [item.file.token]);
-        const result = await runConversion({ id: item.key, recipe: job.recipe, inputs, options: job.options, destination: target.destination, folder });
+        let result: ConvertResult | null;
+        if (job.local) {
+          const made = await job.local(await readConvertInput(item.file.token), item);
+          if (stopped.current) throw new Error('Stopped.');
+          result = await saveConverted({ input: item.file.token, ext: made.ext, suffix: made.suffix ?? '', destination: target.destination, folder }, made.bytes);
+        } else result = await runConversion({ id: item.key, recipe: job.recipe, inputs, options: job.options, destination: target.destination, folder });
         if (result) {
           done += 1;
           update(item.key, { state: 'done', result, fraction: 1 });
@@ -261,6 +268,15 @@ export function useQueue() {
   return { items, running, add, remove, reset, clear, move, runAll, runCombined, stop, update };
 }
 
+/** A result made here in the app rather than by an installed program. */
+export interface LocalResult {
+  readonly bytes: Uint8Array;
+  /** Extension of the result, without the dot. */
+  readonly ext: string;
+  /** Added to the original's name, such as " (traced)". */
+  readonly suffix?: string;
+}
+
 export interface JobPlan {
   readonly recipe: string;
   /** Every input, when not just the file itself (plus `extra`). */
@@ -268,6 +284,8 @@ export interface JobPlan {
   readonly options?: Record<string, unknown>;
   /** A second input used with each file, such as subtitles or a logo. */
   readonly extra?: string;
+  /** Converts the file's bytes here in the app instead of running `recipe` in the desktop shell. */
+  readonly local?: (bytes: Uint8Array, item: QueueItem) => Promise<LocalResult>;
 }
 
 export interface DestinationValue {

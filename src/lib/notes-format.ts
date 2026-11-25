@@ -2,7 +2,8 @@
  * Benchtop notes and the .bnote file format.
  *
  * A note is a list of blocks: rich text, Markdown, code, checklists, dividers,
- * links (optionally with a PDF snapshot of the page) and files.  Files are
+ * links (optionally with a PDF snapshot of the page), sketches and mind maps,
+ * and files.  Files are
  * copies kept inside the note, so a note stays whole when the originals are
  * moved or deleted.
  *
@@ -13,6 +14,7 @@
  *   index.html                   a readable copy that opens in any browser
  */
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
+import { readScene, type Scene, sceneText } from './sketch-model';
 import { escapeHtml } from './text';
 
 export const NOTE_MIME = 'application/vnd.benchtop.note+zip';
@@ -34,7 +36,8 @@ export type Block =
   | { readonly id: string; readonly type: 'checklist'; readonly items: readonly { readonly text: string; readonly done: boolean }[] }
   | { readonly id: string; readonly type: 'divider' }
   | { readonly id: string; readonly type: 'link'; readonly url: string; readonly title: string; readonly note: string; readonly snapshot?: string; readonly savedAt?: string }
-  | { readonly id: string; readonly type: 'file'; readonly file: string; readonly caption: string; readonly width?: number };
+  | { readonly id: string; readonly type: 'file'; readonly file: string; readonly caption: string; readonly width?: number }
+  | { readonly id: string; readonly type: 'sketch'; readonly scene: Scene };
 
 export type BlockType = Block['type'];
 
@@ -173,6 +176,7 @@ export function noteText(note: Note): string {
     else if (b.type === 'checklist') parts.push(b.items.map((i) => i.text).join('\n'));
     else if (b.type === 'link') parts.push(b.title, b.url, b.note);
     else if (b.type === 'file') parts.push(b.caption, note.attachments.find((a) => a.id === b.file)?.name ?? '');
+    else if (b.type === 'sketch') parts.push(sceneText(b.scene));
   }
   return parts.filter(Boolean).join('\n');
 }
@@ -216,6 +220,8 @@ function readBlock(v: unknown): Block | null {
       };
     case 'file':
       return typeof v.file === 'string' ? { id, type: 'file', file: v.file, caption: str(v.caption), ...(typeof v.width === 'number' ? { width: v.width } : {}) } : null;
+    case 'sketch':
+      return { id, type: 'sketch', scene: readScene(v.scene) };
     default:
       return null;
   }
@@ -252,7 +258,7 @@ export function readNote(v: unknown): Note {
 export type FileBytes = ReadonlyMap<string, Uint8Array>;
 
 /** Packs a note and its files into a .bnote archive. */
-export function packNote(note: Note, files: FileBytes, sanitize: (html: string) => string = (h) => h): Uint8Array {
+export function packNote(note: Note, files: FileBytes, sanitize: (html: string) => string = (h) => h, sketch?: SketchExport): Uint8Array {
   const attachments = pruneAttachments(note);
   const entries: Record<string, Uint8Array | [Uint8Array, { level: 0 }]> = {
     mimetype: [strToU8(NOTE_MIME), { level: 0 }],
@@ -265,7 +271,7 @@ export function packNote(note: Note, files: FileBytes, sanitize: (html: string) 
     const stored = /^(image\/(png|jpeg|gif|webp|avif)|video\/|audio\/)/.test(a.type) || /\.(zip|docx|xlsx|pptx|gz|7z)$/i.test(a.name);
     entries[`files/${a.id}/${safeName(a.name)}`] = stored ? [bytes, { level: 0 }] : bytes;
   }
-  entries['index.html'] = strToU8(noteHtml({ ...note, attachments }, (a) => `files/${a.id}/${encodeURIComponent(safeName(a.name))}`, sanitize));
+  entries['index.html'] = strToU8(noteHtml({ ...note, attachments }, (a) => `files/${a.id}/${encodeURIComponent(safeName(a.name))}`, sanitize, undefined, sketch));
   return zipSync(entries as Parameters<typeof zipSync>[0]);
 }
 
@@ -316,16 +322,32 @@ table { border-collapse: collapse; } th, td { border: 1px solid #d1d9e0; padding
 ul.checklist { list-style: none; padding-left: 0.2em; } ul.checklist li.done { color: #59636e; text-decoration: line-through; }
 hr { border: 0; border-top: 1px solid #d1d9e0; margin: 2em 0; }
 img.md-math { vertical-align: baseline; max-width: none; }
+figure.note-sketch svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+figure.note-sketch ul { margin: 0; }
 .md-math-display { display: block; text-align: center; margin: 1em 0; }
 @media print { video, audio { display: none; } .note-media-print { display: block !important; } }
 `;
 
+/** Draws sketches for exports: inline SVG for a page, the fonts it uses as CSS, and SVG files that stand alone. */
+export interface SketchExport {
+  readonly svg: (scene: Scene) => string;
+  readonly css: string;
+  readonly file: (scene: Scene) => string;
+}
+
+/** A sketch's words as a list, for exports made without the drawing code. */
+function sketchList(scene: Scene): string {
+  const words = sceneText(scene).split('\n').filter(Boolean);
+  return words.length ? `<figure class="note-sketch"><ul>${words.map((w) => `<li>${escapeHtml(w)}</li>`).join('')}</ul><figcaption>Sketch</figcaption></figure>` : '';
+}
+
 /**
  * The note as an HTML page.  `href` gives each file's address (a path inside the
  * archive, or a data: URL for one self-contained file); `renderMarkdown` draws
- * Markdown blocks (plain text without it).
+ * Markdown blocks (plain text without it); `sketch` draws sketches (their words
+ * as a list without it).
  */
-export function noteHtml(note: Note, href: (a: Attachment) => string, sanitize: (html: string) => string = (h) => h, renderMarkdown?: (md: string) => string): string {
+export function noteHtml(note: Note, href: (a: Attachment) => string, sanitize: (html: string) => string = (h) => h, renderMarkdown?: (md: string) => string, sketch?: SketchExport): string {
   const body: string[] = [];
   for (const b of note.blocks) {
     if (b.type === 'text') body.push(sanitize(b.html));
@@ -333,6 +355,7 @@ export function noteHtml(note: Note, href: (a: Attachment) => string, sanitize: 
     else if (b.type === 'code') body.push(`<pre><code${b.language && b.language !== 'text' ? ` class="language-${escapeHtml(b.language)}"` : ''}>${escapeHtml(b.source)}</code></pre>`);
     else if (b.type === 'checklist') body.push(`<ul class="checklist">${b.items.map((i) => `<li${i.done ? ' class="done"' : ''}>${i.done ? '☑' : '☐'} ${escapeHtml(i.text)}</li>`).join('')}</ul>`);
     else if (b.type === 'divider') body.push('<hr>');
+    else if (b.type === 'sketch') body.push(sketch ? `<figure class="note-sketch">${sketch.svg(b.scene)}</figure>` : sketchList(b.scene));
     else if (b.type === 'link') {
       const snap = b.snapshot ? note.attachments.find((a) => a.id === b.snapshot) : undefined;
       const safeUrl = /^(https?:|mailto:)/i.test(b.url) ? b.url : '#';
@@ -356,7 +379,7 @@ export function noteHtml(note: Note, href: (a: Attachment) => string, sanitize: 
   }
   const title = noteTitle(note);
   const meta = `Created ${new Date(note.created).toLocaleString('en-IN')} · changed ${new Date(note.modified).toLocaleString('en-IN')}`;
-  return `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="generator" content="Benchtop">\n<title>${escapeHtml(title)}</title>\n<style>${NOTE_CSS}</style>\n</head>\n<body>\n<h1 class="note-title">${escapeHtml(title)}</h1>\n<p class="note-meta">${escapeHtml(meta)}</p>\n${body.join('\n')}\n</body>\n</html>\n`;
+  return `<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="generator" content="Benchtop">\n<title>${escapeHtml(title)}</title>\n<style>${NOTE_CSS}${sketch?.css ?? ''}</style>\n</head>\n<body>\n<h1 class="note-title">${escapeHtml(title)}</h1>\n<p class="note-meta">${escapeHtml(meta)}</p>\n${body.join('\n')}\n</body>\n</html>\n`;
 }
 
 export function formatSize(bytes: number): string {
@@ -371,8 +394,8 @@ export function formatSize(bytes: number): string {
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
 }
 
-/** The note as Markdown, with its files beside it in files/ (a ZIP). */
-export function noteMarkdownZip(note: Note, files: FileBytes, htmlToMarkdown: (html: string) => string): Uint8Array {
+/** The note as Markdown, with its files beside it in files/ and sketches as pictures in sketches/ (a ZIP). */
+export function noteMarkdownZip(note: Note, files: FileBytes, htmlToMarkdown: (html: string) => string, sketchFile?: (scene: Scene) => string): Uint8Array {
   const lines: string[] = [`# ${noteTitle(note)}`, ''];
   const path = (a: Attachment) => `files/${a.id.slice(0, 8)}-${safeName(a.name)}`;
   const entries: Record<string, Uint8Array> = {};
@@ -389,7 +412,14 @@ export function noteMarkdownZip(note: Note, files: FileBytes, htmlToMarkdown: (h
     else if (b.type === 'code') lines.push(`\`\`\`${b.language === 'text' ? '' : b.language}`, b.source, '```', '');
     else if (b.type === 'checklist') lines.push(...b.items.map((i) => `- [${i.done ? 'x' : ' '}] ${i.text}`), '');
     else if (b.type === 'divider') lines.push('---', '');
-    else if (b.type === 'link') {
+    else if (b.type === 'sketch') {
+      const words = sceneText(b.scene).split('\n').filter(Boolean);
+      if (sketchFile) {
+        const path = `sketches/${safeName(b.id)}.svg`;
+        entries[path] = strToU8(sketchFile(b.scene));
+        lines.push(`![Sketch${words[0] ? `: ${words[0].replace(/[[\]]/g, '')}` : ''}](${link(path)})`, '');
+      } else if (words.length) lines.push(...words.map((w) => `- ${w}`), '');
+    } else if (b.type === 'link') {
       lines.push(`[${b.title || b.url}](${b.url})${b.note ? ` — ${b.note}` : ''}`, '');
       const snap = b.snapshot ? use(b.snapshot) : undefined;
       if (snap) lines.push(`[Saved copy (PDF)](${link(path(snap))})`, '');

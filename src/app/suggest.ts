@@ -64,11 +64,11 @@ add('code', 'py rs go java c h cpp hpp cs rb php sh bash ps1 kt swift lua toml i
 add('certificate', 'pem crt cer der csr key p12 pfx');
 add('sqlite', 'db sqlite sqlite3 db3');
 add('model', 'stl obj ply glb gltf gcode gco nc ngc tap');
-add('archive', 'zip tar tgz gz 7z');
-add('office', 'docx doc odt rtf epub xlsx xls ods pptx ppt odp');
+add('archive', 'zip tar tgz gz bz2 tbz tbz2 7z rar xz txz cab iso');
+add('office', 'docx doc docm dot dotx odt rtf epub xlsx xls xlsm ods pptx ppt pptm pps ppsx pot potx odp pages numbers key hwp wps pub vsd vsdx odg xps oxps ps eps');
 add('mermaid', 'mmd mermaid');
 add('dot', 'dot gv');
-add('email', 'eml');
+add('email', 'eml mht mhtml');
 add('text', 'txt log text');
 
 const RULES: Record<Kind, readonly (readonly [string, string])[]> = {
@@ -92,6 +92,7 @@ const RULES: Record<Kind, readonly (readonly [string, string])[]> = {
     ['svg-to-react', 'Turn it into a React component'],
   ],
   pdf: [
+    ['pdf-reader', 'Read, search and annotate it'],
     ['pdf-organise', 'Reorder, rotate, merge or delete pages'],
     ['pdf-forms', 'Fill in its form'],
     ['pdf-sign', 'Sign it'],
@@ -101,6 +102,8 @@ const RULES: Record<Kind, readonly (readonly [string, string])[]> = {
     ['pdf-properties', 'Edit its title and properties'],
     ['pdf-pictures', 'Turn pages into pictures, or pictures into a PDF'],
     ['document-to-text', 'Get its text'],
+    ['pdf-toolbox', 'Edit bookmarks, attachments and blank pages, clean it up or check it'],
+    ['file-converter', 'Turn it into a Word document to edit'],
   ],
   video: [
     ['video-tools', 'Trim, crop, compress or add subtitles'],
@@ -160,14 +163,20 @@ const RULES: Record<Kind, readonly (readonly [string, string])[]> = {
   certificate: [['certificate-decoder', 'Read the certificate or key']],
   sqlite: [['sqlite-browser', 'Browse and query the database']],
   model: [['model-viewer', 'View it in 3D']],
-  archive: [['archive-tool', 'See and extract what is inside']],
+  archive: [
+    ['archive-tool', 'See and extract what is inside'],
+    ['file-converter', 'Turn it into a ZIP'],
+  ],
   office: [
     ['file-converter', 'Convert it, for example to PDF'],
     ['document-to-text', 'Get its text'],
   ],
   mermaid: [['mermaid-editor', 'Draw the diagram']],
   dot: [['graphviz-viewer', 'Draw the graph']],
-  email: [['email-headers', 'Read the email’s headers']],
+  email: [
+    ['file-converter', 'Turn it into a web page or PDF'],
+    ['email-headers', 'Read the email’s headers'],
+  ],
   text: [
     ['word-counter', 'Count words and characters'],
     ['diff', 'Compare it with another text'],

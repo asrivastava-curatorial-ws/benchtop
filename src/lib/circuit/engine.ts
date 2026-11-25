@@ -25,6 +25,10 @@ export interface Stamp {
 export interface Context {
   readonly t: number;
   readonly dt: number;
+  /** Solving for the DC operating point: sources take their DC values (capacitors open and inductors short through a very long time step). */
+  readonly dc?: boolean;
+  /** Source stepping while the operating point is found: independent sources are scaled by this (1 normally). */
+  readonly ramp?: number;
   /** Voltage of a node in the latest iteration (ground is 0). */
   v(node: number): number;
   /** Voltage of a node at the end of the previous step. */
@@ -50,6 +54,19 @@ export interface Element {
   current?(ctx: Context): number;
   /** Whether the latest Newton step moved this element's operating point too much to stop. */
   converged?(ctx: Context): boolean;
+  /**
+   * Small-signal stamp for frequency analysis, for elements whose stamp is not
+   * conductance plus capacitance (conductance + C/dt): adds admittances at
+   * angular frequency ω.  Elements without it are measured from their stamp.
+   */
+  ac?(s: AcStamp, omega: number, ctx: Context): void;
+}
+
+/** A complex matrix for frequency analysis. */
+export interface AcStamp {
+  add(row: number, column: number, re: number, im: number): void;
+  nodeRow(node: number): number;
+  sourceRow(element: Element, k: number): number;
 }
 
 /** Dense LU solve with partial pivoting; A is overwritten.  Returns false for a singular matrix. */
@@ -93,17 +110,60 @@ export function solve(A: Float64Array, b: Float64Array, n: number, pivots: Int32
   return true;
 }
 
+/**
+ * The stamping helpers in terms of raw matrix and right-hand-side access,
+ * shared by the solver and by the analyses that record what parts stamp.
+ */
+export abstract class Stamper implements Stamp {
+  abstract matrix(row: number, column: number, value: number): void;
+  abstract rhs(row: number, value: number): void;
+  abstract sourceRow(element: Element, k: number): number;
+  nodeRow(node: number): number {
+    return node - 1;
+  }
+  conductance(a: number, b: number, g: number): void {
+    const ra = a - 1;
+    const rb = b - 1;
+    this.matrix(ra, ra, g);
+    this.matrix(rb, rb, g);
+    this.matrix(ra, rb, -g);
+    this.matrix(rb, ra, -g);
+  }
+  current(from: number, to: number, i: number): void {
+    this.rhs(from - 1, -i);
+    this.rhs(to - 1, i);
+  }
+  source(element: Element, k: number, pos: number, neg: number, volts: number): void {
+    const row = this.sourceRow(element, k);
+    this.matrix(row, pos - 1, 1);
+    this.matrix(row, neg - 1, -1);
+    this.matrix(pos - 1, row, 1);
+    this.matrix(neg - 1, row, -1);
+    this.rhs(row, volts);
+  }
+}
+
 export interface StepResult {
+  /** False when the matrix is singular (a step that did not settle still counts, with a warning in `trouble`). */
   readonly ok: boolean;
   readonly iterations: number;
+  /** Whether Newton's method converged. */
+  readonly settled?: boolean;
 }
 
 /** Leakage from every node to ground, so floating nodes (unconnected inputs) still solve. */
-const GMIN = 1e-9;
+export const GMIN = 1e-9;
 
-export class Circuit implements Stamp, Context {
+/** The time step that turns capacitors into open circuits and inductors into shorts for the DC operating point. */
+export const DC_STEP = 1e9;
+
+export class Circuit extends Stamper implements Context {
   t = 0;
   dt: number;
+  dc = false;
+  ramp = 1;
+  /** Leakage to ground from every node (the analyses use less than the live simulation). */
+  gmin = GMIN;
   readonly nodeCount: number;
   readonly elements: Element[];
   private readonly size: number;
@@ -120,6 +180,7 @@ export class Circuit implements Stamp, Context {
   readonly nonlinear: boolean;
 
   constructor(nodeCount: number, elements: Element[], dt: number) {
+    super();
     this.nodeCount = nodeCount;
     this.elements = elements;
     this.dt = dt;
@@ -142,9 +203,6 @@ export class Circuit implements Stamp, Context {
   }
 
   /* Stamp */
-  nodeRow(node: number): number {
-    return node - 1;
-  }
   sourceRow(element: Element, k: number): number {
     return this.nodeCount + (element.sourceBase ?? 0) + k;
   }
@@ -155,26 +213,6 @@ export class Circuit implements Stamp, Context {
   rhs(row: number, value: number): void {
     if (row < 0) return;
     this.b[row] = (this.b[row] as number) + value;
-  }
-  conductance(a: number, b: number, g: number): void {
-    const ra = a - 1;
-    const rb = b - 1;
-    this.matrix(ra, ra, g);
-    this.matrix(rb, rb, g);
-    this.matrix(ra, rb, -g);
-    this.matrix(rb, ra, -g);
-  }
-  current(from: number, to: number, i: number): void {
-    this.rhs(from - 1, -i);
-    this.rhs(to - 1, i);
-  }
-  source(element: Element, k: number, pos: number, neg: number, volts: number): void {
-    const row = this.sourceRow(element, k);
-    this.matrix(row, pos - 1, 1);
-    this.matrix(row, neg - 1, -1);
-    this.matrix(pos - 1, row, 1);
-    this.matrix(neg - 1, row, -1);
-    this.rhs(row, volts);
   }
 
   /* Context */
@@ -188,18 +226,28 @@ export class Circuit implements Stamp, Context {
     return this.x[this.sourceRow(element, k)] as number;
   }
 
-  /** Advances one time step.  Returns false when the matrix is singular or Newton fails. */
-  step(): StepResult {
+  /**
+   * Advances one time step; `ok` is false when the matrix is singular.
+   * `observe` runs once the step has converged, before the parts keep their
+   * history (the analyses measure currents there).
+   */
+  step(observe?: () => void): StepResult {
     this.last.set(this.x);
     this.t += this.dt;
     for (const e of this.elements) e.begin?.(this);
-    const limit = this.nonlinear ? 60 : 1;
+    const result = this.newton(this.nonlinear ? 60 : 1);
+    observe?.();
+    for (const e of this.elements) e.end?.(this);
+    return result;
+  }
+
+  private newton(limit: number): StepResult {
     let iterations = 0;
     let ok = true;
     for (; iterations < limit; iterations++) {
       this.A.fill(0);
       this.b.fill(0);
-      for (let r = 0; r < this.nodeCount; r++) this.A[r * this.size + r] = GMIN;
+      for (let r = 0; r < this.nodeCount; r++) this.A[r * this.size + r] = this.gmin;
       for (const e of this.elements) e.stamp(this, this);
       const previous = this.iterate;
       previous.set(this.x);
@@ -224,11 +272,68 @@ export class Circuit implements Stamp, Context {
       if (settled) for (const e of this.elements) if (e.converged && !e.converged(this)) settled = false;
       if (settled && iterations > 0) break;
     }
-    if (ok && iterations >= limit) this.trouble = 'The simulation did not settle; a smaller time step may help.';
+    const unsettled = ok && iterations >= limit;
+    if (unsettled) this.trouble = 'The simulation did not settle; a smaller time step may help.';
     else if (ok) this.trouble = '';
     for (let r = 0; r < this.size; r++) if (!Number.isFinite(this.x[r] as number)) this.x[r] = 0;
-    for (const e of this.elements) e.end?.(this);
-    return { ok, iterations: iterations + 1 };
+    return { ok, iterations: Math.min(iterations + 1, limit), settled: ok && !unsettled };
+  }
+
+  /**
+   * Finds the DC operating point at the present time: capacitors open,
+   * inductors shorted, sources at their DC values.  Logic and relays settle
+   * over a few rounds.  If Newton's method cannot find it from zero, the
+   * sources are raised in steps.  The parts keep the result as their state,
+   * so a time-domain run can start from it.
+   */
+  operatingPoint(): StepResult {
+    const dt = this.dt;
+    this.dc = true;
+    this.dt = DC_STEP;
+    let result: StepResult = { ok: true, iterations: 0 };
+    let iterations = 0;
+    try {
+      for (let round = 0; round < 40; round++) {
+        this.last.set(this.x);
+        for (const e of this.elements) e.begin?.(this);
+        result = this.newton(this.nonlinear ? 150 : 1);
+        if (result.ok && !result.settled) result = this.stepSources();
+        iterations += result.iterations;
+        if (!result.ok || !result.settled) break;
+        for (const e of this.elements) e.end?.(this);
+        let same = round > 0;
+        for (let r = 0; r < this.size && same; r++) {
+          const a = this.x[r] as number;
+          if (Math.abs(a - (this.last[r] as number)) > 1e-6 + 1e-4 * Math.abs(a)) same = false;
+        }
+        if (same) break;
+      }
+    } finally {
+      this.dt = dt;
+      this.dc = false;
+      this.ramp = 1;
+    }
+    if (result.ok && result.settled) this.trouble = '';
+    else if (result.ok) this.trouble = 'No DC operating point was found: the circuit may oscillate, or a part may be driven far outside its range.';
+    return { ok: result.ok, iterations, settled: result.ok && result.settled === true };
+  }
+
+  /** Source stepping: the sources rise from a tenth to full in steps, each solve starting from the last. */
+  private stepSources(): StepResult {
+    this.x.fill(0);
+    let iterations = 0;
+    for (let k = 1; k <= 20; k++) {
+      this.ramp = k / 20;
+      const r = this.newton(200);
+      iterations += r.iterations;
+      if (!r.ok || !r.settled) return { ...r, iterations };
+    }
+    return { ok: true, iterations, settled: true };
+  }
+
+  /** The solver matrix size: nodes (less ground) plus voltage-source rows. */
+  get rows(): number {
+    return this.size;
   }
 
   get sources(): number {

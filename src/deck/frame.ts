@@ -106,7 +106,8 @@ async function build(markdown: string, options: DeckOptions, print: boolean): Pr
   const root = freshRoot();
   (root.querySelector('.slides') as HTMLElement).append(markdownSection(markdown));
   const plugins = highlighter ? [RevealMarkdown, highlighter] : [RevealMarkdown];
-  const created = new Reveal(root, { ...revealConfig(options, print), plugins });
+  // A narrow preview pane must not turn the deck into reveal.js's scrolling page for phones: it previews the presentation.
+  const created = new Reveal(root, { ...revealConfig(options, print), scrollActivationWidth: 0, plugins });
   deck = created;
   await created.initialize();
   return run === generation ? created : null;

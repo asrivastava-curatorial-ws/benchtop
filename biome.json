@@ -15,10 +15,15 @@
       "!**/*.min.css",
       "!docs/TOOLS.md",
       "!public/tesseract",
+      "!public/coderun",
+      "!public/d3",
+      "!public/anime",
       "!public/openchemlib",
+      "!public/svgjs",
       "!public/oui.json",
       "!public/sky.json",
       "!src/recipe/vendor",
+      "!third_party",
       "!tests/e2e/fixtures/cyberchef-port-cases.json",
       "!tests/unit/fixtures/cyberchef-extra-cases.json"
     ]
@@ -61,7 +66,8 @@
         "useKeyWithClickEvents": "off",
         "noNoninteractiveElementInteractions": "off",
         "useSemanticElements": "off",
-        "noNoninteractiveElementToInteractiveRole": "off"
+        "noNoninteractiveElementToInteractiveRole": "off",
+        "noLabelWithoutControl": { "level": "error", "options": { "inputComponents": ["CommitInput"] } }
       },
       "complexity": {
         "useLiteralKeys": "off"

@@ -12,16 +12,21 @@ mod ai;
 mod arduino;
 mod bulk;
 mod cli;
+mod coderun;
 mod convert;
 mod desk;
 mod esp32;
 mod files;
+mod frames;
+mod git;
 mod grpc;
 mod indic;
 mod lan;
 mod links;
 mod mirror;
 mod net;
+mod quiz;
+mod search;
 mod serial;
 mod serve;
 mod webpdf;
@@ -152,6 +157,9 @@ pub fn run_with(route: Option<String>) {
         )
         .invoke_handler(tauri::generate_handler![
             save_file,
+            coderun::code_toolchains,
+            coderun::code_version,
+            coderun::code_run,
             net::net_http,
             net::net_tls,
             net::net_dns,
@@ -172,6 +180,8 @@ pub fn run_with(route: Option<String>) {
             convert::convert_frame,
             convert::convert_run,
             convert::convert_cancel,
+            convert::convert_read,
+            convert::convert_save,
             convert::convert_pick_folder,
             convert::convert_reveal,
             serial::serial_ports,
@@ -213,6 +223,8 @@ pub fn run_with(route: Option<String>) {
             esp32::esp32_forget,
             arduino::arduino_info,
             arduino::arduino_compile,
+            arduino::arduino_boards,
+            arduino::arduino_upload,
             lan::lan_info,
             lan::lan_scan,
             lan::lan_cancel,
@@ -232,7 +244,40 @@ pub fn run_with(route: Option<String>) {
             indic::indic_cancel,
             indic::indic_start,
             indic::indic_stop,
-            indic::indic_remove
+            indic::indic_remove,
+            search::search_status,
+            search::search_add_root,
+            search::search_update_root,
+            search::search_remove_root,
+            search::search_scan,
+            search::search_cancel,
+            search::search_pending,
+            search::search_read,
+            search::search_store,
+            search::search_query,
+            search::search_preview,
+            search::search_reveal,
+            search::search_clear,
+            git::git_open,
+            git::git_refs,
+            git::git_log,
+            git::git_commit,
+            git::git_diff,
+            git::git_compare,
+            git::git_conflicts,
+            git::git_conflict_sides,
+            git::git_resolve,
+            frames::frames_begin,
+            frames::frames_add,
+            frames::frames_audio,
+            frames::frames_encode,
+            frames::frames_cancel,
+            frames::frames_end,
+            quiz::quiz_start,
+            quiz::quiz_publish,
+            quiz::quiz_file,
+            quiz::quiz_drop,
+            quiz::quiz_stop
         ])
         .manage(files::PickedFiles::default())
         .manage(convert::ConvertState::default())
@@ -246,6 +291,9 @@ pub fn run_with(route: Option<String>) {
         .manage(esp32::Esp32State::default())
         .manage(desk::DeskState::default())
         .manage(indic::IndicState::default())
+        .manage(search::SearchState::default())
+        .manage(frames::FrameState::default())
+        .manage(quiz::QuizState::default())
         .on_window_event(|window, event| {
             // With the tray icon on, closing the window hides it; Quit is in the tray menu.
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

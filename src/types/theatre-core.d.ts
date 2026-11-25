@@ -14,6 +14,12 @@ export interface ISequence {
   readonly pointer: { readonly position: unknown; readonly length: unknown; readonly playing: unknown };
   play(conf?: { iterationCount?: number; range?: [number, number]; rate?: number; direction?: 'normal' | 'reverse' | 'alternate' | 'alternateReverse' }): Promise<boolean>;
   pause(): void;
+  /** Plays this sound with the sequence from then on (a URL, or samples with the context to play them in). */
+  attachAudio(args: {
+    source: string | AudioBuffer;
+    audioContext?: AudioContext;
+    destinationNode?: AudioNode;
+  }): Promise<{ decodedBuffer: AudioBuffer; audioContext: AudioContext; destinationNode: AudioNode; gainNode: GainNode }>;
 }
 
 export interface ISheet {

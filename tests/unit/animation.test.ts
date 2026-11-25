@@ -2,37 +2,54 @@ import { getProject, types } from '@theatre/core';
 import { describe, expect, it } from 'vitest';
 import {
   type AnimProject,
+  addClip,
   addObject,
   animate,
   animationHtml,
   type Curve,
+  childrenOf,
+  clearPath,
+  clipTime,
   configSource,
   coreConfig,
   DEFAULTS,
+  descendantsOf,
   EASINGS,
   easingOf,
   emptyProject,
   hexToRgba,
   type Keyframe,
+  localPoint,
   moveKeyframe,
   objectStyle,
+  onPath,
   PROPS,
   type PropValues,
+  pathTable,
+  pointOnPath,
+  presetPath,
   projectFile,
+  pruneClips,
+  RUNTIME_MOTION,
   RUNTIME_STYLE,
   readProjectFile,
   removeKeyframe,
   removeObject,
+  removeTree,
   renameObject,
+  reorderObject,
   type ShapeKind,
   sampleProject,
   setEasing,
   setKeyframe,
   setLength,
+  setParent,
   setStatic,
+  smoothPath,
   stopAnimating,
   theatreStateFile,
   trackOf,
+  updateObject,
   valuesAt,
 } from '../../src/lib/animation';
 
@@ -45,7 +62,7 @@ function random(seed: number) {
   };
 }
 
-const KINDS: ShapeKind[] = ['box', 'ellipse', 'text', 'picture'];
+const KINDS: ShapeKind[] = ['box', 'ellipse', 'text', 'picture', 'group', 'clip'];
 let projectCount = 0;
 
 /** Values from @theatre/core itself for every object at time t. */
@@ -213,7 +230,7 @@ describe('files and drawing', () => {
     const runtime = new Function(`${RUNTIME_STYLE}; return objectStyle;`)() as typeof objectStyle;
     const r = random(7);
     for (let i = 0; i < 50; i++) {
-      const kind = KINDS[i % 4] as ShapeKind;
+      const kind = KINDS[i % KINDS.length] as ShapeKind;
       const v = {
         ...DEFAULTS[kind],
         x: r() * 1000 - 200,
@@ -236,5 +253,188 @@ describe('files and drawing', () => {
     expect(html.match(/<\/script>/g)?.length).toBe(html.match(/<script/g)?.length);
     expect(html).toContain("load('@theatre/core')");
     expect(html).toContain('"loop":true');
+  });
+});
+
+describe('motion paths, groups and clips', () => {
+  it('finds places along a path by distance, and the direction there', () => {
+    const table = pathTable('M0 0L100 0L100 50');
+    expect(table.total).toBe(150);
+    expect(pointOnPath(table, 0)).toEqual({ x: 0, y: 0, angle: 0 });
+    expect(pointOnPath(table, 0.5)).toEqual({ x: 75, y: 0, angle: 0 });
+    expect(pointOnPath(table, 1)).toEqual({ x: 100, y: 50, angle: 90 });
+    expect(pointOnPath(table, 7)).toEqual({ x: 100, y: 50, angle: 90 });
+    expect(pointOnPath(pathTable('not a path'), 0.5)).toBeNull();
+    // A circle of radius r is 2πr long, and every point on it is r from the middle.
+    const circle = pathTable(presetPath('circle', 1280, 720));
+    expect(circle.total).toBeCloseTo(2 * Math.PI * 252, 0);
+    for (const progress of [0, 0.13, 0.5, 0.77, 1]) {
+      const place = pointOnPath(circle, progress);
+      expect(Math.hypot((place?.x ?? 0) - 640, (place?.y ?? 0) - 360)).toBeCloseTo(252, 0);
+    }
+    expect(
+      pathTable(
+        smoothPath([
+          [0, 0],
+          [100, 100],
+          [200, 0],
+        ]),
+      ).total,
+    ).toBeGreaterThan(283);
+  });
+
+  it('puts an object on its path and turns it when it follows', () => {
+    let p = addObject(emptyProject(), 'box', { key: 'Car', path: 'M0 100L200 100L200 300', follow: true }).project;
+    p = setKeyframe(p, 'Car', 'progress', 0, 0);
+    p = setKeyframe(p, 'Car', 'progress', 4, 1);
+    const car = p.objects[0];
+    const at = (t: number) => onPath(car, valuesAt(p, 'Car', t));
+    expect([at(0).x, at(0).y, at(0).rotation]).toEqual([0, 100, 0]);
+    const end = at(4);
+    expect([end.x, end.y, end.rotation]).toEqual([200, 300, 90]);
+    expect(onPath({ path: 'M0 100L200 100', follow: false }, valuesAt(p, 'Car', 4)).rotation).toBe(0);
+    expect(onPath(undefined, valuesAt(p, 'Car', 0)).x).toBe(640);
+  });
+
+  it('has the same path and clip arithmetic in the saved page', () => {
+    const runtime = new Function(`${RUNTIME_MOTION}; return { pointOnPath, clipTime };`)() as { pointOnPath: typeof pointOnPath; clipTime: typeof clipTime };
+    const table = pathTable(presetPath('eight', 1280, 720));
+    const r = random(11);
+    for (let i = 0; i < 40; i++) {
+      const progress = r() * 1.4 - 0.2;
+      expect(runtime.pointOnPath(table, progress)).toEqual(pointOnPath(table, progress));
+      const clip = { start: r() * 2, speed: 0.5 + r() * 2, loop: i % 2 === 0 };
+      const t = r() * 12 - 1;
+      expect(runtime.clipTime(clip, t, 3)).toBeCloseTo(clipTime(clip, t, 3), 12);
+    }
+    expect(clipTime({ start: 1, speed: 2 }, 0, 3)).toBe(0);
+    expect(clipTime({ start: 1, speed: 2 }, 2, 3)).toBe(2);
+    expect(clipTime({ start: 1, speed: 2 }, 9, 3)).toBe(3);
+    expect(clipTime({ start: 0, loop: true }, 7, 3)).toBe(1);
+  });
+
+  it('moves objects into and out of groups without moving them on the stage', () => {
+    let p = emptyProject();
+    p = addObject(p, 'group', { key: 'Wagon' }).project;
+    p = setStatic(p, 'Wagon', 'x', 300);
+    p = setStatic(p, 'Wagon', 'y', 200);
+    p = addObject(p, 'box', { key: 'Wheel', path: 'M100 100L200 100' }).project;
+    p = setStatic(p, 'Wheel', 'x', 350);
+    p = setKeyframe(p, 'Wheel', 'y', 0, 260);
+    p = setKeyframe(p, 'Wheel', 'y', 2, 300);
+    const inside = setParent(p, 'Wheel', 'Wagon');
+    expect(childrenOf(inside, 'Wagon').map((o) => o.key)).toEqual(['Wheel']);
+    expect(childrenOf(inside, undefined).map((o) => o.key)).toEqual(['Wagon']);
+    expect([valuesAt(inside, 'Wheel', 0).x, valuesAt(inside, 'Wheel', 0).y, valuesAt(inside, 'Wheel', 2).y]).toEqual([50, 60, 100]);
+    expect(inside.objects.find((o) => o.key === 'Wheel')?.path).toBe('M-200 -100L-100 -100');
+    // Only groups hold things, and not themselves.
+    expect(setParent(p, 'Wagon', 'Wheel')).toBe(p);
+    expect(setParent(p, 'Wagon', 'Wagon')).toBe(p);
+    // Renaming the group keeps its members; removing it sets them free where they were.
+    const renamed = renameObject(inside, 'Wagon', 'Cart');
+    expect(renamed.objects.find((o) => o.key === 'Wheel')?.parent).toBe('Cart');
+    const freed = removeObject(renamed, 'Cart');
+    expect(freed.objects.map((o) => [o.key, o.parent])).toEqual([['Wheel', undefined]]);
+    expect([valuesAt(freed, 'Wheel', 0).x, valuesAt(freed, 'Wheel', 2).y]).toEqual([350, 300]);
+    expect(freed.objects[0]?.path).toBe('M100 100L200 100');
+  });
+
+  it('measures places inside moved, turned and scaled groups', () => {
+    let p = addObject(emptyProject(), 'group', { key: 'Outer' }).project;
+    p = setStatic(p, 'Outer', 'x', 100);
+    p = setStatic(p, 'Outer', 'y', 50);
+    p = setStatic(p, 'Outer', 'rotation', 90);
+    p = addObject(p, 'group', { key: 'Inner' }).project;
+    p = setParent(p, 'Inner', 'Outer');
+    p = setStatic(p, 'Inner', 'x', 10);
+    p = setStatic(p, 'Inner', 'y', 0);
+    p = setStatic(p, 'Inner', 'scale', 2);
+    expect(localPoint(p, undefined, 7, 9, 0)).toEqual({ x: 7, y: 9 });
+    const tidy = (place: { x: number; y: number }) => [place.x, place.y].map((n) => Math.round(n * 1e6) / 1e6 + 0);
+    // Outer is turned a quarter: a step down the stage is a step along its own x.
+    const inOuter = localPoint(p, 'Outer', 100, 60, 0);
+    expect(tidy(inOuter)).toEqual([10, 0]);
+    // Inner sits at (10, 0) of Outer at double size: 20 further along Outer is 10 inside Inner.
+    const inInner = localPoint(p, 'Inner', 100, 80, 0);
+    expect(tidy(inInner)).toEqual([10, 0]);
+    const moved = localPoint(p, 'Inner', 0, 20, 0, false);
+    expect(tidy(moved)).toEqual([10, 0]);
+  });
+
+  it('removes a group with everything in it, and takes objects off their paths', () => {
+    let p = addObject(emptyProject(), 'group', { key: 'Set' }).project;
+    p = addObject(p, 'group', { key: 'Props' }).project;
+    p = setParent(p, 'Props', 'Set');
+    p = addObject(p, 'box', { key: 'Chair' }).project;
+    p = setParent(p, 'Chair', 'Props');
+    p = addObject(p, 'ellipse', { key: 'Lamp', path: 'M0 0L50 0', follow: true }).project;
+    p = setKeyframe(p, 'Lamp', 'progress', 0, 0);
+    p = setKeyframe(p, 'Lamp', 'progress', 2, 1);
+    const clip = addClip(p, sampleProject(), 'Sting');
+    p = setParent(clip.project, clip.key, 'Set');
+    expect(descendantsOf(p, 'Set').map((o) => o.key)).toEqual(['Props', 'Chair', 'Sting']);
+    const gone = removeTree(p, 'Set');
+    expect(gone.objects.map((o) => o.key)).toEqual(['Lamp']);
+    expect(gone.clips).toBeUndefined();
+    expect(Object.keys(gone.state.sheetsById[gone.sheet]?.staticOverrides.byObject ?? {})).toEqual(['Lamp']);
+    const free = clearPath(gone, 'Lamp');
+    expect(free.objects[0]).toEqual({ kind: 'ellipse', key: 'Lamp' });
+    expect(trackOf(free, 'Lamp', 'progress')).toBeUndefined();
+    expect(clearPath(free, 'Lamp')).toBe(free);
+    // Drawing order is among siblings: stepping skips members of other groups.
+    let q = addObject(emptyProject(), 'box', { key: 'Alpha' }).project;
+    q = addObject(q, 'group', { key: 'Gang' }).project;
+    q = addObject(q, 'box', { key: 'Member' }).project;
+    q = setParent(q, 'Member', 'Gang');
+    q = addObject(q, 'box', { key: 'Beta' }).project;
+    expect(reorderObject(q, 'Beta', -1).objects.map((o) => o.key)).toEqual(['Alpha', 'Beta', 'Member', 'Gang']);
+    expect(reorderObject(q, 'Alpha', 1).objects.map((o) => o.key)).toEqual(['Gang', 'Alpha', 'Member', 'Beta']);
+    expect(reorderObject(q, 'Member', 1)).toBe(q);
+    expect(reorderObject(q, 'Alpha', -1)).toBe(q);
+  });
+
+  it('keeps paths, groups, clips and the soundtrack in the project file', () => {
+    let p = emptyProject('Main film');
+    p = addObject(p, 'group', { key: 'Set' }).project;
+    p = addObject(p, 'ellipse', { key: 'Moon', path: presetPath('arc', 1280, 720), follow: true }).project;
+    p = setParent(p, 'Moon', 'Set');
+    const added = addClip(p, sampleProject(), 'Logo sting');
+    p = updateObject(added.project, added.key, { start: 1.5, speed: 2, loop: true });
+    p = { ...p, audio: { name: 'beat.wav', src: 'data:audio/wav;base64,AAAA' } };
+    const again = readProjectFile(projectFile(p));
+    expect(again.objects).toEqual(p.objects);
+    expect(Object.keys(again.clips ?? {})).toEqual(['Logo sting']);
+    expect(again.clips?.['Logo sting']?.objects.map((o) => o.key)).toEqual(['Card', 'Title', 'Ball']);
+    expect(again.audio).toEqual(p.audio);
+    expect(valuesAt(again, added.key, 0).width).toBe(768);
+    // A file that names a parent that is not a group loses that link, and a circle of parents is cut once.
+    const raw = JSON.parse(projectFile(p));
+    raw.objects.push({ key: 'A', kind: 'group', parent: 'B' }, { key: 'B', kind: 'group', parent: 'A' }, { key: 'C', kind: 'box', parent: 'Moon' });
+    raw.audio = { name: 'x', src: 'https://example.org/track.mp3' };
+    const cleaned = readProjectFile(JSON.stringify(raw));
+    expect(cleaned.objects.filter((o) => ['A', 'B', 'C'].includes(o.key)).map((o) => o.parent)).toEqual([undefined, 'A', undefined]);
+    expect(cleaned.audio).toBeUndefined();
+    expect(pruneClips(removeObject(p, added.key)).clips).toBeUndefined();
+  });
+
+  it('writes a page that knows about groups, paths, clips and sound', () => {
+    let p = addObject(emptyProject('Film'), 'group', { key: 'Set' }).project;
+    p = addObject(p, 'ellipse', { key: 'Moon', path: 'M0 0L100 0', follow: true }).project;
+    p = setParent(p, 'Moon', 'Set');
+    p = addClip(p, sampleProject(), 'Sting').project;
+    p = { ...p, audio: { name: 'beat.wav', src: 'data:audio/wav;base64,AAAA' } };
+    const html = animationHtml(p, { core: '/* core */', dataverse: '/* dataverse */' }, { loop: true });
+    const data = JSON.parse(/<script type="application\/json" id="animation">(.*?)<\/script>/s.exec(html)?.[1] ?? '{}');
+    expect(data.objects.map((o: { key: string }) => o.key)).toEqual(['Set', 'Moon', 'Sting']);
+    expect(data.objects[1]).toMatchObject({ parent: 'Set', follow: true, table: { total: 100 } });
+    expect(data.objects[2]).toMatchObject({ kind: 'clip', clip: 'Sting', start: 0, speed: 1, loop: false });
+    expect(data.clips.Sting.objects).toHaveLength(3);
+    expect(data.audio).toBe('data:audio/wav;base64,AAAA');
+    expect(html).toContain('attachAudio');
+    expect(html).toContain('progress: types.number(0, { range: [0, 1] })');
+    // The page's own script is sound JavaScript.
+    const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1] as string);
+    expect(scripts).toHaveLength(2);
+    for (const script of scripts) expect(() => new Function(script)).not.toThrow();
   });
 });

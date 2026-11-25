@@ -105,8 +105,8 @@ describe('Circuit solver', () => {
 
 describe('Arduino Uno emulation', () => {
   const example = async (id: string) => {
-    const { UNO_EXAMPLES } = await import('../../src/lib/circuit/uno-examples');
-    const { UnoMcu } = await import('../../src/lib/circuit/boards');
+    const { AVR_EXAMPLES: UNO_EXAMPLES } = await import('../../src/lib/circuit/avr-examples');
+    const { AvrMcu: UnoMcu } = await import('../../src/lib/circuit/avr');
     const found = UNO_EXAMPLES.find((e) => e.id === id);
     if (!found) throw new Error(id);
     return UnoMcu.fromHex(found.hex);

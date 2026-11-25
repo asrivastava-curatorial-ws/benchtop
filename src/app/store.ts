@@ -30,6 +30,11 @@ export interface Settings {
   readonly quickKey: string;
   /** Desktop app: keep a clipboard history in memory while Benchtop runs. */
   readonly clipboardHistory: boolean;
+  /**
+   * What Benchtop opens on: the list of all tools, or the notes.  Stored under a new name in 5.1, so that
+   * the notes start screen that 5.0 saved for everyone does not outlive its default.
+   */
+  readonly startScreen: 'tools' | 'notes';
   readonly toolOptions: Readonly<Record<string, Values>>;
 }
 
@@ -46,6 +51,7 @@ export const DEFAULT_SETTINGS: Settings = {
   trayIcon: false,
   quickKey: '',
   clipboardHistory: false,
+  startScreen: 'tools',
   toolOptions: {},
 };
 
@@ -77,6 +83,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     trayIcon: source.trayIcon === true,
     quickKey: typeof source.quickKey === 'string' ? source.quickKey.slice(0, 60) : '',
     clipboardHistory: source.clipboardHistory === true,
+    startScreen: source.startScreen === 'notes' ? 'notes' : 'tools',
     toolOptions,
   };
 }
@@ -93,10 +100,34 @@ function load(): Settings {
 let current: Settings = typeof localStorage === 'undefined' ? DEFAULT_SETTINGS : load();
 const listeners = new Set<() => void>();
 
+/**
+ * While a project is open, tool options are the project's own: tools read and
+ * save them exactly as before, and the options kept outside any project are
+ * set aside untouched until the project is closed.
+ */
+export interface OptionScope {
+  toolOptions: Readonly<Record<string, Values>>;
+  onChange(toolOptions: Readonly<Record<string, Values>>): void;
+}
+let scope: OptionScope | null = null;
+let outside: Readonly<Record<string, Values>> = {};
+
+export function setOptionScope(next: OptionScope | null): void {
+  const kept = scope ? outside : current.toolOptions;
+  scope = next;
+  outside = kept;
+  current = { ...current, toolOptions: next ? next.toolOptions : kept };
+  for (const listener of listeners) listener();
+}
+
 function commit(next: Settings): void {
   current = next;
+  if (scope && next.toolOptions !== scope.toolOptions) {
+    scope.toolOptions = next.toolOptions;
+    scope.onChange(next.toolOptions);
+  }
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(scope ? { ...next, toolOptions: outside } : next));
   } catch {
     // Storage may be full or disabled; the app still works for this session.
   }
@@ -138,12 +169,22 @@ export function forgetToolOptions(id?: string): void {
   commit({ ...current, toolOptions: rest });
 }
 
+/** Replaces the settings; an open project keeps its own tool options. */
+function replaceAll(next: Settings): void {
+  if (!scope) {
+    commit(next);
+    return;
+  }
+  outside = next.toolOptions;
+  commit({ ...next, toolOptions: current.toolOptions });
+}
+
 export function resetSettings(): void {
-  commit(DEFAULT_SETTINGS);
+  replaceAll(DEFAULT_SETTINGS);
 }
 
 export function exportSettings(): string {
-  return `${JSON.stringify({ app: 'benchtop', version: 1, settings: current }, null, 2)}\n`;
+  return `${JSON.stringify({ app: 'benchtop', version: 1, settings: scope ? { ...current, toolOptions: outside } : current }, null, 2)}\n`;
 }
 
 export function importSettings(text: string): void {
@@ -157,7 +198,7 @@ export function importSettings(text: string): void {
   if (wrapper === null || typeof wrapper !== 'object' || wrapper.app !== 'benchtop' || wrapper.settings === undefined) {
     throw new Error('That file is not a Benchtop settings export.');
   }
-  commit(sanitizeSettings(wrapper.settings));
+  replaceAll(sanitizeSettings(wrapper.settings));
 }
 
 /** Subscribes a component to the settings (or to one derived value). */

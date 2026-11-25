@@ -3,9 +3,13 @@
  * (points joined by wires, touching terminals or lying on a wire are the
  * same node) and elements.  Also SPICE netlist export.
  */
+import { type AnalysisSettings, readAnalysis } from './analysis-settings';
+import type { Device } from './bus';
 import type { Element } from './engine';
 import { Circuit } from './engine';
-import { PART_BY_TYPE, type PartDef, type PropValue, type Runtime } from './parts';
+import { parseTransfer } from './laplace';
+import { partNames } from './names';
+import { PART_BY_TYPE, type PartContext, type PartDef, type PropValue, type Runtime } from './parts';
 
 export interface PlacedPart {
   readonly id: string;
@@ -17,6 +21,8 @@ export interface PlacedPart {
   /** Mirrored left to right before turning. */
   readonly flip?: boolean;
   readonly props: Readonly<Record<string, PropValue>>;
+  /** A reference name chosen for the part (otherwise one is numbered: R1, C2…). */
+  readonly name?: string;
 }
 
 export interface WireSegment {
@@ -40,6 +46,10 @@ export interface CircuitDoc {
   readonly firmware?: Readonly<Record<string, FirmwareRef>>;
   /** Show part values beside the parts (default true). */
   readonly labels?: boolean;
+  /** Show reference names (R1, C2…) beside the parts. */
+  readonly names?: boolean;
+  /** The analysis set up for this circuit. */
+  readonly analysis?: AnalysisSettings;
 }
 
 /**
@@ -51,7 +61,9 @@ export type FirmwareRef =
   | { readonly kind: 'example'; readonly id: string }
   | { readonly kind: 'hex'; readonly name: string; readonly hex: string; readonly sketch?: string }
   | { readonly kind: 'esp32-demo' }
-  | { readonly kind: 'esp32-image'; readonly name: string; readonly sketch?: string };
+  | { readonly kind: 'esp32-image'; readonly name: string; readonly sketch?: string }
+  /** Raspberry Pi Pico firmware from a file (UF2, ELF or binary), loaded again after reopening; `python` is a MicroPython program run once it starts. */
+  | { readonly kind: 'pico-image'; readonly name: string; readonly sketch?: string; readonly python?: string };
 
 /** (x, y) turned `rot` quarter turns clockwise (screen coordinates, y down). */
 export function rotate(x: number, y: number, rot: number, flip = false): [number, number] {
@@ -212,7 +224,15 @@ export interface Built {
   readonly problems: readonly string[];
 }
 
-export function build(doc: CircuitDoc): Built {
+/** Devices that outlive a rebuild of the circuit, by part id. */
+export type DeviceStore = Map<string, { readonly type: string; readonly shape: string; readonly device: Device }>;
+
+/**
+ * Builds the solver's circuit from the drawing.  Pass the devices of the
+ * previous build to keep them (a display keeps its picture while the
+ * circuit is edited); devices of parts that are gone are dropped.
+ */
+export function build(doc: CircuitDoc, devices: DeviceStore = new Map()): Built {
   const connectivity = connect(doc);
   const runtimes = new Map<string, Runtime>();
   const elements: Element[] = [];
@@ -220,9 +240,29 @@ export function build(doc: CircuitDoc): Built {
   for (const part of doc.parts) {
     const def = PART_BY_TYPE.get(part.type);
     if (!def) continue;
-    const runtime = def.create(part.props, connectivity.partNodes.get(part.id) ?? []);
+    const context: PartContext = {
+      keep<T extends Device>(make: () => T, shape = ''): T {
+        const old = devices.get(part.id);
+        if (old && old.type === part.type && old.shape === shape) {
+          old.device.configure(part.props);
+          return old.device as T;
+        }
+        old?.device.unlink();
+        const device = make();
+        devices.set(part.id, { type: part.type, shape, device });
+        return device;
+      },
+    };
+    const runtime = def.create(part.props, connectivity.partNodes.get(part.id) ?? [], context);
     runtimes.set(part.id, runtime);
     elements.push(...runtime.elements);
+    if (runtime.problem) problems.push(runtime.problem);
+  }
+  for (const [id, kept] of devices) {
+    if (runtimes.get(id)?.device !== kept.device) {
+      kept.device.unlink();
+      devices.delete(id);
+    }
   }
   // Logic parts, rails and boards are referenced to ground themselves; batteries and generators need one.
   const floating = doc.parts.some((p) => p.type === 'battery' || p.type === 'ac-source' || p.type === 'current-source');
@@ -233,7 +273,7 @@ export function build(doc: CircuitDoc): Built {
 
 /* ------------------------------------------------------------------- SPICE -- */
 
-const spiceNumber = (v: number) => {
+export const spiceNumber = (v: number) => {
   const a = Math.abs(v);
   const scales: [number, string][] = [
     [1e9, 'G'],
@@ -249,21 +289,27 @@ const spiceNumber = (v: number) => {
   return `${Number((v / s).toPrecision(6))}${suffix}`;
 };
 
-/** A SPICE netlist for the analog parts (other parts are listed as comments). */
+/** A SPICE name for a part: its reference name, with the element letter SPICE needs in front when it lacks it. */
+function spiceName(name: string, letter: string): string {
+  const clean = name.replace(/[^A-Za-z0-9_]/g, '_');
+  return clean.toUpperCase().startsWith(letter) ? clean : `${letter}${clean}`;
+}
+
+/** A SPICE netlist for the analog parts (other parts are listed as comments), with the circuit's analysis. */
 export function toSpice(doc: CircuitDoc): string {
   const c = connect(doc);
+  const names = partNames(doc);
   const lines = [`* ${doc.title || 'Benchtop circuit'}`, '* Exported from Benchtop; node 0 is ground.'];
-  const counts = new Map<string, number>();
-  const name = (prefix: string) => {
-    const n = (counts.get(prefix) ?? 0) + 1;
-    counts.set(prefix, n);
-    return `${prefix}${n}`;
-  };
   const models = new Set<string>();
+  const analysis = doc.analysis;
+  const acSource = analysis?.kind === 'ac' ? analysis.ac?.source : undefined;
   for (const part of doc.parts) {
     const n = c.partNodes.get(part.id) ?? [];
     const p = part.props;
     const v = (k: string, d: number) => (typeof p[k] === 'number' ? (p[k] as number) : d);
+    const ref = names.get(part.id) ?? part.id;
+    const name = (letter: string) => spiceName(ref, letter);
+    const ac = part.id === acSource ? ' AC 1' : '';
     switch (part.type) {
       case 'resistor':
         lines.push(`${name('R')} ${n[0]} ${n[1]} ${spiceNumber(v('r', 1000))}`);
@@ -274,17 +320,34 @@ export function toSpice(doc: CircuitDoc): string {
       case 'inductor':
         lines.push(`${name('L')} ${n[0]} ${n[1]} ${spiceNumber(v('l', 1e-3))}`);
         break;
+      case 'potentiometer': {
+        const r = v('r', 10_000);
+        const pos = Math.min(1, Math.max(0, v('position', 0.5)));
+        lines.push(`${name('R')}A ${n[0]} ${n[1]} ${spiceNumber(Math.max(pos * r, 0.01))}`, `${name('R')}B ${n[1]} ${n[2]} ${spiceNumber(Math.max((1 - pos) * r, 0.01))}`);
+        break;
+      }
       case 'battery':
-        lines.push(`${name('V')} ${n[0]} ${n[1]} DC ${v('v', 9)}`);
+        lines.push(`${name('V')} ${n[0]} ${n[1]} DC ${v('v', 9)}${ac}`);
         break;
       case 'rail':
-        lines.push(`${name('V')} ${n[0]} 0 DC ${v('v', 5)}`);
+        lines.push(`${name('V')} ${n[0]} 0 DC ${v('v', 5)}${ac}`);
         break;
-      case 'ac-source':
-        lines.push(`${name('V')} ${n[0]} ${n[1]} SIN(${v('offset', 0)} ${v('amplitude', 5)} ${v('f', 50)})`);
+      case 'ac-source': {
+        const shape = typeof p.shape === 'string' ? p.shape : 'sine';
+        const amp = v('amplitude', 5);
+        const f = v('f', 50);
+        const off = v('offset', 0);
+        if (shape === 'sine') lines.push(`${name('V')} ${n[0]} ${n[1]} DC ${off} SIN(${off} ${amp} ${f})${ac}`);
+        else if (shape === 'pulse' || shape === 'square') {
+          const period = f > 0 ? 1 / f : 1;
+          const low = shape === 'pulse' ? off : off - amp;
+          const duty = shape === 'pulse' ? v('duty', 0.5) : 0.5;
+          lines.push(`${name('V')} ${n[0]} ${n[1]} DC ${off} PULSE(${off + amp} ${low} 0 1n 1n ${spiceNumber(period * (1 - duty))} ${spiceNumber(period)})${ac}`);
+        } else lines.push(`${name('V')} ${n[0]} ${n[1]} DC ${off} SIN(${off} ${amp} ${f})${ac} ; ${shape} wave approximated by a sine`);
         break;
+      }
       case 'current-source':
-        lines.push(`${name('I')} ${n[1]} ${n[0]} DC ${v('i', 0.01)}`);
+        lines.push(`${name('I')} ${n[1]} ${n[0]} DC ${v('i', 0.01)}${ac}`);
         break;
       case 'diode':
       case 'led':
@@ -302,6 +365,71 @@ export function toSpice(doc: CircuitDoc): string {
         models.add(part.type === 'nmos' ? '.model MN NMOS(VTO=1.5 KP=0.5)' : '.model MP PMOS(VTO=-1.5 KP=0.5)');
         lines.push(`${name('M')} ${n[1]} ${n[0]} ${n[2]} ${n[2]} ${part.type === 'nmos' ? 'MN' : 'MP'}`);
         break;
+      case 'njfet':
+      case 'pjfet': {
+        const model = `J${ref.replace(/[^A-Za-z0-9_]/g, '_')}M`;
+        models.add(`.model ${model} ${part.type === 'njfet' ? 'NJF' : 'PJF'}(VTO=-${v('vp', 2)} BETA=${v('beta', 1.3e-3)} LAMBDA=${v('lambda', 0.0023)})`);
+        lines.push(`${name('J')} ${n[1]} ${n[0]} ${n[2]} ${model}`);
+        break;
+      }
+      case 'opamp':
+        lines.push(`* ${ref}: op-amp (gain ${v('gain', 1e5)}, rails ${v('vneg', -15)} V to ${v('vpos', 15)} V) as a voltage-controlled source without limits`);
+        lines.push(`${name('E')} ${n[2]} 0 ${n[1]} ${n[0]} ${v('gain', 1e5)}`);
+        break;
+      case 'vcvs':
+        lines.push(`${name('E')} ${n[0]} ${n[1]} ${n[2]} ${n[3]} ${v('gain', 10)}`);
+        break;
+      case 'vccs':
+        // SPICE's G pushes current into its first node; here it flows out of out+.
+        lines.push(`${name('G')} ${n[1]} ${n[0]} ${n[2]} ${n[3]} ${v('gm', 0.001)}`);
+        break;
+      case 'ccvs':
+        lines.push(`V${name('H')}_SENSE ${n[2]} ${n[3]} DC 0`, `${name('H')} ${n[0]} ${n[1]} V${name('H')}_SENSE ${v('r', 1000)}`);
+        break;
+      case 'cccs':
+        lines.push(`V${name('F')}_SENSE ${n[2]} ${n[3]} DC 0`, `${name('F')} ${n[1]} ${n[0]} V${name('F')}_SENSE ${v('gain', 10)}`);
+        break;
+      case 'transformer': {
+        const lp = v('lp', 10);
+        const ratio = Math.max(v('ratio', 10), 1e-6);
+        const base = name('L');
+        const rp = v('rp', 0);
+        const rs = v('rs', 0);
+        const p1 = rp > 0 ? `${base}_P` : String(n[0]);
+        const s1 = rs > 0 ? `${base}_S` : String(n[2]);
+        if (rp > 0) lines.push(`R${base}_P ${n[0]} ${p1} ${spiceNumber(rp)}`);
+        if (rs > 0) lines.push(`R${base}_S ${n[2]} ${s1} ${spiceNumber(rs)}`);
+        lines.push(`${base}P ${p1} ${n[1]} ${spiceNumber(lp)}`, `${base}S ${s1} ${n[3]} ${spiceNumber(lp / (ratio * ratio))}`, `K${base} ${base}P ${base}S ${Math.min(v('k', 0.999), 1)}`);
+        break;
+      }
+      case 'comparator': {
+        const hi = v('high', 5);
+        const lo = v('low', 0);
+        lines.push(`* ${ref}: comparator as a behavioural source (no output resistance or hysteresis)`, `${name('B')} ${n[2]} 0 V=${lo}+${hi - lo}*u(V(${n[1]})-V(${n[0]}))`);
+        break;
+      }
+      case 'regulator':
+        lines.push(
+          `* ${ref}: regulator as a behavioural source (output current drawn from ground, not IN)`,
+          `${name('B')} ${n[2]} ${n[1]} V=min(${v('v', 5)}, max(0, V(${n[0]},${n[1]})-${v('dropout', 2)}))`,
+        );
+        break;
+      case 'laplace': {
+        try {
+          const h = parseTransfer(typeof p.h === 'string' ? p.h : '1');
+          const desc = (q: readonly number[]) =>
+            [...q]
+              .reverse()
+              .map((x) => Number(x.toPrecision(9)))
+              .join(' ');
+          const model = `${spiceName(ref, 'A')}_TF`;
+          lines.push(`* ${ref}: H(s) = ${p.h} (ngspice XSPICE s_xfer)`, `${name('A')} ${n[0]} ${n[1]} ${model}`);
+          models.add(`.model ${model} s_xfer(num_coeff=[${desc(h.num)}] den_coeff=[${desc(h.den)}])`);
+        } catch {
+          lines.push(`* ${ref}: transfer function “${p.h}” does not parse`);
+        }
+        break;
+      }
       case 'switch':
         lines.push(`${name('R')} ${n[0]} ${n[1]} ${p.closed ? '0.01' : '1G'} ; switch, ${p.closed ? 'closed' : 'open'}`);
         break;
@@ -309,10 +437,39 @@ export function toSpice(doc: CircuitDoc): string {
       case 'probe':
         break;
       default:
-        lines.push(`* ${PART_BY_TYPE.get(part.type)?.name ?? part.type} on nodes ${n.join(' ')} has no SPICE equivalent here`);
+        lines.push(`* ${ref}: ${PART_BY_TYPE.get(part.type)?.name ?? part.type} on nodes ${n.join(' ')} has no SPICE equivalent here`);
     }
   }
-  lines.push(...models, `.tran ${spiceNumber(doc.dt)} ${spiceNumber(doc.dt * 10_000)}`, '.end', '');
+  lines.push(...models);
+  const byId = (id: string | undefined) => doc.parts.find((x) => x.id === id);
+  switch (analysis?.kind) {
+    case 'op':
+      lines.push('.op');
+      break;
+    case 'dc': {
+      const sweep = analysis.dc;
+      const part = byId(sweep?.part);
+      const ref = part ? (names.get(part.id) ?? '') : '';
+      const letter = part?.type === 'current-source' ? 'I' : part?.type === 'resistor' ? 'R' : 'V';
+      const sweepable = part && ['battery', 'rail', 'current-source', 'resistor'].includes(part.type);
+      if (sweep && sweepable) lines.push(`.dc ${spiceName(ref, letter)} ${sweep.from} ${sweep.to} ${spiceNumber((sweep.to - sweep.from) / Math.max(1, sweep.points - 1))}`);
+      else lines.push(`* DC sweep of ${ref || 'a part'} ${sweep?.prop ?? ''}: SPICE sweeps sources and resistors only`);
+      break;
+    }
+    case 'ac':
+      if (analysis.ac) lines.push(`.ac dec ${analysis.ac.perDecade} ${spiceNumber(analysis.ac.from)} ${spiceNumber(analysis.ac.to)}`);
+      break;
+    case 'tran':
+      if (analysis.tran) lines.push(`.tran ${spiceNumber(analysis.tran.step || doc.dt)} ${spiceNumber(analysis.tran.stop)}${analysis.tran.fromZero ? ' uic' : ''}`);
+      break;
+    default:
+      lines.push(`.tran ${spiceNumber(doc.dt)} ${spiceNumber(doc.dt * 10_000)}`);
+  }
+  if (analysis?.stepping) {
+    const part = byId(analysis.stepping.part);
+    lines.push(`* Stepped: ${part ? names.get(part.id) : '?'} ${analysis.stepping.prop} = ${analysis.stepping.values.join(', ')}`);
+  }
+  lines.push('.end', '');
   return lines.join('\n');
 }
 
@@ -332,6 +489,10 @@ function readFirmware(v: unknown): FirmwareRef | null {
       return { kind: 'esp32-demo' };
     case 'esp32-image':
       return typeof v.name === 'string' ? { kind: 'esp32-image', name: v.name, ...(typeof v.sketch === 'string' ? { sketch: v.sketch } : {}) } : null;
+    case 'pico-image':
+      return typeof v.name === 'string'
+        ? { kind: 'pico-image', name: v.name, ...(typeof v.sketch === 'string' ? { sketch: v.sketch } : {}), ...(typeof v.python === 'string' ? { python: v.python.slice(0, 100_000) } : {}) }
+        : null;
     default:
       return null;
   }
@@ -368,10 +529,20 @@ export function parseDoc(value: unknown): { doc: CircuitDoc; dropped: number } |
               ? v
               : d.default
             : typeof v === 'string' && (d.choices?.some(([c]) => c === v) ?? true)
-              ? v
+              ? v.slice(0, 500)
               : d.default;
     }
-    parts.push({ id, type: def.type, x: Math.round(p.x), y: Math.round(p.y), rot: finite(p.rot) ? ((Math.round(p.rot) % 4) + 4) % 4 : 0, ...(p.flip === true ? { flip: true } : {}), props });
+    const name = typeof p.name === 'string' ? p.name.trim().slice(0, 40) : '';
+    parts.push({
+      id,
+      type: def.type,
+      x: Math.round(p.x),
+      y: Math.round(p.y),
+      rot: finite(p.rot) ? ((Math.round(p.rot) % 4) + 4) % 4 : 0,
+      ...(p.flip === true ? { flip: true } : {}),
+      props,
+      ...(name ? { name } : {}),
+    });
   }
   const wires: WireSegment[] = [];
   for (const w of value.wires) {
@@ -392,6 +563,7 @@ export function parseDoc(value: unknown): { doc: CircuitDoc; dropped: number } |
     }
   }
   const dt = finite(value.dt) && value.dt >= 1e-7 && value.dt <= 0.1 ? value.dt : 1e-4;
+  const analysis = readAnalysis(value.analysis);
   const speed = finite(value.speed) && value.speed > 0 && value.speed <= 1000 ? value.speed : 1;
   return {
     doc: {
@@ -403,6 +575,8 @@ export function parseDoc(value: unknown): { doc: CircuitDoc; dropped: number } |
       speed,
       ...(Object.keys(firmware).length ? { firmware } : {}),
       ...(value.labels === false ? { labels: false } : {}),
+      ...(value.names === true ? { names: true } : {}),
+      ...(analysis ? { analysis } : {}),
     },
     dropped,
   };

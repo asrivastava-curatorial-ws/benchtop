@@ -18,6 +18,8 @@ export interface HttpRequest {
   readonly method?: string;
   readonly headers?: readonly (readonly [string, string])[];
   readonly body?: string;
+  /** A binary body, Base64 (sent instead of `body`). */
+  readonly bodyBase64?: string;
   readonly timeoutMs?: number;
   /** Largest body to return, in bytes (the shell caps it at 8 MB). */
   readonly maxBody?: number;

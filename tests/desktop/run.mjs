@@ -11,12 +11,12 @@
  * The binary defaults to src-tauri/target/release/benchtop; set BENCHTOP_BINARY to override.
  */
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createConnection } from 'node:net';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Builder, By, until } from 'selenium-webdriver';
+import { Builder, By, Key, until } from 'selenium-webdriver';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const BINARY = process.env.BENCHTOP_BINARY ?? resolve(ROOT, 'src-tauri/target/release/benchtop');
@@ -46,8 +46,19 @@ function waitForPort(port, timeout = 20_000) {
   });
 }
 
+// The folder the app's folder dialog "chooses" (convert_pick_folder reads this), for Offline Search.
+const FOLDER = mkdtempSync(resolve(tmpdir(), 'benchtop-desktop-folder-'));
+process.env.BENCHTOP_TEST_FOLDER = FOLDER;
+
+// arduino-cli is played by a script that says what it was asked to do (unless a real one is asked for).
+process.env.BENCHTOP_ARDUINO_CLI ??= resolve(ROOT, 'tests/desktop/fixtures/fake-arduino-cli.sh');
+
+/** Set BENCHTOP_TEST_ONLY to a few words to run only the checks whose names contain them. */
+const ONLY = process.env.BENCHTOP_TEST_ONLY?.toLowerCase();
+
 const results = [];
 async function check(name, body) {
+  if (ONLY && !name.toLowerCase().includes(ONLY)) return;
   const started = Date.now();
   try {
     await body();
@@ -79,14 +90,14 @@ try {
 
   console.log(`Desktop smoke test: ${BINARY}`);
 
-  await check('the window opens on the home page with every tool listed', async () => {
+  await check('the window opens on the list of every tool', async () => {
     await driver.wait(async () => (await driver.getTitle()).includes('Benchtop'), 20_000);
-    // The title is in index.html, so wait for the app itself to draw the tool list.
+    await driver.wait(async () => (await driver.getTitle()).startsWith('All tools'), 20_000, 'the start screen is not the list of tools');
     let count = 0;
     await driver
       .wait(async () => {
-        count = (await driver.findElements(By.css('a[href^="#/tool/"]'))).length;
-        return count >= 125;
+        count = (await driver.findElements(By.css('.home-index a[href^="#/tool/"]'))).length;
+        return count >= 403;
       }, 20_000)
       .catch(() => {
         throw new Error(`only ${count} tool links`);
@@ -375,6 +386,57 @@ try {
     }
   });
 
+  await check('the File Converter turns e-mails, TAR archives and EPS drawings into other files', async () => {
+    // Start from another tool: the drop dialog leaves out the tool that is open.
+    await open('json-formatter');
+    const programs = await invoke('convert_programs');
+    const eml = Buffer.from(['From: Curator <curator@example.org>', 'Subject: Museum visit', 'Content-Type: text/plain; charset=utf-8', '', 'See you at ten.'].join('\r\n'));
+    // A TAR with one file (ustar).
+    const text = Buffer.from('Plan the visit.');
+    const header = Buffer.alloc(512);
+    header.write('notes.txt', 0);
+    header.write('0000644\0', 100);
+    header.write('0000000\0', 108);
+    header.write('0000000\0', 116);
+    header.write(`${text.length.toString(8).padStart(11, '0')}\0`, 124);
+    header.write('00000000000\0', 136);
+    header.fill(' ', 148, 156);
+    header.write('0', 156);
+    header.write('ustar\0', 257);
+    header.write('00', 263);
+    header.write(
+      `${[...header]
+        .reduce((sum, b) => sum + b, 0)
+        .toString(8)
+        .padStart(6, '0')}\0 `,
+      148,
+    );
+    const tar = Buffer.concat([header, text, Buffer.alloc(512 - text.length), Buffer.alloc(1024)]);
+    const files = [
+      [eml, 'visit.eml', 'message/rfc822'],
+      [tar, 'notes.tar', 'application/x-tar'],
+    ];
+    const eps = programs.programs.ghostscript ? Buffer.from('%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 100 50\nnewpath 10 10 moveto 90 10 lineto 90 40 lineto closepath fill\nshowpage\n') : null;
+    if (eps) files.push([eps, 'box.eps', 'application/postscript']);
+    else console.log('        (Ghostscript is not installed here: EPS is not converted)');
+    // Dropped on the window, the files go to the converter, the first tool offered for an e-mail.
+    await dropFiles('body', files);
+    await driver.wait(until.elementLocated(By.css('[data-testid=drop-dialog]')), 10_000, 'no drop dialog');
+    await driver.actions().sendKeys(Key.ENTER).perform();
+    await driver.wait(until.elementLocated(By.css('[data-testid=convert-group-email]')), 15_000, 'the e-mail was not added');
+    await driver.executeScript("[...document.querySelectorAll('[role=radio]')].find((b) => b.textContent === 'In a folder')?.click()");
+    await driver.wait(async () => (await driver.executeScript("return document.querySelector('[data-testid=convert-run]')?.disabled === false")) === true, 10_000, 'nothing to convert');
+    await driver.executeScript("document.querySelector('[data-testid=convert-run]').click()");
+    const made = (name) => resolve(FOLDER, name);
+    const expected = ['visit.html', 'notes.zip', ...(eps ? ['box.pdf'] : [])];
+    await driver.wait(async () => expected.every((name) => existsSync(made(name))), 60_000, `missing: ${expected.filter((name) => !existsSync(made(name))).join(', ')}`);
+    const html = readFileSync(made('visit.html'), 'utf8');
+    if (!html.includes('<h1>Museum visit</h1>') || !html.includes('See you at ten.')) throw new Error('the e-mail page lacks its subject or text');
+    const zip = readFileSync(made('notes.zip'));
+    if (zip.subarray(0, 2).toString() !== 'PK' || !zip.includes(Buffer.from('notes.txt'))) throw new Error('the TAR did not become a ZIP of its file');
+    if (eps && readFileSync(made('box.pdf')).subarray(0, 5).toString() !== '%PDF-') throw new Error('the EPS did not become a PDF');
+  });
+
   await check('the calculator library solves in the web view', async () => {
     await open('calc-finance');
     await driver.wait(async () => /8,?678\.23/.test(await driver.executeScript("return document.querySelector('[data-testid=calc-field-payment] input')?.value ?? ''")), 20_000, 'no EMI');
@@ -523,6 +585,28 @@ try {
     await driver.wait(async () => (await driver.findElements(By.css('.pdf-page .pdf-thumb img'))).length === 3, 30_000, 'page pictures did not appear');
   });
 
+  await check('PDFs turn like paper in the Flipbook Reader, and the PDF Reader annotates them (WebKit)', async () => {
+    const { PDFDocument, StandardFonts } = await import('pdf-lib');
+    const doc = await PDFDocument.create();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    for (let i = 1; i <= 3; i++) doc.addPage([595, 842]).drawText(`Page ${i}`, { x: 60, y: 760, size: 28, font });
+    const bytes = await doc.save();
+    await open('flipbook-reader');
+    await dropFiles('[data-testid=fbr-drop]', [[bytes, 'three.pdf', 'application/pdf']]);
+    const where = () => driver.executeScript("return document.querySelector('.fbk-where')?.textContent ?? ''");
+    await driver.wait(async () => (await where()) === 'Page 1 of 3', 30_000, 'the book did not open');
+    await driver.executeScript("document.querySelector('[data-fbk=right]').click()");
+    await driver.wait(async () => (await where()) === 'Pages 2–3 of 3', 10_000, `the page did not turn: ${await where()}`);
+    await driver.wait(async () => (await driver.executeScript('return document.querySelector(\'.fbk img[data-page="1"]\')?.naturalWidth ?? 0')) > 0, 20_000, 'page 2 was not drawn');
+    await open('pdf-reader');
+    await dropFiles('[data-testid=rd-drop]', [[bytes, 'three.pdf', 'application/pdf']]);
+    await driver.wait(async () => (await driver.executeScript("return document.querySelector('[data-testid=rd-page-count]')?.textContent ?? ''")) === 'of 3', 30_000, 'the PDF did not open');
+    await driver.executeScript(
+      "const s = document.querySelector('[data-testid=rd-search]'); s.focus(); s.value = 'Page 2'; s.dispatchEvent(new Event('input', { bubbles: true })); s.form.requestSubmit();",
+    );
+    await driver.wait(async () => (await driver.executeScript("return document.querySelector('[data-testid=rd-search-count]')?.textContent ?? ''")) === '1 of 1', 20_000, 'the words were not found');
+  });
+
   await check('text recognition runs in the web view (Tesseract WebAssembly)', async () => {
     await open('ocr');
     await dropFiles('.dropzone', [[readFileSync(resolve(ROOT, 'tests/e2e/fixtures/ocr.png')), 'note.png', 'image/png']]);
@@ -627,6 +711,481 @@ try {
     await driver.findElement(By.css('[data-testid=anim-play]')).click();
   });
 
+  await check('Animation Studio joins its frames into an MP4 video with FFmpeg', async () => {
+    await open('animation-studio');
+    const programs = await driver.executeAsyncScript(
+      "const done = arguments[arguments.length - 1]; window.__TAURI_INTERNALS__.invoke('convert_programs').then((r) => done(r), (e) => done({ error: String(e) }))",
+    );
+    if (!programs?.programs?.ffmpeg) {
+      console.log('        (FFmpeg is not installed here: the export is not run)');
+      return;
+    }
+    const click = (selector) => driver.executeScript('document.querySelector(arguments[0]).click()', selector);
+    const choose = (selector, value) =>
+      driver.executeScript("const el = document.querySelector(arguments[0]); el.value = arguments[1]; el.dispatchEvent(new Event('change', { bubbles: true }))", selector, value);
+    await driver.wait(until.elementLocated(By.css('[data-testid=anim-video]')), 10_000);
+    await click('[data-testid=anim-video]');
+    // FFmpeg is found in the background; MP4 becomes the format once it is.
+    await driver.wait(async () => (await driver.executeScript("return document.querySelector('[data-testid=anim-export-format]')?.value")) === 'mp4', 15_000, 'MP4 was not offered');
+    await choose('[data-testid=anim-export-size]', '0.25');
+    await choose('[data-testid=anim-export-fps]', '10');
+    await click('[data-testid=anim-export-run]');
+    await driver.wait(until.elementLocated(By.css('[data-testid=anim-export-result]')), 120_000, 'the export did not finish');
+    const video = resolve(FOLDER, 'Bouncing logo.mp4');
+    const bytes = readFileSync(video);
+    if (bytes.subarray(4, 8).toString() !== 'ftyp') throw new Error('the file is not an MP4');
+    // The sample is 3 s long: 30 frames at 10 a second, 320 x 180.
+    const probe = JSON.parse(execFileSync(programs.programs.ffprobe ?? 'ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', video], { stdio: 'pipe' }).toString());
+    const stream = probe.streams.find((s) => s.codec_type === 'video');
+    if (stream?.width !== 320 || stream.height !== 180) throw new Error(`the video is ${stream?.width} x ${stream?.height}`);
+    if (Number(stream.nb_frames) !== 30 || Math.abs(Number(stream.duration) - 3) > 0.11) throw new Error(`the video has ${stream.nb_frames} frames over ${stream.duration} s`);
+    if (stream.pix_fmt !== 'yuv420p') throw new Error(`the video is ${stream.pix_fmt}`);
+    // The frames were cleared away afterwards.
+    const left = await driver.executeAsyncScript(
+      "const done = arguments[arguments.length - 1]; window.__TAURI_INTERNALS__.invoke('frames_encode', { id: 'gone', options: { fps: 10, format: 'mp4', name: 'x' } }).then(() => done('ran'), (e) => done(String(e)))",
+    );
+    if (!left.includes('no longer open')) throw new Error(`an export that is not open answered: ${left}`);
+  });
+
+  await check('Green Screen Editor replaces a backdrop in a video through FFmpeg', async () => {
+    await open('green-screen');
+    const programs = await invoke('convert_programs');
+    if (!programs?.programs?.ffmpeg) {
+      console.log('        (FFmpeg is not installed here: the export is not run)');
+      return;
+    }
+    // A red square on studio green, 1 s long with a tone, and a blue picture to put behind it.
+    const clip = resolve(FOLDER, 'studio.mp4');
+    const wall = resolve(FOLDER, 'wall.png');
+    execFileSync(programs.programs.ffmpeg, [
+      '-v',
+      'error',
+      '-y',
+      '-f',
+      'lavfi',
+      '-i',
+      'color=c=0x00b140:s=320x180:r=15:d=1',
+      '-f',
+      'lavfi',
+      '-i',
+      'sine=frequency=440:duration=1',
+      '-vf',
+      'drawbox=x=120:y=50:w=80:h=80:color=red:t=fill',
+      '-pix_fmt',
+      'yuv420p',
+      '-shortest',
+      clip,
+    ]);
+    execFileSync(programs.programs.ffmpeg, ['-v', 'error', '-y', '-f', 'lavfi', '-i', 'color=c=0x1f6feb:s=640x360', '-frames:v', '1', wall]);
+    const stage = async (path, name) => {
+      const staged = await driver.executeAsyncScript(
+        `const done = arguments[arguments.length - 1];
+         window.__TAURI_INTERNALS__.invoke('stage_file', new Uint8Array(arguments[0]), { headers: { 'x-file-name': arguments[1] } }).then((file) => done(file), (error) => done({ error: String(error) }));`,
+        [...readFileSync(path)],
+        name,
+      );
+      if (staged.error || !staged.token) throw new Error(JSON.stringify(staged));
+      return staged.token;
+    };
+    const [subject, behind] = [await stage(clip, 'studio.mp4'), await stage(wall, 'wall.png')];
+    // What the tool asks for when "Save" is pressed with a picture behind the subject.
+    const made = await invoke('convert_run', {
+      job: {
+        id: 'green-test',
+        recipe: 'video-greenscreen',
+        inputs: [subject, behind],
+        options: { key: '#0ea946', similarity: 0.088, blend: 0.053, spill: 0.5, spillType: 'green', background: 'image', fit: 'cover', scale: 1, x: 0, y: 0, to: 'mp4', audio: 'foreground' },
+        destination: 'folder',
+        folder: (await invoke('convert_pick_folder')).token,
+      },
+    });
+    if (!made?.path?.endsWith('studio (new background).mp4')) throw new Error(JSON.stringify(made));
+    const probe = JSON.parse(execFileSync(programs.programs.ffprobe ?? 'ffprobe', ['-v', 'error', '-show_streams', '-of', 'json', made.path], { stdio: 'pipe' }).toString());
+    const kinds = probe.streams
+      .map((s) => s.codec_type)
+      .sort()
+      .join();
+    if (kinds !== 'audio,video') throw new Error(`the result has streams: ${kinds}`);
+    const frame = execFileSync(programs.programs.ffmpeg, ['-v', 'error', '-i', made.path, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { stdio: 'pipe', maxBuffer: 1 << 24 });
+    const at = (x, y) => [...frame.subarray((y * 320 + x) * 3, (y * 320 + x) * 3 + 3)];
+    const [field, square] = [at(20, 20), at(160, 90)];
+    if (!(field[2] > 200 && field[1] > 80 && field[1] < 140 && field[0] < 70)) throw new Error(`the backdrop became ${field}`);
+    if (!(square[0] > 180 && square[1] < 60)) throw new Error(`the subject became ${square}`);
+    // The tool itself opens with its sample and keys it in the web view.
+    await driver.executeScript("document.querySelector('[data-testid=gs-sample]').click()");
+    await driver.wait(async () => (await driver.executeScript("return document.querySelector('[data-testid=gs-info]')?.textContent ?? ''")).includes('960'), 10_000, 'the sample did not open');
+    const corner = await driver.executeScript("const c = document.querySelector('[data-testid=gs-canvas]'); return [...c.getContext('2d').getImageData(20, 20, 1, 1).data]");
+    if (corner.join() !== '31,111,235,255') throw new Error(`the sample's backdrop is ${corner}`);
+  });
+
+  await check('Live Quiz serves a quiz to devices and counts their answers', async () => {
+    const { request } = await import('node:http');
+    await open('live-quiz');
+    const click = (testId) => driver.executeScript(`document.querySelector('[data-testid=${testId}]').click()`);
+    const text = (testId) => driver.executeScript(`return document.querySelector('[data-testid=${testId}]')?.textContent ?? ''`);
+    const eventually = async (what, test, timeout = 10_000) => {
+      const started = Date.now();
+      for (;;) {
+        const value = await test();
+        if (value) return value;
+        if (Date.now() - started > timeout) throw new Error(`timed out waiting for ${what}`);
+        await new Promise((done) => setTimeout(done, 100));
+      }
+    };
+    /** A button that asks before it acts: pressed, and pressed again once it has asked. */
+    const sure = async (testId, index) => {
+      for (let press = 0; press < 2; press++) {
+        await driver.executeScript(`document.querySelectorAll('[data-testid=${testId}]')[${index}]?.click()`);
+        await new Promise((done) => setTimeout(done, 200));
+      }
+    };
+    // Present the sample quiz, with the relay kept to this computer.
+    await driver.executeScript("[...document.querySelectorAll('[role=radio]')].find((b) => b.textContent.trim() === 'Present').click()");
+    await driver.wait(async () => (await driver.findElements(By.css('[data-testid=lq-lan]'))).length > 0, 10_000, 'the start panel did not open');
+    if (await driver.executeScript("return document.querySelector('[data-testid=lq-lan]').checked")) await click('lq-lan');
+    await click('lq-start');
+    const base = await eventually('the address', async () => {
+      const shown = await text('lq-url');
+      return /^http:\/\/127\.0\.0\.1:\d+\/$/.test(shown) ? shown : null;
+    });
+    try {
+      // The page a phone opens, and the script it loads, come from the app's own files.
+      const page = await fetch(base);
+      const html = await page.text();
+      if (page.status !== 200 || !html.includes('<div id="quiz">')) throw new Error(`the join page: ${page.status}`);
+      // (In the file the quotes of the policy are written as character references.)
+      if (!/http-equiv="Content-Security-Policy" content="default-src (?:'|&#39;)none(?:'|&#39;)/.test(html)) throw new Error('the join page has no content security policy');
+      const script = /src="\.\/(assets\/join-[\w-]+\.js)"/.exec(html)?.[1];
+      if (!script) throw new Error('the join page names no script');
+      const asset = await fetch(base + script);
+      if (asset.status !== 200 || !/javascript/.test(asset.headers.get('content-type') ?? '')) throw new Error(`the script: ${asset.status} ${asset.headers.get('content-type')}`);
+      /** A request sent as it is written: no tidying of the path, and any name for the host. */
+      const raw = (path, headers = {}) =>
+        new Promise((done, fail) => {
+          const url = new URL(base);
+          const req = request({ host: url.hostname, port: url.port, path, method: 'GET', headers }, (res) => {
+            res.resume();
+            done(res.statusCode);
+          });
+          req.on('error', fail);
+          req.end();
+        });
+      // Nothing else of the app is served.
+      for (const other of ['/deck.html', '/join.html', '/svgjs/frame.html', '/tesseract/worker.min.js', '/assets/../index.html', '/assets/%2e%2e/index.html', '//etc/passwd']) {
+        const status = await raw(other);
+        if (status !== 404) throw new Error(`${other} was answered with ${status}`);
+      }
+
+      const post = (path, body, headers = {}) => fetch(base + path, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) });
+      // Another site's page cannot post to the relay: not as a plain form, not with its own origin, not under a name of its own.
+      if ((await fetch(`${base}q/join`, { method: 'POST', headers: { 'content-type': 'text/plain' }, body: '{"name":"x"}' })).status !== 403) throw new Error('a plain-text post was taken');
+      if ((await post('q/join', { name: 'x' }, { origin: 'https://evil.example' })).status !== 403) throw new Error('a post from another origin was taken');
+      const renamed = await raw('/', { host: 'quiz.evil.example' });
+      if (renamed !== 421) throw new Error(`a request under another name was answered with ${renamed}`);
+
+      // Before joining, a device is shown the form to join, and nothing of the quiz.
+      const poll = async (device, since = 0) => (await post('q/poll', { v: since }, device ? { 'x-quiz-id': device.id, 'x-quiz-secret': device.secret } : {})).json();
+      const anyone = await poll(null);
+      if (anyone.view?.phase !== 'join' || anyone.view.title !== 'Science museum quiz' || anyone.gone) throw new Error(`before joining: ${JSON.stringify(anyone)}`);
+      if (Math.abs(anyone.now - Date.now()) > 5000) throw new Error(`the relay's clock: ${anyone.now}`);
+      const join = async (name) => {
+        const joined = await post('q/join', { name, avatar: '🦊' });
+        if (joined.status !== 200) throw new Error(`joining: ${joined.status}`);
+        const device = await joined.json();
+        if (!/^[0-9a-f]{16}$/.test(device.id) || !/^[0-9a-f]{32}$/.test(device.secret)) throw new Error(`joined as ${JSON.stringify(device)}`);
+        return device;
+      };
+      /** The device's view once it shows what is wanted (a request for news is held until there is some). */
+      const view = async (device, what, wanted) => {
+        let since = 0;
+        const started = Date.now();
+        for (;;) {
+          const news = await poll(device, since);
+          if (news.view && wanted(news.view)) return news;
+          if (Date.now() - started > 15_000) throw new Error(`timed out waiting for ${what}: ${JSON.stringify(news.view).slice(0, 300)}`);
+          since = news.v;
+        }
+      };
+      const asha = await join('Asha');
+      const ben = await join('Ben');
+      const lobby = await view(asha, 'the lobby', (v) => v.phase === 'lobby');
+      if (lobby.view.you.name !== 'Asha' || lobby.view.you.avatar !== '🦊') throw new Error(`in the lobby as ${JSON.stringify(lobby.view.you)}`);
+      await eventually('both players on the big screen', async () => (await text('lq-count')) === '2 players');
+      // Nobody joins as someone else, and a wrong secret is turned away.
+      if ((await post('q/send', { kind: 'join', name: 'Mallory' }, { 'x-quiz-id': asha.id, 'x-quiz-secret': asha.secret })).status !== 400) throw new Error('a second join was taken');
+      if ((await post('q/send', { kind: 'chat', text: 'hi' }, { 'x-quiz-id': asha.id, 'x-quiz-secret': ben.secret })).status !== 401) throw new Error('a wrong secret was taken');
+      const send = async (device, message) => {
+        const sent = await post('q/send', message, { 'x-quiz-id': device.id, 'x-quiz-secret': device.secret });
+        if (sent.status !== 204) throw new Error(`sending ${JSON.stringify(message)}: ${sent.status}`);
+      };
+
+      // The presenter starts; the poll opens on the second slide, and a vote is counted on the big screen.
+      await click('lq-next');
+      await view(asha, 'the first slide', (v) => v.slide?.type === 'content');
+      await click('lq-next');
+      const voting = await view(asha, 'the poll', (v) => v.slide?.type === 'poll' && v.phase === 'open');
+      if (voting.view.slide.options.length !== 4) throw new Error(`the poll: ${JSON.stringify(voting.view.slide)}`);
+      await send(asha, { kind: 'answer', answer: [1] });
+      await eventually('the vote on the big screen', async () => (await text('qs-answered')) === '1 of 2 answered');
+      if (!(await view(asha, 'the vote taken', (v) => v.answered === true)).view.yours) throw new Error('the vote was not given back');
+
+      // A scored question: a countdown, then the clock, and no word of the right answer until it is shown.
+      await click('lq-next');
+      await view(ben, 'the countdown', (v) => v.slide?.type === 'pick' && v.phase === 'countdown');
+      const open = await view(ben, 'the question', (v) => v.phase === 'open');
+      const left = open.view.endsAt - open.now;
+      if (!(left > 10_000 && left <= 20_000)) throw new Error(`the time left is ${left} ms`);
+      if (/"(correct|result|right)"/.test(JSON.stringify(open.view))) throw new Error('the open question tells the answer');
+      await send(asha, { kind: 'answer', answer: [1] });
+      await send(ben, { kind: 'answer', answer: [0] });
+      const right = await view(asha, 'the answer', (v) => v.phase === 'revealed');
+      const wrong = await view(ben, 'the answer', (v) => v.phase === 'revealed');
+      if (right.view.result.fraction !== 1 || !(right.view.result.points > 50) || right.view.result.right !== 'Jupiter') throw new Error(`Asha's result: ${JSON.stringify(right.view.result)}`);
+      if (wrong.view.result.fraction !== 0 || wrong.view.result.points !== 0 || wrong.view.you.rank !== 2) throw new Error(`Ben's result: ${JSON.stringify(wrong.view)}`);
+      await eventually('the count on the big screen', async () => (await text('qs-summary')) === '1 of 2 got it right');
+
+      // A device that floods is slowed down; one that is removed is told to join again.
+      const burst = await Promise.all(Array.from({ length: 40 }, () => post('q/send', { kind: 'chat', text: 'x' }, { 'x-quiz-id': ben.id, 'x-quiz-secret': ben.secret }).then((r) => r.status)));
+      if (!burst.includes(429) || !burst.includes(204)) throw new Error(`a burst of messages: ${[...new Set(burst)]}`);
+      await sure('lq-kick', 1);
+      await eventually('one player left', async () => (await text('lq-count')) === '1 player');
+      await eventually('the removed device being told', async () => (await poll(ben)).gone === true);
+      if ((await post('q/send', { kind: 'chat', text: 'still here' }, { 'x-quiz-id': ben.id, 'x-quiz-secret': ben.secret })).status !== 401) throw new Error('a removed device was heard');
+    } finally {
+      // Closing the session stops the relay.
+      await sure('lq-stop', 0);
+    }
+    await eventually('the relay to stop', async () =>
+      fetch(base).then(
+        () => false,
+        () => true,
+      ),
+    );
+    const shown = await driver.executeScript("return document.querySelector('[data-testid=lq-start-panel]') !== null");
+    if (!shown) throw new Error('the start panel did not come back');
+  });
+
+  await check('Print Production Studio proofs a picture with Little CMS and draws marks on a PDF in the web view', async () => {
+    await open('print-studio');
+    const click = (testId) => driver.executeScript(`document.querySelector('[data-testid=${testId}]').click()`);
+    const text = (testId) => driver.executeScript(`return document.querySelector('[data-testid=${testId}]')?.textContent ?? ''`);
+    // The tool opens on the part it was last left on: this check wants the colour part.
+    const part = (word) => driver.executeScript("[...document.querySelectorAll('[role=radio]')].find((button) => button.textContent.includes(arguments[0])).click()", word);
+    await part('Colour');
+    // The press profile comes from the app's own files, and the colour engine's WebAssembly starts under the app's policy.
+    await driver.wait(async () => (await text('pp-profile')).includes('Benchtop Coated FOGRA39L'), 30_000, 'the press profile did not load');
+    await click('pp-sample');
+    await driver.wait(async () => /^\d+ % of the picture$/.test(await text('pp-outside')), 30_000, 'the proof was not made');
+    const most = Number.parseInt(await text('pp-most'), 10);
+    if (!(most > 240 && most <= 300)) throw new Error(`most ink at one spot: ${most} %`);
+    // The proof is drawn: the canvas has the sample's size, and is not blank.
+    const drawn = await driver.executeScript(`
+      const canvas = document.querySelector('[data-testid=pp-canvas]');
+      const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      let colours = new Set();
+      for (let i = 0; i < data.length; i += 4 * 997) colours.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
+      return { width: canvas.width, colours: colours.size };`);
+    if (!(drawn.width > 1000 && drawn.colours > 50)) throw new Error(JSON.stringify(drawn));
+    // Marks: pdf-lib builds the pages and PDF.js draws the first.
+    await part('marks');
+    await driver.wait(async () => (await driver.findElements(By.css('[data-testid=pm-sample]'))).length === 1, 10_000, 'the marks part did not open');
+    await click('pm-sample');
+    await driver.wait(async () => (await driver.findElements(By.css('[data-testid=pm-preview]'))).length === 1, 30_000, 'the page with marks was not drawn');
+    if ((await text('pm-sheet')) !== '182 × 244 mm') throw new Error(await text('pm-sheet'));
+  });
+
+  await check('Logic Analyser captures from the Logic Probe firmware in an emulated Arduino, and decodes it', async () => {
+    await open('logic-analyser');
+    const click = (testId) => driver.executeScript(`document.querySelector('[data-testid=${testId}]').click()`);
+    const text = (testId) => driver.executeScript(`return document.querySelector('[data-testid=${testId}]')?.textContent ?? ''`);
+    await click('la-device-open');
+    await click('la-connect');
+    await driver.wait(async () => (await text('la-found')).includes('Benchtop Logic Probe 1.0'), 30_000, 'the emulated probe did not answer');
+    await click('la-capture');
+    await driver.wait(async () => (await text('la-info')).includes('Benchtop Logic Probe, 1 MHz'), 30_000, 'no capture arrived');
+    await click('la-add-spi');
+    // Pins 8 to 13 carry the demo's first six lines: the SPI flash chip's identity is among them when the frame was caught whole.
+    const rows = await driver.executeScript("return document.querySelectorAll('[data-testid=la-row]').length");
+    const lines = await text('la-info');
+    if (!lines.includes('6 lines')) throw new Error(lines);
+    if (typeof rows !== 'number') throw new Error('the decoded table is missing');
+  });
+
+  await check('Instrument Panel shows a pretend device and sends it commands', async () => {
+    await open('instrument-panel');
+    const text = (testId) => driver.executeScript(`return document.querySelector('[data-testid=${testId}]')?.textContent ?? ''`);
+    await driver.executeScript("document.querySelector('[data-testid=ip-connect]').click()");
+    await driver.wait(async () => /\d+ lines of readings/.test(await text('ip-status')), 15_000, 'no readings arrived');
+    await driver.executeScript("document.querySelector('.ip-push').click()");
+    await driver.wait(async () => (await text('ip-log')).includes('← # reset'), 10_000, 'the device did not answer the button');
+    await driver.executeScript("document.querySelector('[data-testid=ip-disconnect]').click()");
+  });
+
+  await check('a sketch and a compiled program are handed to arduino-cli for a real board (a stand-in arduino-cli)', async () => {
+    if (!String(process.env.BENCHTOP_ARDUINO_CLI).endsWith('fake-arduino-cli.sh')) {
+      console.log('        (a real arduino-cli is set: nothing is uploaded in tests)');
+      return;
+    }
+    const boards = await invoke('arduino_boards');
+    if (!Array.isArray(boards) || boards.length !== 1 || boards[0].port !== '/dev/ttyFAKE0' || boards[0].fqbn !== 'arduino:avr:uno' || boards[0].name !== 'Arduino Uno')
+      throw new Error(JSON.stringify(boards));
+    const sketch = await invoke('arduino_upload', { request: { fqbn: 'arduino:avr:uno', port: '/dev/ttyFAKE0', sketch: 'void setup() {}\nvoid loop() {}\n' } });
+    if (!sketch.ok || !/asked: compile --upload --fqbn arduino:avr:uno --port \/dev\/ttyFAKE0 --no-color /.test(sketch.log) || !sketch.log.includes('sketch.ino: void setup() {}'))
+      throw new Error(JSON.stringify(sketch));
+    const program = await invoke('arduino_upload', { request: { fqbn: 'arduino:avr:uno', port: '/dev/ttyFAKE0', hex: ':00000001FF\n' } });
+    if (!program.ok || !/asked: upload --fqbn arduino:avr:uno --port \/dev\/ttyFAKE0 --no-color --input-file .*program\.hex/.test(program.log) || !program.log.includes('program starts with: :'))
+      throw new Error(JSON.stringify(program));
+    // What could be read as an option, or is no program at all, never reaches arduino-cli.
+    const refuse = (request) =>
+      invoke('arduino_upload', { request }).then(
+        () => 'accepted',
+        (error) => String(error.message),
+      );
+    if (!/Choose the port/.test(await refuse({ fqbn: 'arduino:avr:uno', port: '--input-file=/etc/passwd', hex: ':00000001FF' }))) throw new Error('a port that is an option was accepted');
+    if (!/not a board/.test(await refuse({ fqbn: '--config-file', port: '/dev/ttyFAKE0', hex: ':00000001FF' }))) throw new Error('a board that is an option was accepted');
+    if (!/not an Intel HEX/.test(await refuse({ fqbn: 'arduino:avr:uno', port: '/dev/ttyFAKE0', hex: 'MZ\u0090' }))) throw new Error('a program that is not HEX was accepted');
+    if (!/nothing to upload/.test(await refuse({ fqbn: 'arduino:avr:uno', port: '/dev/ttyFAKE0' }))) throw new Error('an empty request was accepted');
+    // The upload folder is cleared away afterwards.
+    const cache = resolve(homedir(), '.cache/app.benchtop.desktop/arduino');
+    if (existsSync(cache) && readdirSync(cache).some((name) => name.startsWith('upload-'))) throw new Error('an upload folder was left behind');
+  });
+
+  await check('Offline Search indexes a folder and finds text in documents, PDFs and pictures', async () => {
+    const { zipSync, strToU8 } = await import('fflate');
+    const { PDFDocument } = await import('pdf-lib');
+    // The folder starts empty: earlier checks leave their videos and pictures in it, which would be indexed too.
+    for (const name of readdirSync(FOLDER)) rmSync(resolve(FOLDER, name), { recursive: true, force: true });
+    mkdirSync(resolve(FOLDER, 'labels'), { recursive: true });
+    writeFileSync(resolve(FOLDER, 'labels/steam.txt'), 'Gallery two\nThe Corliss steam engine ran the mill.\n');
+    writeFileSync(
+      resolve(FOLDER, 'stock.xlsx'),
+      zipSync({
+        'xl/workbook.xml': strToU8('<workbook><sheets><sheet name="Spares" sheetId="1" r:id="rId1"/></sheets></workbook>'),
+        'xl/_rels/workbook.xml.rels': strToU8('<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/></Relationships>'),
+        'xl/sharedStrings.xml': strToU8('<sst><si><t>Gasket</t></si></sst>'),
+        'xl/worksheets/sheet1.xml': strToU8('<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>12</v></c></row></sheetData></worksheet>'),
+      }),
+    );
+    const pdf = await PDFDocument.create();
+    pdf.addPage([400, 300]).drawText('Minutes of the meeting', { x: 40, y: 200, size: 18 });
+    pdf.addPage([400, 300]).drawText('Planetarium dome budget', { x: 40, y: 200, size: 18 });
+    writeFileSync(resolve(FOLDER, 'report.pdf'), await pdf.save());
+    writeFileSync(resolve(FOLDER, 'sign.png'), readFileSync(resolve(ROOT, 'tests/e2e/fixtures/ocr.png')));
+
+    const call = (command, args = {}) =>
+      driver.executeAsyncScript(
+        `const done = arguments[arguments.length - 1];
+         window.__TAURI_INTERNALS__.invoke(arguments[0], arguments[1]).then((value) => done({ value }), (error) => done({ error: String(error?.message ?? error) }));`,
+        command,
+        args,
+      );
+    const text = (selector) => driver.executeScript('return document.querySelector(arguments[0])?.textContent ?? ""', selector);
+    const search = async (words, expected, place) => {
+      await driver.executeScript("const box = document.querySelector('[data-testid=os-query]'); box.value = arguments[0]; box.dispatchEvent(new Event('input', { bubbles: true }));", words);
+      await driver
+        .wait(async () => (await text('[data-testid=os-count]')).includes(expected), 15_000, `searching "${words}" did not show "${expected}"`)
+        .catch(async (error) => {
+          throw new Error(`${error.message}; shown: ${await text('[data-testid=os-count]')}`);
+        });
+      // The count can read the same for two searches, so the place of the match is waited for too.
+      if (place) await driver.wait(async () => (await text('[data-testid=os-hit] .os-place')).includes(place), 15_000, `"${words}" was not found at ${place}`);
+    };
+    const waiting = async () => (await call('search_status')).value?.pending;
+
+    await call('search_clear');
+    await open('offline-search');
+    await driver.wait(until.elementLocated(By.css('[data-testid=os-add-first]')), 10_000);
+    await driver.findElement(By.css('[data-testid=os-add-first]')).click();
+    // The folder is read by the shell; the PDF's pages are then read by PDF.js in the page.
+    await driver.wait(async () => (await text('[data-testid=os-root]')).includes('4 files'), 30_000, 'the folder was not indexed');
+    await driver.wait(async () => (await waiting()) === 0, 60_000, 'the PDF was not read');
+
+    await search('corliss', '1 place in 1 file', 'Line 2');
+    await driver.findElement(By.css('[data-testid=os-hit]')).click();
+    await driver.wait(async () => (await text('[data-testid=os-text]')).includes('steam engine ran the mill'), 10_000, 'no preview of the text file');
+    await search('planetarium', '1 place in 1 file', 'Page 2');
+    await search('gasket', '1 place in 1 file', 'Spares');
+    await search('ext:png', '1 place in 1 file');
+    await driver.wait(async () => (await text('[data-testid=os-results] .os-name')).includes('sign.png'), 10_000, 'the picture is not found by its name');
+    await search('offline', 'Nothing found');
+
+    // With text in pictures switched on, the picture is read by Tesseract.
+    await driver.executeScript("document.querySelector('[data-testid=os-root] input[type=checkbox]').click()");
+    await driver.wait(async () => (await call('search_status')).value?.roots?.[0]?.ocr === true, 10_000, 'OCR was not switched on');
+    await driver.executeScript("document.querySelector('[data-testid=os-update]').click()");
+    await driver.wait(async () => (await waiting()) === 1, 30_000, 'the picture was not queued');
+    await driver.wait(async () => (await waiting()) === 0, 180_000, 'the picture was not read');
+    await search('offline', '1 place in 1 file', 'Text in the picture');
+
+    // Files are served by their place in the index only.
+    const missing = await call('search_read', { id: 987654 });
+    if (!missing.error?.includes('no longer in the index')) throw new Error(JSON.stringify(missing));
+    await call('search_clear');
+    if ((await call('search_status')).value?.roots?.length !== 0) throw new Error('the index was not cleared');
+  });
+
+  await check('Git Workbench reads history, compares branches and resolves a conflict', async () => {
+    const git = (...args) => execFileSync('git', ['-C', FOLDER, ...args], { stdio: 'pipe' }).toString();
+    git('init', '-q', '-b', 'main');
+    git('config', 'user.name', 'Test Curator');
+    git('config', 'user.email', 'curator@museum.example');
+    git('config', 'commit.gpgsign', 'false');
+    const label = resolve(FOLDER, 'labels.txt');
+    writeFileSync(label, 'Engine Hall\nopen daily\nfree entry\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'First labels');
+    git('checkout', '-q', '-b', 'feature');
+    writeFileSync(label, 'Engine Hall\nopen on weekdays\nfree entry\n');
+    git('commit', '-q', '-am', 'Weekday hours');
+    git('checkout', '-q', 'main');
+    writeFileSync(label, 'Engine Hall\nopen every day\nfree entry\n');
+    git('commit', '-q', '-am', 'Daily hours');
+    try {
+      git('merge', 'feature');
+    } catch {
+      // The merge stops with a conflict, which is what this check is about.
+    }
+
+    const text = (selector) => driver.executeScript('return document.querySelector(arguments[0])?.textContent ?? ""', selector);
+    const shows = (selector, words, timeout = 15_000) => driver.wait(async () => (await text(selector)).includes(words), timeout, `${selector} does not show "${words}"`);
+    const click = (selector) => driver.executeScript('document.querySelector(arguments[0]).click()', selector);
+    const tab = (name) => driver.executeScript("[...document.querySelectorAll('.gw-bar [role=radio]')].find((b) => b.textContent === arguments[0]).click()", name);
+
+    await open('git-workbench');
+    await driver.wait(until.elementLocated(By.css('[data-testid=gw-open]')), 10_000);
+    await click('[data-testid=gw-open]');
+    await shows('[data-testid=gw-repo]', 'on main');
+    await shows('[data-testid=gw-repo]', '1 file in conflict');
+    await driver.wait(async () => (await driver.findElements(By.css('[data-testid=gw-commit]'))).length === 3, 15_000, 'the three commits are not listed');
+    if ((await driver.findElements(By.css('[data-testid=gw-commit] svg'))).length !== 3) throw new Error('the commit graph is not drawn');
+    // (The three commits were made within a second of each other, so their order in the list is not fixed: the one wanted is found by its message.)
+    await driver.executeScript("[...document.querySelectorAll('[data-testid=gw-commit]')].find((row) => row.textContent.includes('Daily hours')).click()");
+    await shows('[data-testid=gw-detail]', 'Daily hours');
+    await shows('[data-testid=gw-detail]', 'labels.txt');
+    await click('[data-testid=gw-files] button');
+    await shows('[data-testid=gw-diff]', 'open every day');
+
+    await tab('Compare');
+    await driver.wait(until.elementLocated(By.css('[data-testid=gw-compare]')), 10_000);
+    await click('[data-testid=gw-compare]');
+    await shows('[data-testid=gw-compare-result]', 'main has 1 commit that feature lacks; feature has 1 that main lacks');
+    await click('[data-testid=gw-compare-result] [data-testid=gw-files] button');
+    await shows('[data-testid=gw-diff]', 'open on weekdays');
+
+    await tab('Conflicts');
+    await shows('[data-testid=gw-conflicts]', 'labels.txt');
+    await click('[data-testid=gw-conflicts] button');
+    await driver.wait(until.elementLocated(By.css('[data-testid=gw-conflict]')), 10_000);
+    await shows('[data-testid=gw-summary]', '1 conflict, 1 still to decide');
+    await click('[data-testid=gw-take-ours]');
+    await shows('[data-testid=gw-summary]', '0 still to decide');
+    await click('[data-testid=gw-resolve]');
+    await click('[data-testid=gw-resolve]');
+    await shows('[data-testid=gw-conflicts]', 'No file has an unresolved conflict');
+    if (readFileSync(label, 'utf8') !== 'Engine Hall\nopen every day\nfree entry\n') throw new Error(`the resolved file holds: ${readFileSync(label, 'utf8')}`);
+    if (git('ls-files', '-u') !== '') throw new Error('git still lists the conflict');
+  });
+
   await check('the window refuses to navigate away from the app', async () => {
     await driver.executeScript("location.href = 'https://example.org/'");
     await driver.sleep(1500);
@@ -646,6 +1205,7 @@ try {
 } finally {
   await driver?.quit().catch(() => {});
   driverProcess.kill();
+  rmSync(FOLDER, { recursive: true, force: true });
 }
 
 const failed = results.filter((result) => !result.ok);

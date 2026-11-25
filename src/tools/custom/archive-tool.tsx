@@ -1,36 +1,20 @@
-/** Opens ZIP, TAR and GZip archives (including ZipCrypto passwords) and makes ZIP files, in the page. */
+/** Opens ZIP, TAR, GZip and bzip2 archives (including ZipCrypto passwords) and makes ZIP files, in the page. */
 
-import { gunzipSync, zipSync } from 'fflate';
+import { zipSync } from 'fflate';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { useIncomingFiles } from '../../app/handoff';
+import { type ArchiveEntry, openArchive } from '../../lib/archives';
 import { formatBytes } from '../../lib/bytes';
 import { pickFiles, saveFile } from '../../platform';
-import { untar, unzip } from '../../recipe/ops/compression';
 import { scrollRegion } from '../../ui/a11y';
 import { Icon } from '../../ui/icons';
 import { attempt, notify } from '../../ui/toast';
 import { defineCustomTool, type Values } from '../types';
 import { Segmented, usePersistentState } from './_shared';
 
-interface Entry {
-  readonly name: string;
-  readonly bytes: Uint8Array;
-}
+type Entry = ArchiveEntry;
 
 const MAX_ARCHIVE = 500 * 1024 * 1024;
-
-export async function openArchive(name: string, bytes: Uint8Array, password: string): Promise<Entry[]> {
-  const lower = name.toLowerCase();
-  if (bytes[0] === 0x50 && bytes[1] === 0x4b) return unzip(bytes, password);
-  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-    const inner = gunzipSync(bytes);
-    // A .tar.gz has the "ustar" magic at offset 257 once unpacked.
-    if (/\.(tgz|tar\.gz)$/.test(lower) || new TextDecoder().decode(inner.subarray(257, 262)) === 'ustar') return untar(inner);
-    return [{ name: name.replace(/\.gz$/i, '') || 'file', bytes: inner }];
-  }
-  if (new TextDecoder().decode(bytes.subarray(257, 262)) === 'ustar' || lower.endsWith('.tar')) return untar(bytes);
-  throw new Error('This is not a ZIP, TAR or GZip file.');
-}
 
 const IMAGE = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i;
 const TEXT = /\.(txt|md|csv|tsv|json|xml|html?|css|js|ts|tsx|jsx|ya?ml|toml|ini|cfg|conf|log|py|rs|go|java|c|h|cpp|sh|bat|ps1|sql|svg|env)$/i;
@@ -142,7 +126,7 @@ function ArchiveTool({ toolId }: { toolId: string }) {
             <button
               type="button"
               class="dropzone dropzone-compact"
-              onClick={() => attempt(async () => take(await pickFiles('.zip,.tar,.tgz,.gz,application/zip,application/gzip')))}
+              onClick={() => attempt(async () => take(await pickFiles('.zip,.tar,.tgz,.gz,.bz2,.tbz,.tbz2,application/zip,application/gzip,application/x-bzip2')))}
               onDragOver={(e) => {
                 if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
               }}

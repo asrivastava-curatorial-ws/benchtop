@@ -1,7 +1,7 @@
 /**
  * Notes: rich text, Markdown with maths, code, checklists, links with saved
- * PDF copies of the page, and any files (pictures, video, audio, PDFs, 3D
- * models, documents).  Pasting, dropping or importing a file stores a copy in
+ * PDF copies of the page, sketches and mind maps, and any files (pictures,
+ * video, audio, PDFs, 3D models, documents).  Pasting, dropping or importing a file stores a copy in
  * the note, so the note stays whole when the original goes.  Notes are kept
  * in the app and travel as .bnote files.
  */
@@ -27,12 +27,14 @@ import {
   noteTitle,
   packNote,
   pruneAttachments,
+  type SketchExport,
   safeName,
   sha256Hex,
   unpackNote,
 } from '../../lib/notes-format';
-import { collectFiles, deleteNote, getFile, listNotes, noteFiles, putFile, saveNote, storageUse } from '../../lib/notes-store';
+import { collectFiles, deleteNote, getFile, listNotes, noteFiles, putFile, saveNote, storageUse, takeWantedNote } from '../../lib/notes-store';
 import { openPdf, renderPage } from '../../lib/pdf-render';
+import { emptyScene, type Scene } from '../../lib/sketch-model';
 import { escapeHtml } from '../../lib/text';
 import { htmlToPdf, isDesktop, openLink, readLocalFile, saveFile, urlToPdf } from '../../platform';
 import { Icon } from '../../ui/icons';
@@ -194,7 +196,7 @@ interface UiState {
 const readUi = (v: Values | undefined): UiState => ({ current: typeof v?.current === 'string' ? v.current : '' });
 const writeUi = (s: UiState): Values => ({ ...s });
 
-const BLOCK_LABEL: Record<BlockType, string> = { text: 'Text', markdown: 'Markdown', code: 'Code', checklist: 'Checklist', divider: 'Divider', link: 'Link', file: 'File' };
+const BLOCK_LABEL: Record<BlockType, string> = { text: 'Text', markdown: 'Markdown', code: 'Code', checklist: 'Checklist', divider: 'Divider', link: 'Link', file: 'File', sketch: 'Sketch' };
 
 function newBlock(type: Exclude<BlockType, 'file'>): Block {
   const id = newId();
@@ -211,6 +213,8 @@ function newBlock(type: Exclude<BlockType, 'file'>): Block {
       return { id, type };
     case 'link':
       return { id, type, url: '', title: '', note: '' };
+    case 'sketch':
+      return { id, type, scene: emptyScene() };
   }
 }
 
@@ -247,7 +251,11 @@ function Notes({ toolId }: { toolId: string }) {
         }
         if (!live) return;
         setNotes(list);
-        setNote(list.find((n) => n.id === ui.current) ?? (list[0] as Note));
+        // A note asked for by another tool (a search result) comes first.
+        const wanted = takeWantedNote();
+        const asked = wanted ? list.find((n) => n.id === wanted) : undefined;
+        if (asked) setUi({ current: asked.id });
+        setNote(asked ?? list.find((n) => n.id === ui.current) ?? (list[0] as Note));
         void collectFiles().catch(() => {});
       } catch (e) {
         if (live) setStoreError(errorMessage(e));
@@ -555,15 +563,16 @@ function NoteEditor({ note, change, saved, onDelete }: EditorProps) {
       const tidy = { ...note, attachments: pruneAttachments(note) };
       const base = safeName(noteTitle(note)).replace(/\.+$/, '') || 'note';
       const markdown = await markdownRenderer();
+      const sketch = await sketchExport(tidy);
       let outcome: Awaited<ReturnType<typeof saveFile>> | null = null;
-      if (format === 'bnote') outcome = await saveFile(`${base}.bnote`, packNote(tidy, files, cleanNoteHtml), 'application/vnd.benchtop.note+zip');
+      if (format === 'bnote') outcome = await saveFile(`${base}.bnote`, packNote(tidy, files, cleanNoteHtml, sketch), 'application/vnd.benchtop.note+zip');
       else if (format === 'md') {
         const { default: Turndown } = await import('turndown');
         const { gfm } = await import('turndown-plugin-gfm');
         const turndown = new Turndown({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' }).use(gfm);
         outcome = await saveFile(
           `${base}.zip`,
-          noteMarkdownZip(tidy, files, (html) => turndown.turndown(cleanNoteHtml(html))),
+          noteMarkdownZip(tidy, files, (html) => turndown.turndown(cleanNoteHtml(html)), sketch?.file),
           'application/zip',
         );
       } else {
@@ -573,7 +582,7 @@ function NoteEditor({ note, change, saved, onDelete }: EditorProps) {
           for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
           return `data:${a.type};base64,${btoa(binary)}`;
         };
-        const html = noteHtml(tidy, dataUrl, cleanNoteHtml, markdown);
+        const html = noteHtml(tidy, dataUrl, cleanNoteHtml, markdown, sketch);
         if (format === 'html') outcome = await saveFile(`${base}.html`, html, 'text/html');
         else if (!isDesktop) printDocument(html);
         else outcome = await saveFile(`${base}.pdf`, await htmlToPdf(html), 'application/pdf');
@@ -730,6 +739,7 @@ function NoteEditor({ note, change, saved, onDelete }: EditorProps) {
             <BlockView
               block={block}
               note={note}
+              active={active === block.id}
               update={(patch) => updateBlock(block.id, patch)}
               onAfter={(type) => insertAfter(block.id, [newBlock(type)])}
               saveWebPage={(url) => attempt(() => saveWebPage(url, block.id))}
@@ -835,6 +845,9 @@ function Toolbar({ onAdd, onFiles, onFolder, onWebPage }: { onAdd: (type: Exclud
         <button type="button" class="button button-small" onClick={() => onAdd('checklist')} data-testid="nt-add-checklist">
           + Checklist
         </button>
+        <button type="button" class="button button-small" onClick={() => onAdd('sketch')} title="Shapes, arrows, freehand drawing and mind maps" data-testid="nt-add-sketch">
+          + Sketch
+        </button>
         <button type="button" class="button button-small" onClick={() => onAdd('markdown')} data-testid="nt-add-markdown">
           + Markdown
         </button>
@@ -896,6 +909,7 @@ function BlockFrame({ block, first, last, active, onFocus, onMove, onRemove, chi
 interface BlockProps {
   readonly block: Block;
   readonly note: Note;
+  readonly active: boolean;
   readonly update: (patch: Partial<Block>) => void;
   readonly onAfter: (type: Exclude<BlockType, 'file'>) => void;
   readonly saveWebPage: (url: string) => void;
@@ -920,7 +934,49 @@ function BlockView(props: BlockProps) {
       const attachment = props.note.attachments.find((a) => a.id === block.file);
       return attachment ? <FileBlock attachment={attachment} caption={block.caption} width={block.width} update={props.update} /> : <p class="recipe-error">This file is missing from the note.</p>;
     }
+    case 'sketch':
+      return <SketchBlock scene={block.scene} update={(scene) => props.update({ scene })} active={props.active} name={noteTitle(props.note)} />;
   }
+}
+
+let sketchEditor: Promise<typeof import('./_sketch')> | null = null;
+
+/** A sketch or mind map; the editor loads the first time a note shows one. */
+function SketchBlock(props: { scene: Scene; update: (scene: Scene) => void; active: boolean; name: string }) {
+  const [editor, setEditor] = useState<typeof import('./_sketch') | null>(null);
+  useEffect(() => {
+    let alive = true;
+    sketchEditor ??= import('./_sketch');
+    sketchEditor.then(
+      (module) => {
+        if (alive) setEditor(module);
+      },
+      (error: unknown) => {
+        sketchEditor = null;
+        if (alive) notify(errorMessage(error), 'error');
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, []);
+  if (!editor) return <div class="sk-loading" style={{ height: `${props.scene.height + 42}px` }} aria-busy="true" />;
+  return <editor.SketchEditor scene={props.scene} update={props.update} active={props.active} name={props.name} />;
+}
+
+/** Draws a note's sketches for an export; the drawing code and fonts load only for notes that have sketches. */
+async function sketchExport(note: Note): Promise<SketchExport | undefined> {
+  const scenes = note.blocks.flatMap((b) => (b.type === 'sketch' ? [b.scene] : []));
+  if (!scenes.length) return undefined;
+  const [{ PAPER, sceneSvg }, fonts] = await Promise.all([import('../../lib/sketch-render'), import('../../lib/sketch-fonts')]);
+  await fonts.loadSketchFonts();
+  const measure = fonts.canvasMeasure();
+  const css = await fonts.sketchFontCss(scenes);
+  return {
+    css,
+    svg: (scene) => sceneSvg(scene, { measure, background: PAPER, title: 'Sketch' }),
+    file: (scene) => sceneSvg(scene, { measure, background: PAPER, title: 'Sketch', fontCss: css }),
+  };
 }
 
 function TextBlock({ html, update }: { html: string; update: (html: string) => void }) {

@@ -230,3 +230,81 @@ describe('heat, acoustics and saw-angle calculators', () => {
     expect(box.out('bevel')).toBeCloseTo(43.08, 2);
   });
 });
+
+describe('machine design and electrical machines', () => {
+  it('bearings, columns and principal stresses', () => {
+    const bearing = run('bearing-life', { C: 30, P: 5, n: 1500 });
+    expect(bearing.out('L10')).toBeCloseTo(216, 6);
+    expect(bearing.out('hours')).toBeCloseTo(2400, 6);
+    expect(run('bearing-life', { C: 30, P: 5, n: 1500 }, { p: 10 / 3 }).out('L10')).toBeCloseTo(6 ** (10 / 3), 6);
+    const euler = run('euler-buckling', { E: 200, I: 125664, A: 1257, L: 1.5 });
+    expect(euler.out('Pcr')).toBeCloseTo(110.24, 1);
+    expect(run('euler-buckling', { E: 200, I: 125664, A: 1257, L: 1.5 }, { K: 0.5 }).out('Pcr')).toBeCloseTo(4 * euler.out('Pcr'), 6);
+    const johnson = run('johnson-buckling', { Sy: 250, E: 200, A: 1257, r: 10, L: 0.8 });
+    expect(johnson.out('slender')).toBeCloseTo(80, 9);
+    expect(johnson.out('crit')).toBeCloseTo(125.66, 2);
+    expect(johnson.out('Pcr')).toBeCloseTo(250.6, 1);
+    const mohr = run('mohrs-circle', { sx: 80, sy: -40, txy: 30 });
+    expect(mohr.out('s1')).toBeCloseTo(87.08, 2);
+    expect(mohr.out('s2')).toBeCloseTo(-47.08, 2);
+    expect(mohr.out('tmax')).toBeCloseTo(67.08, 2);
+    expect(mohr.out('theta')).toBeCloseTo(13.28, 2);
+  });
+
+  it('springs, joints, screws and fatigue', () => {
+    const spring = run('helical-spring', { d: 4, D: 32, Na: 10, G: 79.3, F: 200 });
+    expect(spring.out('Kw')).toBeCloseTo(1.184, 3);
+    expect(spring.out('tau')).toBeCloseTo(301.5, 0);
+    expect(spring.out('k')).toBeCloseTo(7.744, 3);
+    const joint = run('bolted-joint', { At: 84.3, Sp: 600, kb: 800000, km: 2400000, P: 15 });
+    expect(joint.out('Fi')).toBeCloseTo(37.935, 3);
+    expect(joint.out('Fb')).toBeCloseTo(41.685, 3);
+    expect(joint.out('Fm')).toBeCloseTo(-26.685, 3);
+    const screw = run('power-screw', { F: 10, dm: 24, lead: 5, mu: 0.12, muc: 0.1, dc: 40 });
+    expect(screw.out('Tr')).toBeCloseTo(42.54, 1);
+    expect(screw.out('Tl')).toBeGreaterThan(0);
+    expect(screw.out('eff')).toBeCloseTo(18.7, 1);
+    const typed = { sa: 80, sm: 120, Se: 210, Sut: 600, Sy: 420 };
+    expect(run('fatigue-safety', typed).out('n')).toBeCloseTo(1.721, 3);
+    expect(run('fatigue-safety', typed, { rule: 1 }).out('n')).toBeCloseTo(1 / (80 / 210 + 120 / 420), 9);
+    expect(run('fatigue-safety', typed, { rule: 2 }).out('n')).toBeCloseTo(2.14, 2);
+    const marin = run('marin-endurance', { Sut: 690, d: 30, kd: 1 });
+    expect(marin.out('ka')).toBeCloseTo(0.798, 3);
+    expect(marin.out('kb')).toBeCloseTo(0.862, 3);
+    expect(marin.out('Se')).toBeCloseTo(237.2, 0);
+    expect(run('crack-toughness', { sigma: 200, a: 2, Y: 1.12, KIc: 50 }).out('ac')).toBeCloseTo(15.86, 1);
+  });
+
+  it('gears, belts, chains and shafts', () => {
+    const lewis = run('lewis-gear', { T: 100, m: 3, z: 20, F: 30, Y: 0.32, n: 1000 });
+    expect(lewis.out('Wt')).toBeCloseTo(3333.3, 1);
+    expect(lewis.out('sigma')).toBeCloseTo(175.3, 0);
+    expect(run('spur-gear', { m: 4, z1: 18, z2: 54, phi: 20 }).out('a')).toBeCloseTo(144, 9);
+    const belt = run('flat-belt', { P: 15, v: 20, mu: 0.3, theta: 165, mlin: 0.5 });
+    expect(belt.out('T1') - belt.out('T2')).toBeCloseTo(750, 6);
+    expect(belt.out('T1') / belt.out('T2')).toBeCloseTo(Math.exp(0.3 * ((165 * Math.PI) / 180)), 9);
+    expect(run('chain-drive', { p: 15.875, z1: 17, z2: 51, n1: 900, C: 635 }).out('links')).toBeCloseTo(114.73, 2);
+    expect(run('shaft-diameter', { M: 400, T: 600, Km: 1.5, Kt: 1, tau: 40 }).out('d')).toBeCloseTo(47.63, 1);
+  });
+
+  it('pumps, turbines, motors and the supply', () => {
+    expect(run('npsh-available', { patm: 101.325, pv: 3.17, rho: 997, hs: -3, hf: 1.2, NPSHr: 4 }).out('NPSHa')).toBeCloseTo(5.84, 2);
+    const affinity = run('pump-affinity', { n1: 1450, n2: 1750, D1: 250, D2: 230, Q1: 100, H1: 30, P1: 11 });
+    expect(affinity.out('H2')).toBeCloseTo(30 * (1750 / 1450) ** 2, 9);
+    expect(run('hydro-turbine', { Q: 2, H: 40, eta: 88, N: 500 }).out('Ns')).toBeCloseTo(130.6, 0);
+    const motor = run('induction-motor', { f: 50, poles: 4, n: 1440, P: 7.5 });
+    expect(motor.out('ns')).toBeCloseTo(1500, 9);
+    expect(motor.out('s')).toBeCloseTo(4, 9);
+    const slip = run('motor-torque-slip', { V: 230, f: 50, poles: 4, R1: 0.5, R2: 0.4, X: 2.4, s: 4 });
+    expect(slip.out('T')).toBeCloseTo(87.1, 1);
+    expect(slip.out('Tmax')).toBeCloseTo(171.15, 2);
+    expect(run('wheatstone-bridge', { Vs: 5, R1: 1000, R2: 1000, R3: 1000, Rx: 1010 }).out('Vout')).toBeCloseTo(12.44, 2);
+    const pf = run('pf-correction', { P: 50, pf1: 0.7, pf2: 0.95, VL: 415, f: 50 });
+    expect(pf.out('Qc')).toBeCloseTo(34.58, 2);
+    expect(pf.out('C')).toBeCloseTo(213.0, 0);
+    expect(run('three-phase-power', { VL: 415, IL: 20, pf: 0.85 }, { conn: 1 }).out('Iph')).toBeCloseTo(11.547, 3);
+    expect(run('thermocouple', { Th: 300, Tc: 25 }).out('V')).toBeCloseTo(11.275, 3);
+    expect(run('thermal-radiation', { eps: 0.9, A: 2, Ts: 150, Tsur: 20 }).out('q')).toBeCloseTo(2518, -1);
+    expect(run('taylor-tool-life', { V: 150, n: 0.25, C: 400 }).out('T')).toBeCloseTo((400 / 150) ** 4, 6);
+  });
+});

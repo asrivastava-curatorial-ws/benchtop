@@ -1,4 +1,4 @@
-/** PDF passwords and compression with qpdf and Ghostscript, installed on this computer. */
+/** PDF passwords, compression, repair and colour with qpdf and Ghostscript, installed on this computer. */
 import { defineCustomTool } from '../types';
 import { type KitSpec, MediaKit } from './_media-kit';
 
@@ -63,6 +63,33 @@ const SPEC: KitSpec = {
           ],
         },
       ],
+    },
+    {
+      id: 'pdf-repair',
+      label: 'Repair',
+      group: 'Repair and colour',
+      verb: 'Repair',
+      program: 'qpdf',
+      description: 'Rebuild a damaged or truncated PDF that will not open, or opens with errors: qpdf reconstructs its index of objects and writes a clean copy.',
+      fields: [],
+    },
+    {
+      id: 'pdf-grayscale',
+      label: 'Shades of grey (text stays text)',
+      group: 'Repair and colour',
+      verb: 'Convert',
+      program: 'ghostscript',
+      description: 'Turn every colour into grey with Ghostscript, keeping text, lines and pictures as they are (unlike redrawing the pages), ready for black-only printing.',
+      fields: [],
+    },
+    {
+      id: 'pdf-remove-images',
+      label: 'Remove all pictures',
+      group: 'Repair and colour',
+      verb: 'Remove',
+      program: 'ghostscript',
+      description: 'Take every picture out with Ghostscript, leaving the text and drawings: for printing drafts or making a light text-only copy.',
+      fields: [],
     },
   ],
 };

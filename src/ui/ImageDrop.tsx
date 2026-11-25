@@ -31,7 +31,7 @@ interface Props {
   readonly hint?: string;
 }
 
-export function ImageDrop({ image, onImage, accept = 'image/*,.svg,.ico,.avif', hint }: Props) {
+export function ImageDrop({ image, onImage, accept = 'image/*,.svg,.ico,.avif,.heic,.heif', hint }: Props) {
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
 

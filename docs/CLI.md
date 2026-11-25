@@ -32,12 +32,16 @@ benchtop convert media-convert talk.mov -s to=mp4         # one job per file
 benchtop convert video-compress *.mp4 -s crf=28 height=720 -o small/
 benchtop convert video-trim clip.mp4 -s start=0:10 end=0:42
 benchtop convert document report.docx -s to=pdf           # LibreOffice
+benchtop convert document scan.pdf -s to=docx             # PDF to Word, also with LibreOffice
+benchtop convert postscript figure.eps -s to=pdf          # Ghostscript
+benchtop convert xps invoice.oxps                         # XPS to PDF with MuPDF
+benchtop convert archive photos.rar -s to=zip             # bsdtar
 benchtop convert pdf-protect contract.pdf -s password=… -o locked.pdf
 benchtop programs                                         # which converter programs are installed
 benchtop hash *.iso                                       # SHA-256; add --sha512 for SHA-512
 ```
 
-Converters run the programs installed on the computer (FFmpeg, LibreOffice, Pandoc, ImageMagick, Inkscape, Calibre, qpdf, Ghostscript) with argument lists built from fixed recipes; no shell is involved. Recipes that join files (`video-merge`, `audio-merge`, the subtitle and watermark recipes) take all the files as one job.
+Converters run the programs installed on the computer (FFmpeg, LibreOffice, Pandoc, ImageMagick, Inkscape, Calibre, qpdf, Ghostscript, MuPDF, bsdtar) with argument lists built from fixed recipes; no shell is involved. Recipes that join files (`video-merge`, `audio-merge`, the subtitle and watermark recipes) take all the files as one job.
 
 ## AI (runs on this computer)
 

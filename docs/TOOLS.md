@@ -2,7 +2,7 @@
 
 <!-- Generated from src/tools/registry.ts by tests/unit/docs.test.ts. Do not edit by hand. -->
 
-Benchtop has 390 tools. All of them work without a network connection except the 11 in Online checks and Web Page to PDF, which contact only the hosts you enter, when you ask, and only in the desktop app. Video Dubbing translates through the AI server address you give it, usually one on this computer. The AI tools download their models and voices once, when you first choose one (or import them from a folder), and then work offline too.
+Benchtop has 429 tools. All of them work without a network connection except the 11 in Online checks and Web Page to PDF, which contact only the hosts you enter, when you ask, and only in the desktop app; PDF Toolbox’s timestamp likewise sends a fingerprint of the PDF (never the file) to the timestamp server you choose. Video Dubbing translates through the AI server address you give it, usually one on this computer. The AI tools download their models and voices once, when you first choose one (or import them from a folder), and then work offline too.
 
 ## Format and minify
 
@@ -209,6 +209,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Kubernetes, Compose, Terraform and Dockerfile Checker | Review Kubernetes manifests, Docker Compose files, Terraform and Dockerfiles for risky or fragile settings: root and privileged containers, unpinned images, missing limits and probes, secrets in plain text, resources open to the internet, bloated image layers. | kube-score, kube-linter, tfsec, checkov, hadolint, Dockerfile Validator |
 | Log Viewer | Open log files of any size (they are read in pieces), filter lines by text or regular expression, show only errors or warnings, and expand JSON lines. | glogg / klogg, lnav, LogExpert |
 | Patch Viewer | Read git diff output, .patch and .diff files and format-patch mails file by file, side by side, with the commit message and line counts. | diff2html, GitHub diff view |
+| Git Workbench | Browse a repository: commits with their graph and diffs, two branches compared, and merge conflicts resolved side by side. Merges three versions of any text. | gitk, Meld, KDiff3, git mergetool, Sourcetree (browsing) |
 | .gitignore Generator | Build a .gitignore from templates for languages, frameworks, editors and operating systems. |  |
 | Semver Checker | Sort version numbers and test them against npm-style ranges such as ^1.2 or &gt;=2 &lt;3. |  |
 
@@ -234,7 +235,9 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Transition | Tune transition timing and try it on hover. | Transition |
 | Animation | Pick or write keyframes and set the animation timing. | Animation, CSS Animation Kit |
 | Filter | Combine blur, brightness, contrast, hue and other CSS filters. | Image Filter (CSS) |
-| Animation Studio (Theatre.js) | Animate shapes, text and pictures on a keyframe timeline with easing; playback runs on Theatre.js. Save a web page that plays offline, or Theatre.js state for your own code. | Theatre.js Studio, Rive (simple scenes), After Effects (simple motion), Keyshape |
+| Animation Studio (Theatre.js) | Animate shapes, text, pictures and SVG layers on a keyframe timeline with easing: motion paths, groups, clips with timelines of their own, and a soundtrack in step. Playback runs on Theatre.js. Save video (MP4, WebM, GIF), a web page that plays offline, or Theatre.js state for your own code. | Theatre.js Studio, Rive (simple scenes), After Effects (simple motion), Keyshape |
+| anime.js Editor | Write anime.js code and watch the animation beside it: staggers, timelines, keyframes, springs, SVG line drawing, motion paths and split text, run in a sealed frame. Save a web page that runs on its own, or SVG and PNG when the animation draws in SVG. | anime.js documentation playground, CodePen (anime.js sketches) |
+| SVG.js Editor | Write SVG.js code and watch the drawing beside it: shapes, gradients, animation and clicks, run in a sealed frame. Save SVG, PNG, or a web page that runs on its own. | SVG.js playground (JSFiddle, CodePen) |
 | Cubic Bezier | Shape an easing curve and export it for CSS and animation libraries. | Cubic Bezier Generator |
 | Media Query | Build @media queries and test them in a resizable frame. | CSS Media Query |
 | Bootstrap Theme Builder | Edit any of Bootstrap 5.3's Sass variables with a live preview, then export Sass or compiled CSS. | Bootstrap Build (Bootstrap 5 theme editor) |
@@ -262,6 +265,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | --- | --- | --- |
 | Image Converter | Convert and compress between PNG, JPEG, WebP and AVIF. | AVIF Converter, PNG to WebP Converter, Image Compress |
 | Image Resize | Resize by pixels or percentage, keeping the aspect ratio if you want. | Image Resize |
+| Paint | Draw and edit pictures as in the classic Windows Paint: pencil, brush, eraser, airbrush, fill, colour picker, text, lines and shapes, select, move, copy, paste and crop; resize, rotate, flip and invert; zoom with a pixel grid; save PNG, JPEG, WebP or BMP. | Microsoft Paint, JS Paint, Paintbrush |
 | Image Annotator | Mark up screenshots and photos: arrows, boxes, text, numbered steps, highlights, and blur or pixelation for private details. Paste with Ctrl+V. | Snagit and Greenshot editors, online screenshot annotators |
 | Image Crop | Crop freely or to a fixed aspect ratio. | Image Crop |
 | Image Rotate | Rotate by any angle and flip horizontally or vertically. | Image Rotate |
@@ -270,6 +274,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Image Fade | Fade an image to transparent evenly, along a line or from a point. | Image Fade Effect Generator |
 | Image Colour Picker | Pick colours from an image, or from anywhere on the screen where the browser offers an eyedropper (Chrome, Edge), and extract an image’s palette. | Image Color Picker/Palette |
 | Favicon and ICO | Make multi-size .ico files, PNG icons and the HTML tags for them. | Favicon Generator, PNG to ICO Converter, ICO Transparency Creator |
+| Vector Editor | Draw and edit SVG: shapes and pen paths, node and handle editing, union, difference and intersection of shapes, alignment, snapping and layers; saves SVG and DXF. | Inkscape (basics), Boxy SVG, Method Draw, SVG-Edit |
 | SVG to PNG | Rasterise SVG at any scale, with or without a background. | SVG to PNG Converter |
 | SVG Viewer | Preview SVG safely and see its size, viewBox and tidy source. | SVG Viewer |
 | SVG Background Remover | Remove the backdrop of an SVG without rasterising it. | SVG Background Remover |
@@ -310,6 +315,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | --- | --- | --- |
 | Booklet and Zine Imposer | Lay out a PDF for printing as a folded booklet (with sections and creep), an eight-page mini zine from one sheet, several pages per sheet, or repeated cards. | Booklet printing dialogs, Bookbinder, Create Booklet |
 | PDF Print Preflight | Check a PDF before it goes to the press: page sizes, bleed, unembedded fonts, picture resolution, RGB and spot colours, transparency and PDF/X. | Acrobat Preflight (basic checks), online print-ready PDF checkers |
+| Print Production Studio | Get a job ready for the press: see a picture as it will print with an ICC profile (soft proof), convert it to CMYK, add crop marks, bleed and registration marks to a PDF, nest pieces on sheets or a roll, and find the paper and layout that print a job for least. | Photoshop soft proofing and Convert to Profile, Acrobat Add Printer Marks, gang-run and nesting calculators, paper cutting calculators |
 | Paper Sizes | A, B and C sizes, SRA press sheets, Letter and Legal, photo prints, cards, and Indian sizes such as Foolscap, Crown and Demy, in mm, inches, points or pixels, with sheet weight and copies per sheet. | papersizes.org |
 | Font File Explorer | Open a TTF, OTF, WOFF or WOFF2 file to see its licence and embedding rights, metrics, variable axes, OpenType features, languages and every character, and get its @font-face rule. | Wakamai Fondue, FontDrop |
 | Glyph Browser | Browse Unicode blocks, from Latin and Devanagari to Brahmi and hieroglyphs, in any font; copy characters and their HTML, CSS, JavaScript and Python codes. | Character Map, unicode-table.com |
@@ -335,11 +341,15 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Tool | What it does | Replaces |
 | --- | --- | --- |
 | Merge and Organise PDF | Merge PDFs, and reorder, rotate or delete pages by dragging page pictures. Runs in the app; nothing is uploaded. | SnapOtter PDF merge, SnapOtter PDF organise |
+| PDF Reader | Read PDFs with thumbnails, contents and search; highlight, underline and strike out text; add notes, text boxes, pen strokes, shapes and arrows, and save them as real PDF annotations or flatten them. | Stirling PDF viewer and annotations, Acrobat Reader comments, Okular and Xournal++ annotation |
+| PDF Compare | Compare two versions of a PDF: the words removed and added, marked on the pages and listed, and a picture of what changed on every page; save either version with the changes highlighted. | Stirling PDF compare, diff-pdf, Acrobat compare files |
+| PDF Toolbox | Edit bookmarks, attached files and form fields; lay another PDF over or under the pages; place pictures and QR codes; change colours; insert or remove blank pages; put every page on one long page; change the paper size; turn sideways pages upright; remove comments, links and signatures; sanitise scripts and metadata; flatten; unlock fields; repair; see everything in a file, its JavaScript and an accessibility check; take out pictures and scanned photos; name a file from its title; and timestamp it with an RFC 3161 server. | Stirling PDF (bookmarks, attachments, overlay, colours, blank pages, sanitise, flatten, unlock forms, repair, get info, show JavaScript, extract images, single large page, page size, auto rotate, auto rename, split scanned photos, stamps, form fields, accessibility, timestamp) |
 | Split PDF | Split a PDF into page ranges or single pages, keep chosen pages, or remove some. | SnapOtter PDF split |
 | PDF Watermark and Page Numbers | Add a watermark, page numbers ("Page 3 of 12") or a header or footer line, with a live preview. | SnapOtter PDF watermark, SnapOtter PDF page numbers |
 | PDF Properties | See page sizes, version and form fields, and edit or remove the title, author, keywords and dates. | SnapOtter PDF metadata |
 | Pictures and PDF | Turn pictures into a PDF (A4, Letter or each picture’s size), or save PDF pages as PNG, JPEG or WebP. | SnapOtter Images to PDF, SnapOtter PDF to images |
-| PDF Passwords and Compression | Add or remove PDF passwords (AES-256), optimise losslessly, or shrink pictures. Uses qpdf and Ghostscript. | SnapOtter PDF protect, SnapOtter PDF unlock, SnapOtter PDF compress |
+| PDF Studio | Redact words, patterns and areas and check that nothing is left; correct what OCR read; make PDF/A for archives; do it for many PDFs at once. | Acrobat Pro redaction, PDF Redact Tools, OCRmyPDF, gImageReader |
+| PDF Passwords and Compression | Add or remove PDF passwords (AES-256), optimise losslessly, shrink pictures, repair damaged PDFs, turn them grey with text kept as text, or take every picture out. Uses qpdf and Ghostscript. | SnapOtter PDF protect, SnapOtter PDF unlock, SnapOtter PDF compress, Stirling PDF (repair, remove images, greyscale) |
 | PDF Form Filler | Fill in PDF forms, or write text, ticks and dates anywhere on scanned and printed-style forms, in English or Hindi; can lock the answers. | Adobe Fill & Sign (filling), Smallpdf and iLovePDF form filling |
 | PDF Signer | Sign PDFs with a drawn, typed or scanned signature, and digitally with a .p12 or .pfx certificate (or a self-signed one made here). | Adobe Fill & Sign (signing), DocuSign-style self signing, Smallpdf eSign |
 | PDF Crop | Crop the margins of PDF pages, all or some, by millimetres or by finding the white space, optionally changing the paper size too. | Smallpdf and iLovePDF crop |
@@ -348,11 +358,14 @@ Benchtop has 390 tools. All of them work without a network connection except the
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
+| Flipbook Editor | Make page-turn flipbooks from PDFs, pictures and blank pages, with hotspots for links, pages, video, sound and notes, contents, hard covers and a kiosk mode; export one HTML file that works offline. | FlipHTML5, Heyzine, Issuu flipbooks, StPageFlip |
+| Flipbook Reader | Read PDFs and flipbooks as books whose pages turn like paper, with contents, page pictures, search, zoom, full screen and the keyboard. | FlipHTML5 reader, Heyzine viewer |
 | Sheet Music Writer | Write music in ABC notation or with a piano keyboard, see it engraved as you type, play it, transpose it, and save it as ABC, SVG, MIDI, WAV or PDF. | abcjs editor, Noteflight (basic), MuseScore (simple scores) |
-| Notes | Notes with text, checklists, Markdown and maths, code, links and any files: paste or drop pictures, videos, audio, PDFs and 3D models. Copies are kept in the note, so it stays whole when the originals go. Share as .bnote files. | Evernote, OneNote, Notion (pages), Google Keep |
+| Notes | Notes with text, checklists, Markdown and maths, code, links, sketches and mind maps, and any files: paste or drop pictures, videos, audio, PDFs and 3D models. Sketches have boxes, bubbles, clouds, sticky notes, arrows that stick to shapes and a pen, hand-drawn or clean. Copies are kept in the note, so it stays whole when the originals go. Share as .bnote files. | Evernote, OneNote, Notion (pages), Google Keep, Excalidraw (sketches in notes), XMind (simple mind maps) |
 | Markdown Editor | Write Markdown with a live preview, maths ($…$), tables, task lists and embedded pictures; save as a web page, PDF, Word document or EPUB e-book. | Typora, StackEdit, Dillinger, Pandoc (Markdown export) |
 | Equation Editor (LaTeX) | Type LaTeX or pick symbols to build equations, chemistry included; save them as SVG or PNG, or copy MathML for Word and web pages. | CodeCogs Equation Editor, Mathcha, LaTeX to image converters |
-| Slide Deck (reveal.js) | Write a presentation in Markdown beside a live reveal.js preview, with speaker notes, code and maths; present full screen, or save one HTML file that presents offline, a PDF or Markdown. | reveal.js, Slides.com, reveal-md, Marp, Google Slides (simple decks) |
+| Slide Deck (reveal.js) | Write a presentation in Markdown, or design slides by hand (drag text, pictures and shapes into place), beside a live reveal.js preview with speaker notes, code and maths; present full screen, or save one HTML file that presents offline, a PDF or Markdown. | reveal.js, Slides.com, reveal-md, Marp, Google Slides (simple decks) |
+| Live Quiz | Run a quiz or a poll with a room full of people: they join on their phones over your own Wi-Fi and answer while the big screen shows the results. Scored questions, polls, word clouds, ratings, Q&A, brainstorms, a spinner wheel, teams and a leaderboard; nothing goes through the internet. | AhaSlides, Kahoot!, Mentimeter, Slido, Quizizz (live games) |
 | Resume Builder | Fill in your experience, education and skills, pick a template and save a PDF. Opens and saves Reactive Resume files, and JSON Resume too. | Reactive Resume, Canva resumes, Novorésumé, JSON Resume themes |
 | Certificates, Badges and Labels | Mail merge from a spreadsheet: certificates, ID cards, name badges and address labels with photos, logos, QR codes and barcodes, saved as one print-ready PDF. | Certifier, Canva bulk create, Avery Design & Print, Word mail merge |
 | Web Page to PDF | Paste web addresses and save the pages as PDFs, made by the browser installed on this computer (Chrome, Edge, Chromium or Brave). Desktop app; uses the network. | PDFCrowd, web2pdfconvert, Print Friendly & PDF |
@@ -365,7 +378,9 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Duplicate File Finder | Find files with identical contents (any type: photos, videos, documents) across folders, see the space they waste, and move extra copies to the trash. | dupeGuru, fdupes, Czkawka |
 | Disk Usage | See what fills a folder or drive: a map of folder sizes to click through, the largest files and the space used by each file type. | WinDirStat, Baobab (Disk Usage Analyzer), ncdu |
 | Folder Compare | Compare two folders file by file (by contents, with checksums), list what differs or is missing, and copy files across. | Meld (folders), WinMerge (folders), FreeFileSync (compare) |
-| File Pipeline | Run a chain of text tools and plugins over many files at once (format, minify, convert, clean up) and save every result in one ZIP. Pipelines save as files to reuse. | Batch file processing, Bulk text conversion |
+| Workflow Builder | Wire tools into a graph and run many files through it: If branches, loops, split and join, previews of every step, and workflows saved to reuse or to run inside other workflows. | n8n (file workflows), Node-RED (file flows), Apple Shortcuts and Automator (text files), Batch file processing |
+| Offline Search | Find words inside your files: Word, Excel and PowerPoint documents, PDFs, code, text in pictures and scans, and your notes. The index stays on this computer. | Recoll, DocFetcher, Windows Search, Spotlight, Everything |
+| Projects | Keep a job together: its input files, what each tool made of them, every tool’s settings and its workflow, saved as one bundle file you can move or hand on. | Project folders, Session save and restore |
 
 ## Diagrams and viewers
 
@@ -379,16 +394,20 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Hex Viewer | Look inside any file byte by byte: offsets, hex and text, search for text or bytes, and read values as integers, floats and dates. | HexEd.it (viewing) |
 | SQLite Browser | Open SQLite databases or load CSV files as tables, run any SQL, and export results as CSV or JSON. | DB Browser for SQLite (browsing), online CSV SQL tools |
 | 3D Model and G-code Viewer | Turn and zoom STL, OBJ, PLY, glTF and GLB models, and preview 3D-printer and CNC G-code toolpaths coloured by height. | viewstl.com, NC Viewer |
+| 3D Model Toolbox | Measure a 3D model, repair it for printing (holes, flipped faces, doubled triangles), simplify it, check it against your printer, and convert between STL, 3MF, OBJ, PLY and GLB. | MeshLab (basics), Netfabb Basic, Meshmixer (repair), online STL repair and conversion sites |
 | Code Screenshot | Turn code into a clean picture with syntax colours, a window frame and a background, for slides and posts. | Carbon, ray.so |
+| D3.js Editor | Write D3.js code and see the chart beside it, with your own CSV, TSV and JSON files read by d3.csv and the rest instead of the network: bar, line and donut charts, force-directed networks, trees and transitions, run in a sealed frame. Save SVG, PNG, or a web page with the data inside it. | Observable notebooks (D3 sketches), bl.ocks.org, CodePen (D3 sketches) |
 
 ## Files, video and audio
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
-| File Converter | Convert video, audio, pictures, drawings, Office documents, Markdown and e-books in batches with the programs installed on this computer. | ConvertX |
+| File Converter | Convert video, audio, pictures (HEIC too), drawings, Office, Visio, Publisher and Apple iWork documents, PDFs to Word, PostScript and XPS, e-mails, Markdown, e-books and archives in batches, with the programs installed on this computer. | ConvertX, FreeConvert (documents, e-mails, PostScript, XPS, HEIC, tracing, archives) |
 | Video Toolkit | Compress, trim, resize, crop, rotate, speed up, join, mute, make GIFs, save frames, add logos and subtitles. Uses FFmpeg. | SnapOtter Video tools |
+| Green Screen Editor | Remove a green or blue backdrop from a picture or video and put your own picture, video or colour behind the subject: tolerance, soft edge and tint removal with a live matte. Saves PNG, and MP4 or WebM through FFmpeg. | Chroma key in OBS, Shotcut and DaVinci Resolve (simple shots), unscreen-style background replacement for studio shots |
 | Audio Toolkit | Convert, trim, join, even out loudness, fade, remove silence and noise, change speed, and draw waveforms. Uses FFmpeg. | SnapOtter Audio tools |
-| ZIP and Archives | Open ZIP (also with a password), TAR and .gz files, preview and save what is inside, or make a ZIP. | SnapOtter ZIP tools |
+| Ringtone Composer | Compose monophonic ringtones on a keypad like the composer of the phones of the late 1990s, or type RTTTL or composer notation; hear them as square-wave beeps, transpose them, and save WAV, MIDI or RTTTL. | Nokia Composer (phones), RTTTL editors and players |
+| ZIP and Archives | Open ZIP (also with a password), TAR, .gz and .bz2 files, preview and save what is inside, or make a ZIP. | SnapOtter ZIP tools |
 | CSV Merge and Split | Merge CSV files by column name, with an optional source column and duplicate removal, or split one by rows or by a column. | SnapOtter CSV tools |
 | Media Info | Everything about a video or audio file: container, length, bit rates, every stream’s codec, resolution, frame rate, colour and HDR, audio channels, subtitles, chapters and tags. Uses FFprobe. | MediaInfo |
 | Screen and Voice Recorder | Record the screen, a window or a browser tab with your voice, or just the microphone, and save the recording; nothing is uploaded. | Online screen recorders, Voice recorder sites |
@@ -405,6 +424,8 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Tool | What it does | Replaces |
 | --- | --- | --- |
 | Math Evaluator | Calculate with variables, units, matrices and functions, line by line (math.js). | Math evaluator |
+| Calcpad Worksheet | Write engineering calculations as plain text and read them as a typeset report: every formula with its values put in and its result, with units, input boxes, conditions, loops, solvers, plots and maps. Save the report as HTML or PDF. | Calcpad, Mathcad worksheets (basic), SMath Studio (basic) |
+| Calculus Solver | Derivatives, integrals (indefinite, definite and improper), limits, Taylor series, extrema, tangent lines, differential equations and Riemann sums, each with worked steps, a graph and a check of the answer. | Symbolab calculus, Wolfram Alpha calculus (basic), Derivative calculator, Integral calculator, Limit calculator |
 | Scientific Calculator | A full scientific keypad with degrees or radians, memory, powers, roots, logarithms, factorials and a history you can reuse; type or click. | Calculator apps, Online scientific calculators |
 | Graphing Calculator | Plot up to six functions of x, pan and zoom, trace values under the pointer and see where each crosses zero; save the graph as PNG. | Desmos (basic plotting), GeoGebra graphing (basic) |
 | Matrix Calculator | Define matrices and evaluate expressions: inverse, determinant, products, solving Ax = b, eigenvalues, reduced row echelon form, rank, null space and singular values. | Matrix calculators |
@@ -426,16 +447,35 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | --- | --- | --- |
 | Periodic Table | All 118 elements with their properties, electron shells and stable isotopes; colour the table by category, by state of matter at any temperature, or by a property such as electronegativity or density. | Ptable, RSC Periodic Table, PubChem Periodic Table |
 | Molar Mass Calculator | Molar mass and percentage composition of a chemical formula, with brackets and hydrates (Ca(OH)2, K4[Fe(CN)6], CuSO4·5H2O); grams to moles. | Omni Molar Mass Calculator, WebQC molar mass |
+| Chemistry Solver | Balance equations (redox in acidic or basic solution, half-reactions), stoichiometry with the limiting reagent, empirical formulas, oxidation states, pH, equilibrium ICE tables, kinetics, titration curves, galvanic cells, gas laws and solutions, each with worked steps. | WebQC equation balancer, ChemicalAid, Chemistry problem solvers (basic) |
+| Kundli and Panchang | A Vedic birth chart in North or South Indian style with sidereal (Lahiri) positions, nakshatras and padas, divisional charts, Vimshottari dashas and Ashtakoota matching, and the panchang of any day and place; in English or Hindi. | Kundli software (AstroSage, Jagannatha Hora basics), Drik Panchang (daily panchang) |
 | Sunrise, Sun and Moon | Sunrise, sunset, solar noon, day length, twilight, golden hour, moonrise, moon phase, equinoxes and solstices for any place and date, with sun path diagrams and a whole year as CSV. | timeanddate.com sun calculator, SunCalc, Omni Sunrise Calculator |
 | Star Chart | The night sky over any place at any time: 5,000 stars, constellations, the planets, the Moon and Messier objects, with a clock to run the sky forward and a red night view. | Stellarium (basic sky view), online planispheres, Sky charts |
 | Molecule Viewer | Type a SMILES string or open a PDB, XYZ, Molfile, SDF or MOL2 file to see the molecule drawn in 2D and turning in 3D, with its formula, mass and drug-likeness numbers; click atoms to measure bonds and angles. | Jmol, MolView, PubChem 3D viewer |
 | Map Viewer (GeoJSON, KML, GPX) | See GeoJSON, TopoJSON, KML, KMZ, GPX, TCX and CSV point files on an offline map, with lengths, areas, track distance, climb, time and height profiles; save as GeoJSON, KML, GPX or CSV. | geojson.io, GPX viewers, KML to GPX converters, mapshaper (viewing) |
+| Data Logger | Record what a sensor or instrument sends over a serial or USB port, every reading with its time; watch it live, calibrate channels, add notes, and save as CSV, SQLite or Parquet. | CoolTerm capture, PLX-DAQ, SerialPlot logging, Tera Term log |
+
+## Simulation labs
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Mechanics Lab | Animated mechanics experiments: projectiles with air drag on Earth, the Moon, Mars or Jupiter; the pendulum at any swing (exact period); a driven spring–mass–damper with its resonance curve; collisions on an air track from elastic to sticking; planetary orbits with Kepler’s equal areas; a block on a slope with friction and its forces; levers and pulleys; and adding forces nose to tail. Each with read-outs and plots. | PhET (projectile motion, pendulum lab, masses and springs, collision lab, gravity and orbits, forces and motion), mechsimulator.com (physics) |
+| Waves, Heat and Fields Lab | Hear and see beats between two tones, standing waves on a string or in open and closed pipes, and the Doppler effect up to a sonic boom; watch a gas of particles push on its walls, with temperature, the speed distribution against Maxwell–Boltzmann and Boyle’s law; place charges to draw field lines and equipotentials; turn a generator with slip rings or a commutator; and float or sink blocks, or follow Bernoulli through a Venturi. | PhET (wave interference, sound waves, gas properties, charges and fields, Faraday’s law, buoyancy, fluid pressure and flow) |
+| Optics Bench | Ray diagrams for converging and diverging lenses, concave and convex mirrors and a pair of lenses, with the image’s place, size and nature; refraction and reflection at a boundary with Fresnel’s equations, the critical angle and Brewster’s angle; a prism splitting white light with its least deviation; single and double slits and diffraction gratings; and polarisers following Malus’s law. | PhET (geometric optics, bending light, wave interference), Optics bench simulators |
+| Geometry Lab | Drag points to explore a triangle’s centroid, circumcentre, incentre and orthocentre with Euler’s line and the nine-point circle; regular and freehand polygons with their angle sums and areas; the circle theorems; translations, rotations, reflections, enlargements and shears with their matrices; conic sections from a focus and directrix; and the unit circle with exact values of sin, cos and tan. | GeoGebra (geometry basics), PhET (trig tour) |
+| Genetics Lab | Punnett squares for one, two or three genes, with incomplete dominance, codominance, ABO blood groups and X-linked inheritance, and their genotype and phenotype ratios; populations evolving by selection, mutation and genetic drift, with a Hardy–Weinberg test; DNA transcribed and translated into protein, with substitutions, insertions and deletions named as silent, missense, nonsense or frameshift; and chi-square tests of breeding results. | Punnett square calculators, PhET (natural selection, gene expression) |
+| Biology Lab | Population growth (exponential, logistic and harvested, with the maximum sustainable yield); predator and prey cycles (Lotka–Volterra) with their phase loops; epidemics as SIR or SEIR models with vaccination and herd immunity; enzyme kinetics with competitive, non-competitive and uncompetitive inhibitors and Lineweaver–Burk fits to your data; a Hodgkin–Huxley neuron firing action potentials; and diffusion and osmosis across a membrane. | Ecology and epidemiology simulators, Enzyme kinetics calculators, PhET (neuron, diffusion) |
+| Mechanism Simulator | Draw a planar linkage from ground pivots, pin joints, bars, cranks and sliders, or start from a classic (four-bar, slider-crank, quick return, Scotch yoke, Hoekens, Peaucellier–Lipkin, Watt, Jansen’s Strandbeest leg), and run it. Trace coupler curves; plot the position, velocity and acceleration of any joint; see the degrees of freedom, Grashof type and transmission angle of a four-bar, the stroke and quick-return time ratio, and where a linkage locks. Save designs, the motion as CSV and the drawing as SVG. | mechsim.app (linkages), mechsimulator.com (mechanisms), Linkage (David Rector) |
 
 ## Electronics and circuits
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
-| Circuit Simulator | Draw circuits and run them: resistors, capacitors, diodes, LEDs, transistors, op-amps, the 555, logic gates, flip-flops, counters, displays, relays and motors, with meters and an oscilloscope; Arduino Uno and ESP32 boards run real firmware (the ESP32 in the desktop app); SPICE export. | Falstad Circuit Simulator, Logisim (basic logic), Tinkercad Circuits, Wokwi (Uno and ESP32), SimulIDE, PICSimLab (ESP32) |
+| Circuit Simulator | Draw circuits and run them: resistors to op-amps, the 555, transformers, controlled sources, logic, sensors, displays, relays and motors, with meters and an oscilloscope; DC operating point, DC sweep, transient and AC analysis with Bode plots, parameter steps and spectra; Arduino Uno, Nano and Mega, ATtiny85, Raspberry Pi Pico and ESP32 boards run real firmware (the ESP32 in the desktop app); SPICE export. | Falstad Circuit Simulator, Logisim (basic logic), Tinkercad Circuits, Wokwi (Uno, Mega, ATtiny85, Pico and ESP32), SimulIDE, PICSimLab (ESP32), CircuitLab (DC, transient and AC analysis) |
+| PLC Ladder Logic Simulator | Write ladder rungs as conditions and actions and watch them run as a ladder diagram whose wires light up: switches and push buttons for inputs, lamps for outputs, set and reset coils, on-delay, off-delay and pulse timers, counters and edge contacts, with examples (seal-in starter, interlocks, traffic lights, counting, blinker, tank filling) and structured text out. | PLC simulators (basic ladder logic), mechsimulator.com (PLC ladder) |
+| Karnaugh Map Solver | Minimise a logic function of 2 to 6 variables: click the map, or type minterms with don’t cares or an expression. Gives the smallest sum of products and product of sums with the groups drawn on the map, the prime implicants, a truth table, and C or Verilog. | Karnaugh map solvers, Logic Friday (minimisation) |
+| Logic Analyser | See digital signals as waveforms and read what they say: I²C, SPI and serial decoders, cursors, frequency and duty. Open VCD files, sigrok sessions and tables, or capture from a SUMP logic analyser on a serial port; a sketch makes an Arduino Uno into one. | PulseView (viewing and decoding I²C, SPI, UART), Saleae Logic (viewing exports), GTKWave (digital signals), OLS client (SUMP) |
+| Instrument Panel | Build a panel of dials, bars, read-outs, lamps and trends for the values a board prints on its serial port, with buttons, switches and sliders that send it commands. Panels are saved as files; a pretend device lets you try one without a board. | Serial Studio (dashboards), Blynk-style panels over serial, LabVIEW front panels (simple cases), Processing sketches for sensor read-outs |
 | Filter Designer | Design Butterworth, Chebyshev and Bessel low-pass, high-pass, band-pass and band-stop filters as op-amp stages with part values and schematics, LC ladders, or digital IIR and FIR filters with C and Python code; gain, phase and step plots. | Analog Devices Filter Wizard, TI Filter Design Tool, Okawa filter calculators, scipy.signal.butter |
 | Serial Plotter | Plot the numbers an Arduino, ESP32 or other board prints on a serial port, live, in the Arduino Serial Plotter format with named values; pause, zoom the window and save as CSV. | Arduino Serial Plotter, SerialPlot, BetterSerialPlotter |
 | Smith Chart | Plot a load on a Smith chart with its reflection, VSWR, return loss and mismatch loss; see it move along a line; and get every two-element L matching network with part values. | Smith V4, online Smith chart tools, L-network calculators |
@@ -508,6 +548,9 @@ Benchtop has 390 tools. All of them work without a network connection except the
 
 | Tool | What it does | Replaces |
 | --- | --- | --- |
+| Pneumatic and Hydraulic Circuits | Build pneumatic and hydraulic circuits with ISO 1219 symbols — supplies, exhausts and tanks, 3/2, 5/2, 4/2 and 4/3 valves with push-button, lever, solenoid, pilot and roller operation, single- and double-acting cylinders, flow controls, check, shuttle and two-pressure valves, gauges — and run them: lines fill, valves switch and cylinders move. Examples include memory valves, two-hand safety and automatic reciprocation. | FluidSIM (basic circuits), mechsimulator.com (pneumatic and hydraulic circuits) |
+| Cams, Geneva Drive and Gear Trains | Design a cam from a motion program (uniform velocity, simple harmonic, parabolic, cycloidal, polynomial) for a knife-edge, roller or flat-faced follower: lift, velocity, acceleration and jerk, pressure angle, undercut check, and the profile as DXF, SVG or CSV. Animate a Geneva drive with its speed and acceleration, and work out compound and planetary gear trains with a moving picture. | Cam design software (basic), mechsimulator.com (cams, Geneva, gear trains) |
+| Engine and Power Cycles | Otto, Diesel, dual, Brayton (with real compressor and turbine and a regenerator), Carnot, Stirling and Rankine steam cycles: every state, the heat and work of each process, efficiency against Carnot, mean effective pressure and power, on P–v and T–s diagrams that animate. | Thermodynamic cycle simulators, mechsimulator.com (engine cycles) |
 | Steam Tables | Water and steam properties from IAPWS-IF97: any state from pressure with temperature, enthalpy, entropy or dryness fraction; saturation tables; tables along one pressure. Density, enthalpy, entropy, heat capacity, speed of sound, viscosity, conductivity. | Engineering ToolBox steam tables, Spirax Sarco steam tables, Saturated steam table |
 | Beam Calculator | Reactions, shear force, bending moment, deflection and bending stress for simply supported, cantilever, fixed, propped and continuous beams under point, uniform and varying loads and moments, with diagrams. | Engineering ToolBox beam calculator, SkyCiv beam calculator, ClearCalcs beam |
 | Section Properties | Area, centroid, second moments, elastic and plastic moduli, radii of gyration, principal axes, torsion constant and mass per metre for I-beams, channels, angles, tees, boxes, tubes, bars and rectangles. | Engineering ToolBox area moment of inertia, Section property calculators |
@@ -547,6 +590,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Keycode Info | Press a key to see its key, code, keyCode, location and modifiers, with a ready event handler. | Keycode info |
 | HTML Editor (WYSIWYG) | Write formatted text and copy it as clean HTML or Markdown. | HTML WYSIWYG editor |
 | Plugins | Add your own text tools as single JavaScript files (WebAssembly inside works too). They run sandboxed, without network or storage access, and can be steps in the File Pipeline. | Custom scripts |
+| Code Runner | Write a program, give it input and run it, like an online compiler but offline. Python, JavaScript, TypeScript, Lua and SQL (SQLite, DuckDB) run in the app; the desktop app also runs C, C++, Java, C#, Go, Rust, Kotlin, PHP, Ruby, Bash, R, Perl, Swift and Dart with your installed compilers. | OneCompiler, Programiz online compilers, JDoodle (offline) |
 | HTML Playground | Try HTML and CSS, with Bootstrap 5 available offline and a resizable preview. | Bootstrap Code Editor |
 | Scratchpad | Quick notes kept on this computer: several notes, search, word count, date stamps, copy and save as Markdown. | Online notepads |
 | Tailwind Cheat Sheet | Search Tailwind CSS v4 utilities by class or by CSS: layout, flex and grid, spacing, sizing, type, borders, effects, motion and variants. | Tailwind cheat sheet sites |
@@ -556,14 +600,18 @@ Benchtop has 390 tools. All of them work without a network connection except the
 
 ## Coverage of the original web tools
 
-603 web tools map onto Benchtop tools:
+722 web tools map onto Benchtop tools:
 
 | Web tool | Benchtop tool |
 | --- | --- |
 | .htaccess Generator | Config File Generator |
 | 3-Phase Power Calculator | Power Converter (kW, kVA, Amps, hp) |
 | abcjs editor | Sheet Music Writer |
+| Acrobat Add Printer Marks | Print Production Studio |
+| Acrobat compare files | PDF Compare |
 | Acrobat Preflight (basic checks) | PDF Print Preflight |
+| Acrobat Pro redaction | PDF Studio |
+| Acrobat Reader comments | PDF Reader |
 | Add line numbers | Text Cleaner |
 | Adobe Fill & Sign (filling) | PDF Form Filler |
 | Adobe Fill & Sign (signing) | PDF Signer |
@@ -571,6 +619,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Advanced Renamer | Bulk Rename |
 | AES encryption and decryption | AES Encryption |
 | After Effects (simple motion) | Animation Studio (Theatre.js) |
+| AhaSlides | Live Quiz |
 | Analog Devices Filter Wizard | Filter Designer |
 | Android Asset Studio launcher icons | App Icon Maker |
 | Android Asset Studio nine-patch generator | Nine-patch Maker |
@@ -579,10 +628,12 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Android Studio Vector Asset import | SVG, VectorDrawable and Compose |
 | Angry IP Scanner | LAN Scanner |
 | Animation | Animation |
+| anime.js documentation playground | anime.js Editor |
 | Ansible Playbook Generator | Config File Generator |
 | App Mockup | Store Graphics Maker |
 | appicon.co | App Icon Maker |
 | AppLaunchpad | Store Graphics Maker |
+| Apple Shortcuts and Automator (text files) | Workflow Builder |
 | Arduino Serial Monitor | Serial Monitor |
 | Arduino Serial Plotter | Serial Plotter |
 | Argon2 hash | Password Hashing |
@@ -608,7 +659,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Base64 encode and decode | Base64 |
 | Basic auth generator | Basic Auth Header |
 | Basic Commands - Ubuntu/Windows | Command Cheat Sheet |
-| Batch file processing | File Pipeline |
+| Batch file processing | Workflow Builder |
 | BBCode to HTML | BBCode ↔ HTML |
 | Bcrypt | Password Hashing |
 | Benchmark builder | Benchmark Statistics |
@@ -618,9 +669,11 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Binary Calculator | Binary Calculator |
 | Binary Translator | Binary ↔ Text |
 | BIP39 passphrase generator | BIP39 Mnemonic |
+| bl.ocks.org | D3.js Editor |
 | BLAKE3 hash | Hash and HMAC |
 | Blob Generator | Blob Generator |
 | BloomRPC | gRPC Client |
+| Blynk-style panels over serial | Instrument Panel |
 | Bookbinder | Booklet and Zine Imposer |
 | Booklet printing dialogs | Booklet and Zine Imposer |
 | Bootstrap Build (Bootstrap 5 theme editor) | Bootstrap Theme Builder |
@@ -628,13 +681,15 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Border | Border |
 | Border Radius | Border Radius |
 | Box Shadow | Box Shadow |
+| Boxy SVG | Vector Editor |
 | Braille translators (grade 1) | Braille Translator |
 | Breadcrumb Schema Generator | Config File Generator |
 | Broken link checker | Broken Link Checker |
 | Bulk Rename Utility | Bulk Rename |
-| Bulk text conversion | File Pipeline |
 | Cable Size Calculator | Cable Size and Voltage Drop |
+| Calcpad | Calcpad Worksheet |
 | Calculator apps | Scientific Calculator |
+| Cam design software (basic) | Cams, Geneva Drive and Gear Trains |
 | Canva bulk create | Certificates, Badges and Labels |
 | Canva resumes | Resume Builder |
 | Carbon | Code Screenshot |
@@ -644,9 +699,13 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Character Map | Glyph Browser |
 | Chart maker | Chart Maker |
 | checkov | Kubernetes, Compose, Terraform and Dockerfile Checker |
+| ChemicalAid | Chemistry Solver |
+| Chemistry problem solvers (basic) | Chemistry Solver |
+| Chroma key in OBS, Shotcut and DaVinci Resolve (simple shots) | Green Screen Editor |
 | Chronometer | Stopwatch and Timer |
 | CircleCI Config Generator | Config File Generator |
 | Circuit Breaker Size Calculator | Circuit Breaker Size |
+| CircuitLab (DC, transient and AC analysis) | Circuit Simulator |
 | ClearCalcs beam | Beam Calculator |
 | Cloud Build Config Generator | Config File Generator |
 | Cloud Run Config Generator | Config File Generator |
@@ -654,6 +713,8 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | CNAME lookup | DNS Lookup |
 | Code for Email | Email Link Builder |
 | CodeCogs Equation Editor | Equation Editor (LaTeX) |
+| CodePen (anime.js sketches) | anime.js Editor |
+| CodePen (D3 sketches) | D3.js Editor |
 | Color Blindness Simulator | Colour Blindness Simulator |
 | Color Contrast Checker | Contrast Checker |
 | Color name finders | Colour Names |
@@ -665,6 +726,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | convertunits.com | Unit Converter |
 | ConvertX | File Converter |
 | Coolors palettes (curated) | Palette Library |
+| CoolTerm capture | Data Logger |
 | Coordinates converter | Coordinates Converter |
 | CopyQ | Clipboard History |
 | CORS Policy Generator | Config File Generator |
@@ -701,9 +763,11 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Days between dates | Date Calculator |
 | DB Browser for SQLite (browsing) | SQLite Browser |
 | dbdiagram.io (from SQL) | SQL to ER Diagram |
+| Derivative calculator | Calculus Solver |
 | Desmos (basic plotting) | Graphing Calculator |
 | Device information | Device Information |
 | Diff Checker | Diff Checker |
+| diff-pdf | PDF Compare |
 | diff2html | Patch Viewer |
 | Digi-Key and Mouser code calculators | Resistor and Capacitor Codes |
 | Dillinger | Markdown Editor |
@@ -714,6 +778,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | DNS lookup | DNS Lookup |
 | DNS propagation checker | DNS Propagation |
 | DNSSEC check | DNS Lookup |
+| DocFetcher | Offline Search |
 | Dockerfile Generator | Config File Generator |
 | Dockerfile Validator | Kubernetes, Compose, Terraform and Dockerfile Checker |
 | Document scanner apps (manual corners) | Perspective Fix |
@@ -723,9 +788,11 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Domain to IP | IP Lookup |
 | draw9patch | Nine-patch Maker |
 | drawSQL | SQL to ER Diagram |
+| Drik Panchang (daily panchang) | Kundli and Panchang |
 | DuckDB shell | Data Playground (SQL) |
 | dupeGuru | Duplicate File Finder |
 | Duplicate Line Remover | Duplicate Line Remover |
+| Ecology and epidemiology simulators | Biology Lab |
 | ECS Task Definition Generator | Config File Generator |
 | Edotor | Graphviz (DOT) Viewer |
 | Email extractor | Extract from Text |
@@ -741,9 +808,12 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Engineering ToolBox heat loss and combustion calculators | Heat and Combustion Calculators |
 | Engineering ToolBox steam tables | Steam Tables |
 | Engineering ToolBox unit converters | Unit Converter |
+| Enzyme kinetics calculators | Biology Lab |
 | ESLint Config Generator | Config File Generator |
 | ETA calculator | ETA Calculator |
 | Evernote | Notes |
+| Everything | Offline Search |
+| Excalidraw (sketches in notes) | Notes |
 | Excel to CSV | Table Converter |
 | Factory Load Calculator | Load and Energy Cost |
 | Falstad Circuit Simulator | Circuit Simulator |
@@ -752,12 +822,21 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | fdupes | Duplicate File Finder |
 | Fing | LAN Scanner |
 | Flexbox layout Generator | Flexbox |
+| FlipHTML5 | Flipbook Editor |
+| FlipHTML5 reader | Flipbook Reader |
+| FluidSIM (basic circuits) | Pneumatic and Hydraulic Circuits |
 | FontDrop | Font File Explorer |
+| FreeConvert (documents, e-mails, PostScript, XPS, HEIC, tracing, archives) | File Converter |
 | FreeFileSync (compare) | Folder Compare |
+| gang-run and nesting calculators | Print Production Studio |
+| GeoGebra (geometry basics) | Geometry Lab |
 | GeoGebra graphing (basic) | Graphing Calculator |
 | geojson.io | Map Viewer (GeoJSON, KML, GPX) |
+| gImageReader | PDF Studio |
+| git mergetool | Git Workbench |
 | GitHub Actions Generator | Config File Generator |
 | GitHub diff view | Patch Viewer |
+| gitk | Git Workbench |
 | GitLab CI Pipeline Generator | Config File Generator |
 | Glassmorphism Generator | Glassmorphism |
 | glogg / klogg | Log Viewer |
@@ -771,6 +850,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | GraphvizOnline | Graphviz (DOT) Viewer |
 | Grid layout Generator | Grid |
 | grpcurl | gRPC Client |
+| GTKWave (digital signals) | Logic Analyser |
 | Gzip compress / decompress | Gzip Compress |
 | hadolint | Kubernetes, Compose, Terraform and Dockerfile Checker |
 | Halftone generators | Dither and Halftone |
@@ -781,6 +861,8 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Hex Decoder | Hex ↔ Text |
 | Hex to Decimal Converter | Number Base Converter |
 | HexEd.it (viewing) | Hex Viewer |
+| Heyzine | Flipbook Editor |
+| Heyzine viewer | Flipbook Reader |
 | Hreflang Generator | Config File Generator |
 | HTML Encoder / Decoder | HTML Entities |
 | HTML Formatter | HTML Formatter |
@@ -806,19 +888,24 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Image Grayscale | Image Filter |
 | Image Resize | Image Resize |
 | Image Rotate | Image Rotate |
+| Inkscape (basics) | Vector Editor |
 | Instagram grid makers | Image Splitter |
+| Integral calculator | Calculus Solver |
 | ios-resolution.com | Screen Size and Density |
 | IP WHOIS | IP Lookup |
 | iperf3 | LAN Speed Test |
 | IPv4 address converter | IP Address Converter |
 | IPv4 range expander | IP Address Converter |
 | IPv6 ULA generator | IP Address Converter |
+| Issuu flipbooks | Flipbook Editor |
 | Istio config generators | Config File Generator |
 | JavaScript encode and decode | JavaScript Minifier |
 | JavaScript Formatter | JavaScript Formatter |
+| JDoodle (offline) | Code Runner |
 | Jenkins Pipeline Generator | Config File Generator |
 | Jest Config Generator | Config File Generator |
 | Jmol | Molecule Viewer |
+| JS Paint | Paint |
 | JSON diff | Diff Checker |
 | JSON diff checkers | JSON Diff |
 | JSON Formatter | JSON Formatter |
@@ -842,7 +929,10 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | JWT Encoder | JWT Encoder |
 | jwt.io debugger | JWT Decoder |
 | jwt.io encoder | JWT Encoder |
+| Kahoot! | Live Quiz |
 | KaiOS Manifest Convertor | KaiOS Manifest Maker |
+| Karnaugh map solvers | Karnaugh Map Solver |
+| KDiff3 | Git Workbench |
 | Keccak-256 | Hash and HMAC |
 | Keycode info | Keycode Info |
 | Keyshape | Animation Studio (Theatre.js) |
@@ -850,20 +940,25 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | kube-linter | Kubernetes, Compose, Terraform and Dockerfile Checker |
 | kube-score | Kubernetes, Compose, Terraform and Dockerfile Checker |
 | Kubernetes YAML generators | Config File Generator |
+| Kundli software (AstroSage, Jagannatha Hora basics) | Kundli and Panchang |
 | Kustomize Configuration Generator | Config File Generator |
 | kVA to Amps Calculator | Power Converter (kW, kVA, Amps, hp) |
 | kW to kVA Calculator | Power Converter (kW, kVA, Amps, hp) |
 | L-network calculators | Smith Chart |
+| LabVIEW front panels (simple cases) | Instrument Panel |
 | Lambda Config Generator | Config File Generator |
 | LAN Speed Test | LAN Speed Test |
 | LaTeX to image converters | Equation Editor (LaTeX) |
 | LESS to CSS | SCSS and Less to CSS |
+| Limit calculator | Calculus Solver |
+| Linkage (David Rector) | Mechanism Simulator |
 | List converter | List Converter |
 | List randomizer | Random Generator |
 | llms.txt Generator | llms.txt Generator |
 | lnav | Log Viewer |
 | Load Factor Calculator | Load and Energy Cost |
 | LogExpert | Log Viewer |
+| Logic Friday (minimisation) | Karnaugh Map Solver |
 | Logisim (basic logic) | Circuit Simulator |
 | MAC address generator | MAC Address Lookup |
 | MAC address lookup | LAN Scanner |
@@ -874,16 +969,30 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Marp | Slide Deck (reveal.js) |
 | Material Theme Builder | Material Theme Builder |
 | Math evaluator | Math Evaluator |
+| Mathcad worksheets (basic) | Calcpad Worksheet |
 | Mathcha | Equation Editor (LaTeX) |
 | Mathway (basic) | Algebra Solver |
 | Matrix calculators | Matrix Calculator |
 | Matrix Transform | Transform |
 | MD5 hash generator | Hash and HMAC |
+| mechsim.app (linkages) | Mechanism Simulator |
+| mechsimulator.com (cams, Geneva, gear trains) | Cams, Geneva Drive and Gear Trains |
+| mechsimulator.com (engine cycles) | Engine and Power Cycles |
+| mechsimulator.com (mechanisms) | Mechanism Simulator |
+| mechsimulator.com (physics) | Mechanics Lab |
+| mechsimulator.com (PLC ladder) | PLC Ladder Logic Simulator |
+| mechsimulator.com (pneumatic and hydraulic circuits) | Pneumatic and Hydraulic Circuits |
 | Media Localiser | Video Dubbing |
 | MediaInfo | Media Info |
+| Meld | Git Workbench |
 | Meld (folders) | Folder Compare |
+| Mentimeter | Live Quiz |
 | Mermaid Live Editor | Mermaid Diagram Editor |
 | Mesh Gradient Generator | Mesh Gradient |
+| MeshLab (basics) | 3D Model Toolbox |
+| Meshmixer (repair) | 3D Model Toolbox |
+| Method Draw | Vector Editor |
+| Microsoft Paint | Paint |
 | Minify JS | JavaScript Minifier |
 | miniserve | LAN File Sharing |
 | Mock data generator | Mock Data Generator |
@@ -896,11 +1005,15 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | MuseScore (simple scores) | Sheet Music Writer |
 | MX lookup | DNS Lookup |
 | MX lookup | Email DNS Check |
+| n8n (file workflows) | Workflow Builder |
 | Name That Color | Colour Names |
 | Nano ID generator | UUID and ID Generator |
 | NC Viewer | 3D Model and G-code Viewer |
 | ncdu | Disk Usage |
+| Netfabb Basic | 3D Model Toolbox |
 | No-crop apps | Social Media Sizer |
+| Node-RED (file flows) | Workflow Builder |
+| Nokia Composer (phones) | Ringtone Composer |
 | Noteflight (basic) | Sheet Music Writer |
 | Notion (pages) | Notes |
 | Novorésumé | Resume Builder |
@@ -908,8 +1021,12 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | NTLM hash | Hash and HMAC |
 | Number to Words Converter | Number to Words |
 | Numeronym generator | Numeronym Generator |
+| Observable notebooks (D3 sketches) | D3.js Editor |
+| OCRmyPDF | PDF Studio |
 | Okawa filter calculators | Filter Designer |
 | OKLCH Converter | Colour Converter |
+| Okular and Xournal++ annotation | PDF Reader |
+| OLS client (SUMP) | Logic Analyser |
 | Omni Calculator Biology | Biology Calculators |
 | Omni Calculator Chemistry | Chemistry Calculators |
 | Omni Calculator Construction | Construction Calculators |
@@ -928,6 +1045,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Omni Calculator Statistics | Statistics Calculators |
 | Omni Molar Mass Calculator | Molar Mass Calculator |
 | Omni Sunrise Calculator | Sunrise, Sun and Moon |
+| OneCompiler | Code Runner |
 | OneNote | Notes |
 | online CSR and certificate generators | Certificate Maker |
 | online CSV SQL tools | SQLite Browser |
@@ -939,6 +1057,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Online screen recorders | Screen and Voice Recorder |
 | online screenshot annotators | Image Annotator |
 | online Smith chart tools | Smith Chart |
+| online STL repair and conversion sites | 3D Model Toolbox |
 | Online subtitle converters | Subtitle Studio |
 | online text-to-speech sites | Text to Speech |
 | online video translators | Video Dubbing |
@@ -947,24 +1066,37 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Open port checker | Port Checker |
 | OpenSpeedTest | LAN Speed Test |
 | Optical Character Recognition | Text Recognition (OCR) |
+| Optics bench simulators | Optics Bench |
 | Outlook Safelink decoder | Link Unwrapper |
 | Package.json Generator | Config File Generator |
+| Paintbrush | Paint |
 | Pandoc (Markdown export) | Markdown Editor |
+| paper cutting calculators | Print Production Studio |
 | papersizes.org | Paper Sizes |
 | Parquet viewers | Parquet and Avro Viewer |
 | Password strength analyser | Password Strength |
 | Paste-to-file sites | Paste Image |
 | PDF compare | Diff Checker |
+| PDF Redact Tools | PDF Studio |
 | PDF signature checker | PDF Signature Checker |
 | PDF to text | Document to Text |
 | PDFCrowd | Web Page to PDF |
 | Percentage calculator | Percentage Calculator |
+| PhET (geometric optics, bending light, wave interference) | Optics Bench |
+| PhET (natural selection, gene expression) | Genetics Lab |
+| PhET (neuron, diffusion) | Biology Lab |
+| PhET (projectile motion, pendulum lab, masses and springs, collision lab, gravity and orbits, forces and motion) | Mechanics Lab |
+| PhET (trig tour) | Geometry Lab |
+| PhET (wave interference, sound waves, gas properties, charges and fields, Faraday’s law, buoyancy, fluid pressure and flow) | Waves, Heat and Fields Lab |
 | Phone parser and formatter | Phone Number Parser |
 | PhotoJoiner | Image Stitcher |
+| Photoshop soft proofing and Convert to Profile | Print Production Studio |
 | PICSimLab (ESP32) | Circuit Simulator |
 | piesocket tester | WebSocket and SSE Client |
 | Pine Tools image splitter | Image Splitter |
 | Piper | Text to Speech |
+| PLC simulators (basic ladder logic) | PLC Ladder Logic Simulator |
+| PLX-DAQ | Data Logger |
 | PNG Color Replacer | Colour Replacer |
 | PNG to ICO Converter | Favicon and ICO |
 | PNG to WebP Converter | Image Converter |
@@ -974,21 +1106,28 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | PowerRename | Bulk Rename |
 | Previewed | Store Graphics Maker |
 | Print Friendly & PDF | Web Page to PDF |
+| Processing sketches for sensor read-outs | Instrument Panel |
+| Programiz online compilers | Code Runner |
+| Project folders | Projects |
 | ProjectorCentral projection calculator | Projector Calculator |
 | ProjectorCentral screen size calculator | Screen Size Calculator |
 | Prometheus Config Generator | Config File Generator |
 | Ptable | Periodic Table |
 | PubChem 3D viewer | Molecule Viewer |
 | PubChem Periodic Table | Periodic Table |
+| PulseView (viewing and decoding I²C, SPI, UART) | Logic Analyser |
+| Punnett square calculators | Genetics Lab |
 | PX to REM Converter | PX ↔ REM |
 | python -m http.server | LAN File Sharing |
 | QR code generator | QR Code Generator |
+| Quizizz (live games) | Live Quiz |
 | Random number generator | Random Generator |
 | Random port generator | Random Generator |
 | Random Word Generator | Random Words |
 | ray.so | Code Screenshot |
 | RDAP lookup | Domain WHOIS and Expiry |
 | Reactive Resume | Resume Builder |
+| Recoll | Offline Search |
 | Redirect checker | Website Status |
 | Redirect link decoder | Link Unwrapper |
 | Redocly preview | OpenAPI Viewer |
@@ -1006,7 +1145,9 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Roman numeral converter | Roman Numerals |
 | ROT13 Encoder/Decoder | ROT13 and Caesar |
 | RSC Periodic Table | Periodic Table |
+| RTTTL editors and players | Ringtone Composer |
 | S3 Bucket Policy Generator | Config File Generator |
+| Saleae Logic (viewing exports) | Logic Analyser |
 | Saturated steam table | Steam Tables |
 | Schema.org Generator | Config File Generator |
 | scipy.signal.butter | Filter Designer |
@@ -1015,8 +1156,11 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | SCSS to CSS | SCSS and Less to CSS |
 | Section property calculators | Section Properties |
 | Send Anywhere (local) | LAN File Sharing |
+| Serial Studio (dashboards) | Instrument Panel |
 | SerialPlot | Serial Plotter |
+| SerialPlot logging | Data Logger |
 | Service Worker Generator | Config File Generator |
+| Session save and restore | Projects |
 | SHA-1 Hash Generator | Hash and HMAC |
 | SHA-384 Hash Generator | Hash and HMAC |
 | SHA-512 Hash Generator | Hash and HMAC |
@@ -1028,9 +1172,11 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Sky charts | Star Chart |
 | SkyCiv beam calculator | Beam Calculator |
 | Slides.com | Slide Deck (reveal.js) |
+| Slido | Live Quiz |
 | Smallpdf and iLovePDF crop | PDF Crop |
 | Smallpdf and iLovePDF form filling | PDF Form Filler |
 | Smallpdf eSign | PDF Signer |
+| SMath Studio (basic) | Calcpad Worksheet |
 | Smith V4 | Smith Chart |
 | Snagit and Greenshot editors | Image Annotator |
 | Snapdrop | LAN File Sharing |
@@ -1063,13 +1209,20 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | SnapOtter Watermark | Image Watermark |
 | SnapOtter ZIP tools | ZIP and Archives |
 | Social image resizers | Social Media Sizer |
+| Sourcetree (browsing) | Git Workbench |
 | SPF checker | Email DNS Check |
 | Spirax Sarco steam tables | Steam Tables |
+| Spotlight | Offline Search |
 | SSL checker | SSL Certificate Checker |
 | SSL expiry checker | SSL Certificate Checker |
 | StackEdit | Markdown Editor |
 | Statistics calculators | Statistics |
 | Stellarium (basic sky view) | Star Chart |
+| Stirling PDF (bookmarks, attachments, overlay, colours, blank pages, sanitise, flatten, unlock forms, repair, get info, show JavaScript, extract images, single large page, page size, auto rotate, auto rename, split scanned photos, stamps, form fields, accessibility, timestamp) | PDF Toolbox |
+| Stirling PDF (repair, remove images, greyscale) | PDF Passwords and Compression |
+| Stirling PDF compare | PDF Compare |
+| Stirling PDF viewer and annotations | PDF Reader |
+| StPageFlip | Flipbook Editor |
 | String obfuscator | String Obfuscator |
 | Strip HTML tags | Text Cleaner |
 | Stripe Fee Calculator | Payment Fee Calculator |
@@ -1084,14 +1237,18 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | SVG to PNG Converter | SVG to PNG |
 | SVG to React Component Converter | SVG to React |
 | SVG Viewer | SVG Viewer |
+| SVG-Edit | Vector Editor |
+| SVG.js playground (JSFiddle, CodePen) | SVG.js Editor |
 | svg2vector | SVG, VectorDrawable and Compose |
 | Swagger Editor (viewing) | OpenAPI Viewer |
 | Symbolab (basic) | Algebra Solver |
+| Symbolab calculus | Calculus Solver |
 | Syntax highlighter | Syntax Highlighter |
 | Table converter | Table Converter |
 | Tailwind cheat sheet sites | Tailwind Cheat Sheet |
 | Tailwind Colors | Tailwind Colours |
 | Temperature converter | Unit Converter |
+| Tera Term log | Data Logger |
 | Terraform AWS Module Generator | Config File Generator |
 | Text Compare | Diff Checker |
 | Text repeater | Text Repeater |
@@ -1100,6 +1257,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | Text to NATO alphabet | NATO Phonetic Alphabet |
 | tfsec | Kubernetes, Compose, Terraform and Dockerfile Checker |
 | Theatre.js Studio | Animation Studio (Theatre.js) |
+| Thermodynamic cycle simulators | Engine and Power Cycles |
 | TI Filter Design Tool | Filter Designer |
 | Time sheet calculator | Time Sheet Calculator |
 | timeanddate.com meeting planner | Time Zone Planner |
@@ -1122,6 +1280,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | unicode-table.com | Glyph Browser |
 | Unit converter | Unit Converter |
 | Unix Timestamp Converter | Unix Timestamp |
+| unscreen-style background replacement for studio shots | Green Screen Editor |
 | UPS Capacity Calculator | UPS Sizing and Runtime |
 | UPS Runtime Calculator | UPS Sizing and Runtime |
 | URL extractor | Extract from Text |
@@ -1138,6 +1297,7 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | web2pdfconvert | Web Page to PDF |
 | webhook.site | Mock API Server and Webhook Catcher |
 | Webpack Config Generator | Config File Generator |
+| WebQC equation balancer | Chemistry Solver |
 | WebQC molar mass | Molar Mass Calculator |
 | Website down checker | Website Status |
 | websocat | WebSocket and SSE Client |
@@ -1147,14 +1307,17 @@ Benchtop has 390 tools. All of them work without a network connection except the
 | WiFi QR code generator | QR Code Generator |
 | WinDirStat | Disk Usage |
 | Windows clipboard history | Clipboard History |
+| Windows Search | Offline Search |
 | WinMerge (folders) | Folder Compare |
 | Wire gauge converters | Wire Gauge Chart |
 | WireGuard config generators | WireGuard Config Generator |
-| Wokwi (Uno and ESP32) | Circuit Simulator |
+| Wokwi (Uno, Mega, ATtiny85, Pico and ESP32) | Circuit Simulator |
+| Wolfram Alpha calculus (basic) | Calculus Solver |
 | Word compare | Diff Checker |
 | Word mail merge | Certificates, Badges and Labels |
 | Word to text | Document to Text |
 | World Time Buddy | Time Zone Planner |
+| XMind (simple mind maps) | Notes |
 | XML diff | Diff Checker |
 | XML Formatter | XML Formatter |
 | XML to JSON | Data Format Converter |

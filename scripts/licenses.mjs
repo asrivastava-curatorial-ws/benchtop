@@ -17,15 +17,49 @@ const LICENSE_FILE = /^(?:licen[cs]e|copying|notice)(?:[.-].*)?$/i;
 
 /** Components compiled into a dependency's WebAssembly, keyed by that dependency; texts live in licenses/. */
 const EMBEDDED = {
+  'lcms-wasm': [{ name: 'Little CMS (compiled into lcms-wasm)', version: '2.16', license: 'MIT', repository: 'https://github.com/mm2/Little-CMS', file: 'lcms2-LICENSE.txt' }],
   'libyara-wasm': [{ name: 'YARA (compiled into libyara-wasm)', version: '4.x', license: 'BSD-3-Clause', repository: 'https://github.com/VirusTotal/yara', file: 'yara-COPYING.txt' }],
   'jq-wasm': [
     { name: 'jq (compiled into jq-wasm)', version: '1.8.2', license: 'MIT, with ICU (decNumber) and other notices', repository: 'https://github.com/jqlang/jq', file: 'jq-COPYING.txt' },
     { name: 'Oniguruma (compiled into jq-wasm)', version: 'as bundled with jq 1.8.2', license: 'BSD-2-Clause', repository: 'https://github.com/kkos/oniguruma', file: 'oniguruma-COPYING.txt' },
   ],
+  pyodide: [
+    {
+      name: 'CPython and its standard library (compiled into Pyodide, used by the Code Runner)',
+      version: '3.14.2',
+      license: 'PSF-2.0',
+      repository: 'https://github.com/python/cpython',
+      file: 'cpython-LICENSE.txt',
+    },
+  ],
+  wasmoon: [{ name: 'Lua (compiled into wasmoon, used by the Code Runner)', version: '5.4', license: 'MIT', repository: 'https://www.lua.org', file: 'lua-LICENSE.txt' }],
+  'libheif-js': [
+    {
+      name: 'libheif and libde265 (compiled into libheif-js)',
+      version: 'libheif 1.23',
+      license: 'LGPL-3.0',
+      repository: 'https://github.com/strukturag/libheif',
+      file: 'libheif-NOTICE.txt',
+    },
+  ],
 };
 
 /** Bundled components that do not come from npm; texts live in licenses/. */
 const BUNDLED = [
+  {
+    name: 'Benchtop Coated FOGRA39L press profile (made from the FOGRA39L characterization data, as published in colord)',
+    version: 'FOGRA39L, December 2006',
+    license: 'CC0-1.0',
+    repository: 'https://github.com/hughsie/colord',
+    file: 'fogra39l-NOTICE.txt',
+  },
+  {
+    name: 'Compact ICC Profiles',
+    version: '(sRGB v2 micro, sRGB v4, CGATS001 compatible v2 micro)',
+    license: 'CC0-1.0',
+    repository: 'https://github.com/saucecontrol/Compact-ICC-Profiles',
+    file: 'compact-icc-NOTICE.txt',
+  },
   {
     name: 'CyberChef (operation designs reimplemented, and the code of 65 operations)',
     version: '10',
@@ -77,6 +111,20 @@ const BUNDLED = [
     file: 'qemu-esp32-NOTICE.txt',
   },
   { name: 'ESP32 ROM images (Linux installers)', version: 'revision 3', license: 'Apache-2.0', repository: 'https://github.com/espressif/esp-rom-elfs', file: 'esp32-rom-NOTICE.txt' },
+  {
+    name: 'Adafruit GFX 5×7 font (glcdfont), in the simulated displays and the example sketches',
+    version: '1.11',
+    license: 'BSD-2-Clause',
+    repository: 'https://github.com/adafruit/Adafruit-GFX-Library',
+    file: 'adafruit-gfx-LICENSE.txt',
+  },
+  {
+    name: 'RP2040 boot ROM, B1 (runs inside the emulated Raspberry Pi Pico; source in third_party/pico-bootrom)',
+    version: '00a4a19',
+    license: 'BSD-3-Clause AND GPL-2.0-only',
+    repository: 'https://github.com/raspberrypi/pico-bootrom',
+    file: 'pico-bootrom-NOTICE.txt',
+  },
 ];
 
 /**

@@ -56,8 +56,18 @@ export function texToSvg(latex: string, o: TexOptions): TexResult {
     .replace(/\s*style="vertical-align:[^"]*"/, '');
   if (o.color) svg = svg.replace(/currentColor/g, o.color);
   if (!svg.includes('xmlns="http://www.w3.org/2000/svg"')) svg = svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+  // MathJax marks the picture as an image; name it with its TeX so that it is not an image without a description.
+  const label = latex.replace(/^\s*\\displaystyle\s*/, '').trim();
+  const name = label.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  svg = svg.replace(/^<svg( xmlns="http:\/\/www\.w3\.org\/2000\/svg")?/, (start) => `${start} aria-label="${name}"`);
   const mml = mmlDocument.convert(latex, { display: o.display, end: STATE.CONVERT }) as MmlNode;
   return { svg, mathml: visitor.visitTree(mml), error: error ? decodeEntities(error) : null, width, height, depth: Math.max(0, depth) };
+}
+
+/** LaTeX to MathML only (no SVG): light enough for a report of many formulas. */
+export function texToMathml(latex: string, display = false): string {
+  const mml = mmlDocument.convert(latex, { display, end: STATE.CONVERT }) as MmlNode;
+  return visitor.visitTree(mml);
 }
 
 const decodeEntities = (s: string) =>

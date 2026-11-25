@@ -125,3 +125,16 @@ export async function storageUse(): Promise<{ used: number; quota: number } | nu
   const { usage, quota } = await navigator.storage.estimate();
   return usage !== undefined && quota !== undefined ? { used: usage, quota } : null;
 }
+
+let wanted: string | null = null;
+
+/** Asks the Notes tool to open on one note the next time it starts (Offline Search uses this). */
+export function wantNote(id: string): void {
+  wanted = id;
+}
+
+export function takeWantedNote(): string | null {
+  const id = wanted;
+  wanted = null;
+  return id;
+}

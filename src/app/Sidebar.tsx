@@ -5,6 +5,7 @@ import { openRecipeOperation, searchOperations } from '../recipe/launch';
 import { CATEGORIES, findTool, searchTools, TOOLS } from '../tools/registry';
 import type { ToolEntry } from '../tools/types';
 import { Icon } from '../ui/icons';
+import { useActiveProject } from './projects';
 import { navigate, type Route, toolHref } from './router';
 import { type ThemeChoice, toggleCollapsed, updateSettings, useSettings } from './store';
 
@@ -32,6 +33,10 @@ export function Sidebar({ route, onOpenPalette }: { route: Route; onOpenPalette:
   const operations = useMemo(() => (query.trim() === '' ? [] : searchOperations(query, 6)), [query]);
   const calculators = useMemo(() => (query.trim() === '' ? [] : searchCalculators(query, 6)), [query]);
   const favorites = settings.favorites.map(findTool).filter((tool): tool is ToolEntry => tool !== undefined);
+  const project = useActiveProject();
+  const notesFirst = settings.startScreen === 'notes';
+  const onNotes = (notesFirst && route.page === 'home') || activeId === 'notes';
+  const onTools = route.page === 'tools' || (!notesFirst && route.page === 'home');
 
   return (
     <nav class="sidebar" aria-label="Tools">
@@ -64,6 +69,27 @@ export function Sidebar({ route, onOpenPalette }: { route: Route; onOpenPalette:
             Ctrl K
           </button>
         </div>
+      </div>
+
+      <div class="sidebar-places">
+        <a href={notesFirst ? '#/' : toolHref('notes')} class={`sidebar-link${onNotes ? ' is-active' : ''}`} aria-current={onNotes ? 'page' : undefined} data-testid="sidebar-notes">
+          <Icon name="file" size={15} />
+          Notes
+        </a>
+        <a href="#/tools" class={`sidebar-link${onTools ? ' is-active' : ''}`} aria-current={onTools ? 'page' : undefined} data-testid="sidebar-all-tools">
+          <Icon name="menu" size={15} />
+          All tools
+        </a>
+        <a
+          href={toolHref('projects')}
+          class={`sidebar-link sidebar-project${activeId === 'projects' ? ' is-active' : ''}`}
+          title={project ? `Project “${project.name}” is open: its files and tool settings are kept together` : 'Keep the files and settings of a job together'}
+          data-testid="sidebar-project"
+        >
+          <Icon name="open" size={15} />
+          <span>{project ? project.name : 'Projects'}</span>
+          {project && <span class="count">open</span>}
+        </a>
       </div>
 
       <div class="sidebar-scroll">

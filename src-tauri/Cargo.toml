@@ -1,6 +1,6 @@
 [package]
 name = "benchtop"
-version = "4.2.0"
+version = "5.1.0"
 description = "Benchtop: an open-source desktop toolbox of developer and engineering utilities"
 license = "MIT"
 edition = "2021"
@@ -73,8 +73,11 @@ lol_html = "2"
 encoding_rs = "0.8"
 # Files and folders tools: walking folders, fast checksums, deleting to the system's trash.
 walkdir = "2"
+# Live Quiz: ids and secrets for the devices that join, from the system's random source.
+getrandom = "0.3"
 blake3 = { version = "1", default-features = false, features = ["std"] }
 trash = "5"
+rusqlite = { version = "0.40.2", features = ["bundled"] }
 
 [target.'cfg(unix)'.dependencies]
 # The command line exits quietly when its output pipe closes (benchtop models | head).

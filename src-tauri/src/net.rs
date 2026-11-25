@@ -114,6 +114,9 @@ pub struct HttpRequest {
     pub headers: Vec<(String, String)>,
     #[serde(default)]
     pub body: Option<String>,
+    /// A binary body, Base64-encoded (an RFC 3161 timestamp request, say); used instead of `body`.
+    #[serde(default)]
+    pub body_base64: Option<String>,
     #[serde(default)]
     pub timeout_ms: Option<u64>,
     #[serde(default)]
@@ -234,7 +237,12 @@ pub async fn net_http(request: HttpRequest) -> NetResult<HttpResponse> {
     for (name, value) in &request.headers {
         builder = builder.header(name.as_str(), value.as_str());
     }
-    if let Some(body) = request.body {
+    if let Some(encoded) = request.body_base64 {
+        let bytes = B64
+            .decode(encoded.trim())
+            .map_err(|_| fail("invalid", "The request body is not valid Base64."))?;
+        builder = builder.body(bytes);
+    } else if let Some(body) = request.body {
         builder = builder.body(body);
     }
     let started = Instant::now();
@@ -1388,6 +1396,7 @@ mod tests {
             method: None,
             headers: vec![],
             body: None,
+            body_base64: None,
             timeout_ms: Some(5_000),
             max_body: None,
             insecure: false,
@@ -1401,6 +1410,64 @@ mod tests {
             .any(|(name, value)| name == "location" && value == "https://example.org/"));
         assert_eq!(B64.decode(response.body).expect("base64"), b"moved");
         assert_eq!(response.version, "HTTP/1.1");
+    }
+
+    #[tokio::test]
+    async fn http_sends_a_binary_body_given_in_base64() {
+        // An RFC 3161 timestamp request is DER: bytes that are not text, sent exactly as they are.
+        let body: Vec<u8> = vec![0x30, 0x82, 0x00, 0xff, 0x00, 0x80, 0x0d, 0x0a];
+        let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+        let (tx, rx) = tokio::sync::oneshot::channel::<Vec<u8>>();
+        tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.expect("accept");
+            let mut received = Vec::new();
+            let mut chunk = [0u8; 1024];
+            // Read until the headers and the eight-byte body have arrived.
+            loop {
+                let n = socket.read(&mut chunk).await.expect("read");
+                received.extend_from_slice(&chunk[..n]);
+                if n == 0 {
+                    break;
+                }
+                if let Some(end) = received.windows(4).position(|w| w == b"\r\n\r\n") {
+                    if received.len() >= end + 4 + 8 {
+                        break;
+                    }
+                }
+            }
+            socket
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+                .await
+                .expect("write");
+            let _ = tx.send(received);
+        });
+        let response = net_http(HttpRequest {
+            url: format!("http://127.0.0.1:{port}/tsr"),
+            method: Some("POST".to_string()),
+            headers: vec![(
+                "Content-Type".to_string(),
+                "application/timestamp-query".to_string(),
+            )],
+            body: Some("ignored when a binary body is given".to_string()),
+            body_base64: Some(B64.encode(&body)),
+            timeout_ms: Some(5_000),
+            max_body: None,
+            insecure: false,
+        })
+        .await
+        .expect("http");
+        assert_eq!(response.status, 200);
+        let received = rx.await.expect("request");
+        let end = received
+            .windows(4)
+            .position(|w| w == b"\r\n\r\n")
+            .expect("headers")
+            + 4;
+        assert_eq!(&received[end..], &body[..]);
+        let head = String::from_utf8_lossy(&received[..end]).to_lowercase();
+        assert!(head.contains("content-length: 8"));
+        assert!(head.contains("content-type: application/timestamp-query"));
     }
 
     #[tokio::test]

@@ -4,46 +4,15 @@
  * what is drawn: LED glow, switch positions, logic levels, displays.
  */
 import type { ComponentChildren } from 'preact';
+import { BOARD_SPECS } from '../../lib/circuit/boards';
 import { LED_COLOURS, SEGMENTS } from '../../lib/circuit/elements';
 import type { PlacedPart } from '../../lib/circuit/netlist';
 import { PART_BY_TYPE } from '../../lib/circuit/parts';
+import { drawAnalog } from './_circuit-analog';
+import { drawBoard, drawModule } from './_circuit-modules';
+import { box, flag, GRID, g, L, type Live, num, P, path, pins, T } from './_circuit-svg';
 
-export const GRID = 20;
-const g = (v: number) => v * GRID;
-
-type Live = Readonly<Record<string, number | boolean | string | readonly number[]>> | null;
-
-const L = ({ x1, y1, x2, y2, w = 1.6 }: { x1: number; y1: number; x2: number; y2: number; w?: number }) => (
-  <line x1={g(x1)} y1={g(y1)} x2={g(x2)} y2={g(y2)} stroke="currentColor" stroke-width={w} stroke-linecap="round" />
-);
-const P = ({ d, fill = 'none', w = 1.6, cls }: { d: string; fill?: string; w?: number; cls?: string }) => (
-  <path d={d} fill={fill} stroke="currentColor" stroke-width={w} stroke-linejoin="round" stroke-linecap="round" class={cls} />
-);
-const T = ({
-  x,
-  y,
-  children,
-  size = 10,
-  anchor = 'middle',
-  cls = 'cs-text',
-}: {
-  x: number;
-  y: number;
-  children: ComponentChildren;
-  size?: number;
-  anchor?: 'start' | 'middle' | 'end';
-  cls?: string;
-}) => (
-  <text x={g(x)} y={g(y)} font-size={size} text-anchor={anchor} dominant-baseline="middle" class={cls}>
-    {children}
-  </text>
-);
-
-/** "M x y L x y …" with grid units. */
-const path = (points: readonly (readonly [number, number])[]) => points.map(([x, y], i) => `${i ? 'L' : 'M'}${g(x)} ${g(y)}`).join(' ');
-
-const num = (live: Live, key: string) => (typeof live?.[key] === 'number' ? (live[key] as number) : 0);
-const flag = (live: Live, key: string) => live?.[key] === true;
+export { GRID };
 
 function resistor(x0: number, x1: number) {
   const points: [number, number][] = [[x0, 0]];
@@ -124,37 +93,6 @@ function gateBody(type: string) {
       <L x1={bubble ? end + 0.4 : end} y1={0} x2={4} y2={0} />
     </>
   );
-}
-
-function box(x0: number, y0: number, x1: number, y1: number, cls = 'cs-fill') {
-  return <rect x={g(x0)} y={g(y0)} width={g(x1 - x0)} height={g(y1 - y0)} rx={3} stroke="currentColor" stroke-width={1.6} class={cls} />;
-}
-
-/** Pin leads and labels for block parts. */
-function pins(part: PlacedPart, inside: number, outsideRight: number) {
-  const def = PART_BY_TYPE.get(part.type);
-  return def?.terminals.map((t) => {
-    const right = t.x >= outsideRight;
-    const top = t.y < 0;
-    const bottom = def.box[3] <= t.y;
-    if (top || bottom)
-      return (
-        <g key={t.name}>
-          <L x1={t.x} y1={t.y} x2={t.x} y2={top ? 0 : t.y - 1} />
-          <T x={t.x} y={top ? 0.55 : t.y - 1.5} size={8}>
-            {t.name}
-          </T>
-        </g>
-      );
-    return (
-      <g key={t.name}>
-        <L x1={t.x} y1={t.y} x2={right ? t.x - 1 : t.x + inside} y2={t.y} />
-        <T x={right ? t.x - 1.2 : t.x + inside + 0.2} y={t.y} size={8} anchor={right ? 'end' : 'start'}>
-          {t.name}
-        </T>
-      </g>
-    );
-  });
 }
 
 function segmentPaths(x: number, y: number, w: number, h: number): string[] {
@@ -747,55 +685,9 @@ export function drawPart(part: PlacedPart, live: Live): ComponentChildren {
         </>
       );
     }
-    case 'arduino-uno':
-    case 'esp32': {
-      const def = PART_BY_TYPE.get(part.type);
-      const uno = part.type === 'arduino-uno';
-      const volts = (live?.volts as readonly number[] | undefined) ?? [];
-      const led13 = uno && (volts[13] ?? 0) > 2.5;
-      return (
-        <>
-          <rect x={g(1)} y={0} width={g(8)} height={g(def ? def.box[3] : 15)} rx={8} class={uno ? 'cs-board-uno' : 'cs-board-esp'} />
-          {def?.terminals.map((t) => {
-            const right = t.x > 5;
-            return (
-              <g key={t.name}>
-                <L x1={t.x} y1={t.y} x2={right ? t.x - 1 : t.x + 1} y2={t.y} />
-                <rect x={g(right ? t.x - 1.4 : t.x + 1) - 0} y={g(t.y - 0.3)} width={g(0.4)} height={g(0.6)} class="cs-header" />
-                <T x={right ? t.x - 1.6 : t.x + 1.6} y={t.y} size={8} anchor={right ? 'end' : 'start'} cls="cs-text cs-board-text">
-                  {t.name}
-                </T>
-              </g>
-            );
-          })}
-          <T x={5} y={uno ? 12.6 : 14.2} size={12} cls="cs-text cs-board-title">
-            {uno ? 'Arduino Uno' : 'ESP32'}
-          </T>
-          {uno && (
-            <>
-              <rect x={g(6.4)} y={g(13.8)} width={g(0.5)} height={g(0.3)} rx={1} fill={led13 ? '#ffb000' : '#5b4b20'} />
-              <T x={6.65} y={14.4} size={6} cls="cs-text cs-board-text">
-                L
-              </T>
-              <rect x={g(3.2)} y={g(4.5)} width={g(3.2)} height={g(5.5)} rx={2} class="cs-chip" />
-              <T x={4.8} y={7.25} size={7} cls="cs-text cs-board-text">
-                ATmega328P
-              </T>
-            </>
-          )}
-          {!uno && (
-            <>
-              <rect x={g(3.4)} y={g(5)} width={g(3.2)} height={g(4.2)} rx={2} class="cs-chip" />
-              <T x={5} y={7.1} size={6} cls="cs-text cs-board-text">
-                ESP-WROOM-32
-              </T>
-            </>
-          )}
-        </>
-      );
-    }
     default:
-      return box(0, -1, 3, 1);
+      if (BOARD_SPECS.has(part.type)) return drawBoard(part, live);
+      return drawAnalog(part, live) ?? drawModule(part, live) ?? box(0, -1, 3, 1);
   }
 }
 

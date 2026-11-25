@@ -1,6 +1,6 @@
 /** Small building blocks shared by the bespoke tools. */
 import type { ComponentChildren } from 'preact';
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { getSettings, saveToolOptions } from '../../app/store';
 import { scrollRegion } from '../../ui/a11y';
 import type { Values } from '../types';
@@ -40,6 +40,25 @@ export function usePersistentState<T>(toolId: string, read: (stored: Values | un
     [toolId],
   );
   return [value, update];
+}
+
+/**
+ * A text or number box whose text is committed on Enter or on leaving it.  Tools that redraw while data comes in
+ * would put a bound box's saved value back while it is being typed over; this one shows the saved value only when
+ * it does not have the focus.
+ */
+export function CommitInput(props: { class: string; type: 'text' | 'number'; step?: number | string; 'aria-label'?: string; value: string | number; onCommit: (text: string) => void }) {
+  const { value, onCommit } = props;
+  const box = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const input = box.current;
+    if (input && document.activeElement !== input && input.value !== String(value)) input.value = String(value);
+  });
+  return props.type === 'number' ? (
+    <input ref={box} class={props.class} type="number" step={props.step ?? 'any'} aria-label={props['aria-label']} onChange={(e) => onCommit(e.currentTarget.value)} />
+  ) : (
+    <input ref={box} class={props.class} type="text" aria-label={props['aria-label']} onChange={(e) => onCommit(e.currentTarget.value)} />
+  );
 }
 
 export interface SegmentChoice<T extends string> {
@@ -174,3 +193,45 @@ export function nudge(event: KeyboardEvent): { dx: number; dy: number } | null {
 }
 
 export const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+/** A button for something that cannot be taken back: the first click asks, the second does it. */
+export function Sure({
+  children,
+  sure,
+  onConfirm,
+  class: classes = 'button button-small',
+  testId,
+  disabled,
+}: {
+  children: ComponentChildren;
+  sure: string;
+  onConfirm: () => void;
+  class?: string;
+  testId?: string;
+  disabled?: boolean;
+}) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return;
+    const timer = setTimeout(() => setArmed(false), 5000);
+    return () => clearTimeout(timer);
+  }, [armed]);
+  return (
+    <button
+      type="button"
+      class={`${classes}${armed ? ' button-danger' : ''}`}
+      disabled={disabled}
+      onClick={() => {
+        if (!armed) setArmed(true);
+        else {
+          setArmed(false);
+          onConfirm();
+        }
+      }}
+      onBlur={() => setArmed(false)}
+      data-testid={testId}
+    >
+      {armed ? sure : children}
+    </button>
+  );
+}

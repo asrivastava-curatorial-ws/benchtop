@@ -128,3 +128,36 @@ declare module 'xkcd-colors' {
   export const colors: readonly { readonly name: string; readonly clean_name: string; readonly hex: string; readonly rgb: readonly number[] }[];
   export function get_color(name: string, format?: 'hex' | 'rgb' | 'rgbf'): string | number[];
 }
+
+declare module 'libheif-js/libheif-wasm/libheif-bundle.mjs' {
+  interface HeifImage {
+    get_width(): number;
+    get_height(): number;
+    is_primary(): boolean;
+    display(target: { data: Uint8ClampedArray; width: number; height: number }, done: (result: { data: Uint8ClampedArray; width: number; height: number } | null) => void): void;
+    free(): void;
+  }
+  interface LibHeif {
+    HeifDecoder: new () => { decode(data: Uint8Array | ArrayBuffer): HeifImage[] };
+  }
+  const factory: (options?: Record<string, unknown>) => LibHeif | Promise<LibHeif>;
+  export default factory;
+}
+
+declare module 'page-flip/dist/js/page-flip.module.js' {
+  /** StPageFlip's book (only what Benchtop uses). */
+  export class PageFlip {
+    constructor(element: HTMLElement, settings: Record<string, unknown>);
+    loadFromHTML(items: HTMLElement[]): void;
+    on(event: string, handler: (event: { data: unknown }) => void): void;
+    flipNext(): void;
+    flipPrev(): void;
+    flip(page: number): void;
+    turnToPage(page: number): void;
+    getCurrentPageIndex(): number;
+    getPageCount(): number;
+    getOrientation(): string;
+    update(): void;
+    destroy(): void;
+  }
+}

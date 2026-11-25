@@ -373,6 +373,8 @@ describe('Markdown documents', () => {
     expect(good.error).toBeNull();
     expect(good.svg).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg"/);
     expect(good.svg).toContain('fill="#ff0000"');
+    // Named with its TeX, so a screen reader has something to read.
+    expect(texToSvg('\\displaystyle a < b', { display: false }).svg).toMatch(/^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" aria-label="a &lt; b"/);
     expect(good.width).toBeGreaterThan(good.height);
     expect(good.mathml).toContain('<mfrac>');
     const inline = texToSvg('y_i', { display: false, scale: 16 });

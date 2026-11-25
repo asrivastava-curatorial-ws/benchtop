@@ -12,6 +12,7 @@ import { FINANCE } from './library/finance';
 import { FOOD } from './library/food';
 import { HEALTH } from './library/health';
 import { HEAT } from './library/heat';
+import { MACHINES } from './library/machines';
 import { MATH } from './library/math';
 import { OTHER } from './library/other';
 import { PHYSICS } from './library/physics';
@@ -36,6 +37,7 @@ export const CALCULATORS: readonly Calculator[] = [
   ...ECOLOGY,
   ...ELECTRONICS,
   ...ENGINEERING,
+  ...MACHINES,
   ...HEAT,
   ...ACOUSTICS,
   ...OTHER,

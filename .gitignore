@@ -11,6 +11,10 @@ src-tauri/gen/schemas/
 public/tesseract/worker.min.js
 public/tesseract/core/
 public/openchemlib/
+public/svgjs/
+public/d3/
+public/anime/
+public/coderun/
 # Built by esp32-helper/ci-build.sh for the Linux installers (GPL; see esp32-helper/README.md).
 src-tauri/resources/esp32/benchtop-esp32*
 src-tauri/resources/esp32/*.bin

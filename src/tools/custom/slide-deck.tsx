@@ -5,7 +5,7 @@
  * presents offline, as Markdown, or as a PDF with one slide per page.
  */
 import { EditorView } from '@codemirror/view';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { DeckFrameApi, SlideInfo } from '../../deck/frame';
 import { extractMath, type MathRenderer } from '../../lib/markdown-doc';
 import {
@@ -33,8 +33,9 @@ import { printDocument } from '../../ui/print';
 import { sanitizeHtml } from '../../ui/sanitize';
 import { attempt, notify } from '../../ui/toast';
 import { defineCustomTool, type Values } from '../types';
-import { usePersistentState } from './_shared';
+import { Segmented, usePersistentState } from './_shared';
 import { loadTex } from './doc-tools';
+import { VisualSlides } from './slide-visual';
 
 interface DeckState {
   readonly markdown: string;
@@ -131,11 +132,13 @@ function SlideDeck({ toolId }: { toolId: string }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [mathReady, setMathReady] = useState(0);
+  const [mode, setMode] = useState<'markdown' | 'visual'>('markdown');
   const view = useRef<EditorView | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const api = useRef<DeckFrameApi | null>(null);
   const math = useRef<MathRenderer | undefined>(undefined);
   const follow = useRef(true);
+  const wanted = useRef<{ h: number; v: number } | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -181,7 +184,13 @@ function SlideDeck({ toolId }: { toolId: string }) {
   useEffect(() => {
     const target = api.current;
     if (!target) return;
-    const timer = setTimeout(() => void target.render(prepared, state.options), 350);
+    const timer = setTimeout(
+      () =>
+        void target.render(prepared, state.options).then(() => {
+          if (wanted.current) target.slideTo(wanted.current.h, wanted.current.v);
+        }),
+      350,
+    );
     return () => clearTimeout(timer);
   }, [prepared, state.options]);
 
@@ -195,6 +204,12 @@ function SlideDeck({ toolId }: { toolId: string }) {
     [],
   );
   const extensions = useMemo(() => [dataUrlChips, cursorSync], [cursorSync]);
+
+  /** The visual editor asks the preview for the slide it is editing, once the preview has caught up with the deck. */
+  const showSlide = useCallback((h: number, v: number) => {
+    wanted.current = { h, v };
+    api.current?.slideTo(h, v);
+  }, []);
 
   const setOption = <K extends keyof DeckOptions>(key: K, value: DeckOptions[K]) => setState((s) => ({ ...s, options: { ...s.options, [key]: value } }));
 
@@ -410,75 +425,102 @@ function SlideDeck({ toolId }: { toolId: string }) {
         ))}
       </div>
       <div class="pane-header deck-toolbar" role="toolbar" aria-label="Insert">
-        {ACTIONS.map((a) => (
+        <Segmented
+          value={mode}
+          label="Edit the slides as"
+          onChange={setMode}
+          choices={[
+            { value: 'markdown', label: 'Markdown' },
+            { value: 'visual', label: 'Visual' },
+          ]}
+        />
+        {mode === 'markdown' &&
+          ACTIONS.map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              class="button button-small md-tool-button"
+              title={a.title}
+              aria-label={spokenName(a.label, a.title)}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => view.current && a.run(view.current)}
+            >
+              {a.label}
+            </button>
+          ))}
+        {mode === 'markdown' && (
           <button
-            key={a.label}
             type="button"
             class="button button-small md-tool-button"
-            title={a.title}
-            aria-label={spokenName(a.label, a.title)}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => view.current && a.run(view.current)}
+            title="Insert pictures (they are embedded in the deck)"
+            onClick={() => attempt(async () => embedPictures(await pickFiles('image/*')))}
           >
-            {a.label}
+            <Icon name="image" size={14} /> Picture
           </button>
-        ))}
-        <button
-          type="button"
-          class="button button-small md-tool-button"
-          title="Insert pictures (they are embedded in the deck)"
-          onClick={() => attempt(async () => embedPictures(await pickFiles('image/*')))}
-        >
-          <Icon name="image" size={14} /> Picture
-        </button>
-        <label class="check deck-follow">
-          <input
-            type="checkbox"
-            defaultChecked
-            onChange={(e) => {
-              follow.current = e.currentTarget.checked;
-            }}
-          />{' '}
-          Preview follows the cursor
-        </label>
+        )}
+        {mode === 'markdown' && (
+          <label class="check deck-follow">
+            <input
+              type="checkbox"
+              defaultChecked
+              onChange={(e) => {
+                follow.current = e.currentTarget.checked;
+              }}
+            />{' '}
+            Preview follows the cursor
+          </label>
+        )}
+        {mode === 'visual' && <span class="tone-muted">Place text, pictures and shapes by hand; the deck stays one Markdown file, and both editors show the same slides.</span>}
       </div>
-      <div class="deck-layout">
-        <div
-          class="pane deck-editor"
-          onPasteCapture={(e) => {
-            const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'));
-            if (files.length) {
-              e.preventDefault();
-              void attempt(() => embedPictures(files));
-            }
-          }}
-          onDropCapture={(e) => {
-            const files = [...(e.dataTransfer?.files ?? [])];
-            if (files.some((f) => f.type.startsWith('image/'))) {
-              e.preventDefault();
-              e.stopPropagation();
-              void attempt(() => embedPictures(files));
-            } else if (files[0]) {
-              e.preventDefault();
-              e.stopPropagation();
-              void attempt(() => openFile(files[0] as File));
-            }
-          }}
-        >
-          <div class="pane-body">
-            <CodeEditor
-              value={state.markdown}
+      <div class={`deck-layout${mode === 'visual' ? ' is-visual' : ''}`}>
+        {mode === 'visual' ? (
+          <div class="pane deck-editor deck-visual">
+            <VisualSlides
+              markdown={state.markdown}
+              size={{ width: SIZES[state.options.size][0], height: SIZES[state.options.size][1] }}
+              theme={state.options.theme}
               onChange={(markdown) => setState((s) => ({ ...s, markdown }))}
-              language="markdown"
-              wrap
-              label="Slides in Markdown"
-              testId="deck-editor"
-              viewRef={view}
-              extensions={extensions}
-              placeholder="Write slides in Markdown, with --- on its own line between slides"
+              onShow={showSlide}
             />
           </div>
-        </div>
+        ) : (
+          <div
+            class="pane deck-editor"
+            onPasteCapture={(e) => {
+              const files = [...(e.clipboardData?.files ?? [])].filter((f) => f.type.startsWith('image/'));
+              if (files.length) {
+                e.preventDefault();
+                void attempt(() => embedPictures(files));
+              }
+            }}
+            onDropCapture={(e) => {
+              const files = [...(e.dataTransfer?.files ?? [])];
+              if (files.some((f) => f.type.startsWith('image/'))) {
+                e.preventDefault();
+                e.stopPropagation();
+                void attempt(() => embedPictures(files));
+              } else if (files[0]) {
+                e.preventDefault();
+                e.stopPropagation();
+                void attempt(() => openFile(files[0] as File));
+              }
+            }}
+          >
+            <div class="pane-body">
+              <CodeEditor
+                value={state.markdown}
+                onChange={(markdown) => setState((s) => ({ ...s, markdown }))}
+                language="markdown"
+                wrap
+                label="Slides in Markdown"
+                testId="deck-editor"
+                viewRef={view}
+                extensions={extensions}
+                placeholder="Write slides in Markdown, with --- on its own line between slides"
+              />
+            </div>
+          </div>
+        )}
         <div class="deck-side">
           <div class="deck-stage" style={{ aspectRatio: `${width} / ${height}` }}>
             <iframe ref={frame} src="./deck.html" title="Slide preview" class="deck-frame" allow="fullscreen" onLoad={connect} data-testid="deck-frame" />

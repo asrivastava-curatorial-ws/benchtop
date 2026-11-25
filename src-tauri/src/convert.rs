@@ -50,6 +50,10 @@ pub(crate) const PROGRAMS: &[(&str, &[&str])] = &[
     ("qpdf", &["qpdf"]),
     ("ghostscript", &["gs", "gswin64c", "gswin32c"]),
     ("espeak", &["espeak-ng"]),
+    // MuPDF's command line: XPS and OpenXPS to PDF.
+    ("mutool", &["mutool"]),
+    // libarchive's tar (not GNU tar): reads RAR, 7z, TAR, CAB, ISO and more, and writes ZIP and 7z.
+    ("bsdtar", &["bsdtar"]),
 ];
 
 fn known_locations(id: &str) -> Vec<PathBuf> {
@@ -61,6 +65,8 @@ fn known_locations(id: &str) -> Vec<PathBuf> {
             }
             "inkscape" => list.push("/Applications/Inkscape.app/Contents/MacOS/inkscape".into()),
             "calibre" => list.push("/Applications/calibre.app/Contents/MacOS/ebook-convert".into()),
+            // The system's tar is bsdtar.
+            "bsdtar" => list.push("/usr/bin/bsdtar".into()),
             _ => {}
         }
         for prefix in ["/opt/homebrew/bin", "/usr/local/bin"] {
@@ -72,6 +78,12 @@ fn known_locations(id: &str) -> Vec<PathBuf> {
         }
     }
     if cfg!(target_os = "windows") {
+        // Windows 10 and later come with libarchive's tar.
+        if id == "bsdtar" {
+            if let Some(root) = std::env::var_os("SystemRoot") {
+                list.push(PathBuf::from(root).join("System32").join("tar.exe"));
+            }
+        }
         for base in [
             std::env::var_os("ProgramFiles"),
             std::env::var_os("ProgramFiles(x86)"),
@@ -294,6 +306,42 @@ fn probe(path: &Path) -> Probe {
         }
     }
     result
+}
+
+/// "#1f6feb" or "1F6FEB" as six lower-case hex digits.
+fn hex_colour(text: &str) -> Option<String> {
+    let digits = text.trim().trim_start_matches('#');
+    (digits.len() == 6 && digits.chars().all(|c| c.is_ascii_hexdigit()))
+        .then(|| digits.to_ascii_lowercase())
+}
+
+/// A frame rate FFprobe reports ("30000/1001") if it is a plain, sensible fraction.
+fn sensible_rate(text: &str) -> Option<String> {
+    let (top, bottom) = text.trim().split_once('/')?;
+    let (n, d): (u64, u64) = (top.parse().ok()?, bottom.parse().ok()?);
+    let rate = n as f64 / d.max(1) as f64;
+    (d > 0 && (1.0..=240.0).contains(&rate)).then(|| format!("{n}/{d}"))
+}
+
+/// The frame rate of a video's first picture stream.
+fn frame_rate(path: &Path) -> Option<String> {
+    let ffprobe = find_program("ffprobe")?;
+    let output = command(&ffprobe)
+        .args([
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=r_frame_rate",
+            "-of",
+            "csv=p=0",
+        ])
+        .arg(path)
+        .stdin(Stdio::null())
+        .output()
+        .ok()?;
+    sensible_rate(String::from_utf8_lossy(&output.stdout).lines().next()?)
 }
 
 fn need(id: &str, name: &str) -> Result<PathBuf, String> {
@@ -781,6 +829,190 @@ pub(crate) fn plan(recipe: &str, inputs: &[PathBuf], o: &Value) -> Result<Plan, 
             args.extend(os(&["-c:a", "copy", "-movflags", "+faststart"]));
             ffmpeg(args, "mp4", " (watermarked)", p.duration)
         }
+        "video-greenscreen" => {
+            // inputs: the picture or video filmed against one colour, then the new background when it is a file.
+            let p = info();
+            let (Some(width), Some(height)) = (p.width, p.height) else {
+                return Err("This file has no picture to work on.".into());
+            };
+            let still = flag(o, "still");
+            // Video encoders want even sizes.
+            let (w, h) = if still {
+                (width, height)
+            } else {
+                ((width / 2 * 2).max(2), (height / 2 * 2).max(2))
+            };
+            let key = hex_colour(text(o, "key", "#00b140"))
+                .ok_or("The colour to remove must look like #00b140.")?;
+            let similarity = number(o, "similarity", 0.15, 0.00001, 1.0);
+            let blend = number(o, "blend", 0.05, 0.0, 1.0);
+            let spill = number(o, "spill", 0.0, 0.0, 1.0);
+            let scale = number(o, "scale", 1.0, 0.05, 4.0);
+            let dx = number(o, "x", 0.0, -1.0, 1.0);
+            let dy = number(o, "y", 0.0, -1.0, 1.0);
+            let background = choice(o, "background", &["none", "colour", "image", "video"]);
+            if matches!(background, "image" | "video") && inputs.len() < 2 {
+                return Err("Choose the new background too.".into());
+            }
+            let to = if still {
+                choice(o, "to", &["png", "jpg"])
+            } else {
+                choice(o, "to", &["mp4", "webm", "webm-alpha", "mov-alpha"])
+            };
+            let clear = background == "none";
+            if clear && matches!(to, "jpg" | "mp4" | "webm") {
+                return Err("Without a background the result is see-through: choose a background, or save as PNG, WebM with transparency or MOV.".into());
+            }
+            let rate = if still {
+                "25".to_string()
+            } else {
+                frame_rate(first).unwrap_or_else(|| "25".into())
+            };
+            let mut subject = format!("[0:v]chromakey=0x{key}:{similarity:.5}:{blend:.5}");
+            if spill > 0.001 {
+                // The key colour's own tint on the edges of the subject is taken down.
+                subject += &if choice(o, "spillType", &["green", "blue"]) == "blue" {
+                    format!(",despill=type=blue:mix=0.5:expand=0:green=0:blue=-{spill:.3}")
+                } else {
+                    format!(",despill=type=green:mix=0.5:expand=0:green=-{spill:.3}")
+                };
+            }
+            if (scale - 1.0).abs() > 0.001 {
+                subject += &format!(",scale=w='max(2,trunc(iw*{scale:.4}/2)*2)':h='max(2,trunc(ih*{scale:.4}/2)*2)'");
+            }
+            let program = need("ffmpeg", "FFmpeg")?;
+            let mut args = os(&["-hide_banner", "-nostdin", "-y", "-loglevel", "error"]);
+            if !still {
+                args.extend(os(&["-progress", "pipe:1", "-nostats"]));
+            }
+            args.push("-i".into());
+            args.push(first.into());
+            let filter = if clear {
+                let format = if still {
+                    "format=rgba"
+                } else if to == "mov-alpha" {
+                    "scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuva444p10le"
+                } else {
+                    "scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuva420p"
+                };
+                format!("{subject},{format}[v]")
+            } else {
+                let behind = if background == "colour" {
+                    let colour = hex_colour(text(o, "colour", "#000000"))
+                        .ok_or("The background colour must look like #1f6feb.")?;
+                    format!("color=c=0x{colour}:s={w}x{h}:r={rate}[bg]")
+                } else {
+                    if background == "image" {
+                        // A picture lasts as long as the video does, at the video's own frame rate.
+                        args.extend(os(&["-loop", "1", "-framerate", &rate]));
+                    } else if !still {
+                        // A shorter background video starts again.
+                        args.extend(os(&["-stream_loop", "-1"]));
+                    }
+                    args.push("-i".into());
+                    args.push((&inputs[1]).into());
+                    let fitted = match choice(o, "fit", &["cover", "contain", "stretch"]) {
+                        "contain" => format!("scale={w}:{h}:force_original_aspect_ratio=decrease,pad={w}:{h}:(ow-iw)/2:(oh-ih)/2:color=black"),
+                        "stretch" => format!("scale={w}:{h}"),
+                        _ => format!("scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"),
+                    };
+                    let paced = if background == "video" && !still {
+                        format!(",fps={rate}")
+                    } else {
+                        String::new()
+                    };
+                    format!("[1:v]{fitted},setsar=1{paced}[bg]")
+                };
+                let format = if still { "rgb24" } else { "yuv420p" };
+                format!("{behind};{subject}[fg];[bg][fg]overlay=x='(W-w)/2+{dx:.4}*W':y='(H-h)/2+{dy:.4}*H':shortest=1:format=auto,format={format}[v]")
+            };
+            args.extend(os(&["-filter_complex", &filter, "-map", "[v]"]));
+            let ext = if still {
+                args.extend(os(&["-frames:v", "1", "-update", "1"]));
+                if to == "jpg" {
+                    args.extend(os(&["-q:v", "2"]));
+                }
+                to
+            } else {
+                match choice(o, "audio", &["foreground", "background", "none"]) {
+                    "background" if background == "video" => args.extend(os(&["-map", "1:a?"])),
+                    "none" => args.push("-an".into()),
+                    "background" => args.push("-an".into()),
+                    _ => args.extend(os(&["-map", "0:a?"])),
+                }
+                // The result is as long as the subject's video, whatever the background's length.
+                match p.duration {
+                    Some(length) if length > 0.0 => args.extend(os(&["-t", &secs(length)])),
+                    _ => args.push("-shortest".into()),
+                }
+                match to {
+                    "mov-alpha" => {
+                        args.extend(os(&[
+                            "-c:v",
+                            "prores_ks",
+                            "-profile:v",
+                            "4444",
+                            "-pix_fmt",
+                            "yuva444p10le",
+                            "-c:a",
+                            "pcm_s16le",
+                        ]));
+                        "mov"
+                    }
+                    "webm-alpha" if clear => {
+                        args.extend(os(&[
+                            "-c:v",
+                            "libvpx-vp9",
+                            "-pix_fmt",
+                            "yuva420p",
+                            "-crf",
+                            "30",
+                            "-b:v",
+                            "0",
+                            "-row-mt",
+                            "1",
+                            "-auto-alt-ref",
+                            "0",
+                        ]));
+                        args.extend(audio_codec("webm", 160));
+                        "webm"
+                    }
+                    "webm" | "webm-alpha" => {
+                        args.extend(video_codec("webm", 30.0, "medium"));
+                        args.extend(audio_codec("webm", 160));
+                        "webm"
+                    }
+                    _ => {
+                        args.extend(video_codec(
+                            "mp4",
+                            number(o, "crf", 20.0, 0.0, 51.0),
+                            "veryfast",
+                        ));
+                        args.extend(audio_codec("mp4", 192));
+                        args.extend(os(&["-movflags", "+faststart"]));
+                        "mp4"
+                    }
+                }
+            };
+            Ok(Plan {
+                program,
+                args: finish(args),
+                ext: ext.into(),
+                suffix: if clear {
+                    " (keyed)".into()
+                } else {
+                    " (new background)".into()
+                },
+                runner: if still {
+                    Runner::Direct
+                } else {
+                    Runner::Ffmpeg
+                },
+                duration: if still { None } else { p.duration },
+                cwd: None,
+                scratch: None,
+            })
+        }
         "video-dub" => {
             // inputs: the video, the voice-over (WAV), and optionally subtitles (SRT).
             if inputs.len() < 2 {
@@ -1013,9 +1245,13 @@ pub(crate) fn plan(recipe: &str, inputs: &[PathBuf], o: &Value) -> Result<Plan, 
                 "to",
                 &[
                     "pdf", "docx", "odt", "rtf", "txt", "html", "xlsx", "ods", "csv", "pptx",
-                    "odp", "png",
+                    "odp", "png", "svg", "odg",
                 ],
             );
+            let from_pdf = first
+                .extension()
+                .and_then(|e| e.to_str())
+                .is_some_and(|e| e.eq_ignore_ascii_case("pdf"));
             let filter = match to {
                 "txt" => "txt:Text (encoded):UTF8".to_string(),
                 "csv" => "csv:Text - txt - csv (StarCalc):44,34,76,1".to_string(),
@@ -1029,14 +1265,12 @@ pub(crate) fn plan(recipe: &str, inputs: &[PathBuf], o: &Value) -> Result<Plan, 
                 .map_err(|_| "Could not prepare LibreOffice.".to_string())?;
             let mut args: Vec<OsString> =
                 vec![format!("-env:UserInstallation={profile_url}").into()];
-            args.extend(os(&[
-                "--headless",
-                "--norestore",
-                "--nolockcheck",
-                "--convert-to",
-                &filter,
-                "--outdir",
-            ]));
+            args.extend(os(&["--headless", "--norestore", "--nolockcheck"]));
+            if from_pdf {
+                // PDFs open in Draw by default; Writer's importer turns their text into editable text.
+                args.push("--infilter=writer_pdf_import".into());
+            }
+            args.extend(os(&["--convert-to", &filter, "--outdir"]));
             args.push(scratch.join("out").into());
             args.push(first.into());
             let stem = first
@@ -1205,6 +1439,95 @@ pub(crate) fn plan(recipe: &str, inputs: &[PathBuf], o: &Value) -> Result<Plan, 
                 scratch: None,
             })
         }
+        "postscript" => {
+            // PostScript and EPS with Ghostscript; EPS pages are cut to the drawing's own box.
+            let program = need("ghostscript", "Ghostscript")?;
+            let to = choice(o, "to", &["pdf", "png"]);
+            let eps = first
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(str::to_lowercase)
+                .is_some_and(|e| matches!(e.as_str(), "eps" | "epsi" | "epsf"));
+            let mut args = os(&["-dNOPAUSE", "-dQUIET", "-dBATCH", "-dSAFER"]);
+            if eps {
+                args.push("-dEPSCrop".into());
+            }
+            if to == "png" {
+                let dpi = number(o, "dpi", 150.0, 24.0, 1200.0) as u32;
+                args.extend(os(&[
+                    "-sDEVICE=png16m",
+                    &format!("-r{dpi}"),
+                    "-dFirstPage=1",
+                    "-dLastPage=1",
+                    "-dTextAlphaBits=4",
+                    "-dGraphicsAlphaBits=4",
+                ]));
+            } else {
+                args.extend(os(&["-sDEVICE=pdfwrite", "-dCompatibilityLevel=1.7"]));
+            }
+            let mut out: OsString = "-sOutputFile=".into();
+            out.push(OUT);
+            args.push(out);
+            args.push(first.into());
+            Ok(Plan {
+                program,
+                args,
+                ext: to.into(),
+                suffix: String::new(),
+                runner: Runner::Direct,
+                duration: None,
+                cwd: None,
+                scratch: None,
+            })
+        }
+        "xps" => {
+            // XPS and OpenXPS documents with MuPDF.
+            let program = need("mutool", "MuPDF (mutool)")?;
+            Ok(Plan {
+                program,
+                args: vec![
+                    "convert".into(),
+                    "-F".into(),
+                    "pdf".into(),
+                    "-o".into(),
+                    OUT.into(),
+                    first.into(),
+                ],
+                ext: "pdf".into(),
+                suffix: String::new(),
+                runner: Runner::Direct,
+                duration: None,
+                cwd: None,
+                scratch: None,
+            })
+        }
+        "archive" => {
+            // bsdtar copies every entry of the archive it reads (@archive) into a new one,
+            // without unpacking anything to disk.
+            let program = need("bsdtar", "bsdtar (libarchive)")?;
+            let to = choice(o, "to", &["zip", "7z", "tgz"]);
+            let mut args: Vec<OsString> = vec!["-c".into()];
+            match to {
+                "7z" => args.extend(os(&["--format", "7zip"])),
+                "tgz" => args.extend(os(&["--format", "pax", "-z"])),
+                _ => args.extend(os(&["--format", "zip"])),
+            }
+            args.push("-f".into());
+            args.push(OUT.into());
+            let mut source: OsString = "@".into();
+            source.push(first);
+            args.push(source);
+            Ok(Plan {
+                program,
+                args,
+                ext: if to == "tgz" { "tar.gz" } else { to }.into(),
+                suffix: String::new(),
+                runner: Runner::Direct,
+                duration: None,
+                cwd: None,
+                scratch: None,
+            })
+        }
         /* -------------------------------------------------------- PDF -- */
         "pdf-protect" | "pdf-unlock" | "pdf-optimise" => {
             let program = need("qpdf", "qpdf")?;
@@ -1278,6 +1601,57 @@ pub(crate) fn plan(recipe: &str, inputs: &[PathBuf], o: &Value) -> Result<Plan, 
                 duration: None,
                 cwd: None,
                 scratch: Some(scratch),
+            })
+        }
+        "pdf-repair" => {
+            // qpdf rebuilds a damaged cross-reference table as it reads, and writes a clean file.
+            let program = need("qpdf", "qpdf")?;
+            Ok(Plan {
+                program,
+                args: vec![first.into(), OUT.into()],
+                ext: "pdf".into(),
+                suffix: " (repaired)".into(),
+                runner: Runner::Direct,
+                duration: None,
+                cwd: None,
+                scratch: None,
+            })
+        }
+        "pdf-remove-images" | "pdf-grayscale" => {
+            let program = need("ghostscript", "Ghostscript")?;
+            let mut args = os(&[
+                "-sDEVICE=pdfwrite",
+                "-dNOPAUSE",
+                "-dQUIET",
+                "-dBATCH",
+                "-dSAFER",
+            ]);
+            if recipe == "pdf-remove-images" {
+                args.push("-dFILTERIMAGE".into());
+            } else {
+                args.extend(os(&[
+                    "-sColorConversionStrategy=Gray",
+                    "-dProcessColorModel=/DeviceGray",
+                    "-dCompatibilityLevel=1.6",
+                ]));
+            }
+            let mut out: OsString = "-sOutputFile=".into();
+            out.push(OUT);
+            args.push(out);
+            args.push(first.into());
+            Ok(Plan {
+                program,
+                args,
+                ext: "pdf".into(),
+                suffix: if recipe == "pdf-remove-images" {
+                    " (no pictures)".into()
+                } else {
+                    " (grey)".into()
+                },
+                runner: Runner::Direct,
+                duration: None,
+                cwd: None,
+                scratch: None,
             })
         }
         "pdf-compress" => {
@@ -1425,12 +1799,14 @@ pub(crate) fn run_plan(
     output: &Path,
     progress: &dyn Fn(f64),
 ) -> Result<(), String> {
+    // No % in the working name: Ghostscript reads %d in output names as a page number.
     let temp = output.with_file_name(format!(
         ".{}.benchtop-part.{}",
         output
             .file_stem()
             .and_then(|s| s.to_str())
-            .unwrap_or("output"),
+            .unwrap_or("output")
+            .replace('%', "_"),
         plan.ext
     ));
     let target = match plan.runner {
@@ -1547,6 +1923,64 @@ fn program_name(path: &Path) -> String {
         .to_string()
 }
 
+/// The name results are given: the input's, without ".tar" when it was a .tar.gz and the like.
+fn stem_of(path: &Path) -> String {
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("output");
+    if stem.len() > 4 && stem.to_ascii_lowercase().ends_with(".tar") {
+        stem[..stem.len() - 4].to_string()
+    } else {
+        stem.to_string()
+    }
+}
+
+/// Where a result goes: a Save dialog ("ask"), next to the input ("beside") or a folder chosen
+/// once ("folder").  None when the Save dialog was cancelled.
+fn output_for(
+    app: &AppHandle,
+    picked: &PickedFiles,
+    first: &Path,
+    name: &str,
+    ext: &str,
+    destination: &str,
+    folder_token: Option<&str>,
+) -> Result<Option<PathBuf>, String> {
+    // Files dropped on the window are staged copies: their results go to Downloads.
+    let folder = if crate::files::is_staged(first) {
+        dirs::download_dir().unwrap_or_else(std::env::temp_dir)
+    } else {
+        first
+            .parent()
+            .map(Path::to_path_buf)
+            .unwrap_or_else(std::env::temp_dir)
+    };
+    Ok(Some(match destination {
+        "beside" => unique(folder.join(name)),
+        "folder" => {
+            let token = folder_token.ok_or("Choose a folder for the results.")?;
+            let dir = picked.path(token).ok_or("Choose the folder again.")?;
+            unique(dir.join(name))
+        }
+        _ => {
+            // Dialog filters take one extension: "gz" for a .tar.gz.
+            let last = ext.rsplit('.').next().unwrap_or(ext);
+            let chosen = app
+                .dialog()
+                .file()
+                .set_directory(&folder)
+                .set_file_name(name)
+                .add_filter(ext.to_uppercase(), &[last])
+                .blocking_save_file();
+            match chosen {
+                Some(path) => path.into_path().map_err(|e| e.to_string())?,
+                None => return Ok(None),
+            }
+        }
+    }))
+}
+
 #[tauri::command]
 pub async fn convert_run(
     app: AppHandle,
@@ -1571,48 +2005,22 @@ pub async fn convert_run(
             .map_err(|e| e.to_string())??
     };
     let first = inputs.first().ok_or("Choose a file first.")?;
-    let stem = first
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("output");
+    let stem = stem_of(first);
     let name = format!("{stem}{}.{}", plan.suffix, plan.ext);
-    // Files dropped on the window are staged copies: their results go to Downloads.
-    let folder = if crate::files::is_staged(first) {
-        dirs::download_dir().unwrap_or_else(std::env::temp_dir)
-    } else {
-        first
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_else(std::env::temp_dir)
-    };
-    let output = match job.destination.as_str() {
-        "beside" => unique(folder.join(&name)),
-        "folder" => {
-            let token = job
-                .folder
-                .as_deref()
-                .ok_or("Choose a folder for the results.")?;
-            let dir = picked.path(token).ok_or("Choose the folder again.")?;
-            unique(dir.join(&name))
+    let Some(output) = output_for(
+        &app,
+        &picked,
+        first,
+        &name,
+        &plan.ext,
+        job.destination.as_str(),
+        job.folder.as_deref(),
+    )?
+    else {
+        if let Some(scratch) = &plan.scratch {
+            let _ = std::fs::remove_dir_all(scratch);
         }
-        _ => {
-            let chosen = app
-                .dialog()
-                .file()
-                .set_directory(&folder)
-                .set_file_name(&name)
-                .add_filter(plan.ext.to_uppercase(), &[plan.ext.as_str()])
-                .blocking_save_file();
-            match chosen {
-                Some(path) => path.into_path().map_err(|e| e.to_string())?,
-                None => {
-                    if let Some(scratch) = &plan.scratch {
-                        let _ = std::fs::remove_dir_all(scratch);
-                    }
-                    return Ok(json!({"cancelled": true}));
-                }
-            }
-        }
+        return Ok(json!({"cancelled": true}));
     };
     let state_app = app.clone();
     let job_id = job.id.clone();
@@ -1659,12 +2067,124 @@ pub fn convert_cancel(id: String, state: State<'_, ConvertState>) {
     }
 }
 
+/// The bytes of a chosen file, for conversions done in the page (e-mail, tracing, HEIC, TAR).
+#[tauri::command]
+pub async fn convert_read(
+    token: String,
+    picked: State<'_, PickedFiles>,
+) -> Result<tauri::ipc::Response, String> {
+    let path = picked
+        .path(&token)
+        .ok_or("Choose the file again; this one is no longer available.")?;
+    let size = std::fs::metadata(&path)
+        .map(|m| m.len())
+        .map_err(|e| format!("Could not read the file: {e}"))?;
+    if size > 512 * 1024 * 1024 {
+        return Err("This file is over 512 MB, too large to convert in the app.".into());
+    }
+    let bytes = tauri::async_runtime::spawn_blocking(move || std::fs::read(&path))
+        .await
+        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("Could not read the file: {e}"))?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SaveRequest {
+    /// Token of the file the result was made from (its name and folder are used).
+    pub input: String,
+    pub ext: String,
+    #[serde(default)]
+    pub suffix: String,
+    #[serde(default)]
+    pub destination: String,
+    #[serde(default)]
+    pub folder: Option<String>,
+}
+
+/// Saves a result made in the page the way conversions are saved: the bytes are the
+/// request body, the request (JSON, URI-encoded) the x-save header.
+#[tauri::command]
+pub async fn convert_save(
+    app: AppHandle,
+    request: tauri::ipc::Request<'_>,
+    picked: State<'_, PickedFiles>,
+) -> Result<Value, String> {
+    let header = request
+        .headers()
+        .get("x-save")
+        .and_then(|value| value.to_str().ok())
+        .map(|value| {
+            percent_encoding::percent_decode_str(value)
+                .decode_utf8_lossy()
+                .into_owned()
+        })
+        .ok_or("Missing request.")?;
+    let save: SaveRequest =
+        serde_json::from_str(&header).map_err(|error| format!("Bad request: {error}"))?;
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("The result did not arrive.".into());
+    };
+    let ext: String = save
+        .ext
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '.')
+        .take(12)
+        .collect::<String>()
+        .trim_matches('.')
+        .to_lowercase();
+    if ext.is_empty() {
+        return Err("The result has no file type.".into());
+    }
+    let suffix: String = save
+        .suffix
+        .chars()
+        .filter(|c| !c.is_control() && !"<>:\"/\\|?*".contains(*c))
+        .take(60)
+        .collect();
+    let first = picked
+        .path(&save.input)
+        .ok_or("Choose the file again; this one is no longer available.")?;
+    let stem = stem_of(&first);
+    let name = format!("{stem}{suffix}.{ext}");
+    let Some(output) = output_for(
+        &app,
+        &picked,
+        &first,
+        &name,
+        &ext,
+        &save.destination,
+        save.folder.as_deref(),
+    )?
+    else {
+        return Ok(json!({"cancelled": true}));
+    };
+    std::fs::write(&output, bytes)
+        .map_err(|e| format!("Could not save {}: {e}", output.display()))?;
+    let token = picked.register(output.clone());
+    Ok(json!({
+        "path": output.to_string_lossy(),
+        "name": output.file_name().and_then(|n| n.to_str()).unwrap_or_default(),
+        "size": bytes.len(),
+        "token": token,
+    }))
+}
+
 /// A folder for batch results, chosen once; the page gets a token for it.
 #[tauri::command]
 pub async fn convert_pick_folder(
     app: AppHandle,
     picked: State<'_, PickedFiles>,
 ) -> Result<Option<Value>, String> {
+    // The desktop tests cannot answer the system's folder dialog; they name the folder
+    // in the environment of the app they start.
+    if let Some(path) = std::env::var_os("BENCHTOP_TEST_FOLDER")
+        .map(PathBuf::from)
+        .filter(|path| path.is_dir())
+    {
+        let name = path.to_string_lossy().into_owned();
+        return Ok(Some(json!({"token": picked.register(path), "path": name})));
+    }
     let Some(folder) = app.dialog().file().blocking_pick_folder() else {
         return Ok(None);
     };
@@ -1775,11 +2295,16 @@ pub async fn convert_frame(
 #[tauri::command]
 pub fn convert_reveal(token: String, picked: State<'_, PickedFiles>) -> Result<(), String> {
     let path = picked.path(&token).ok_or("That file is no longer known.")?;
+    reveal_path(&path)
+}
+
+/// Shows a file in the system's file manager.
+pub(crate) fn reveal_path(path: &Path) -> Result<(), String> {
     let result = if cfg!(target_os = "macos") {
-        Command::new("open").arg("-R").arg(&path).spawn()
+        Command::new("open").arg("-R").arg(path).spawn()
     } else if cfg!(target_os = "windows") {
         let mut select: OsString = "/select,".into();
-        select.push(&path);
+        select.push(path);
         Command::new("explorer").arg(select).spawn()
     } else {
         Command::new("xdg-open")
@@ -1812,6 +2337,14 @@ mod tests {
         assert_eq!(colour(&json!({"c": "red;x"}), "c", "#000000"), "000000");
         assert_eq!(atempo(4.0), "atempo=2.0,atempo=2.0000");
         assert_eq!(atempo(0.25), "atempo=0.5,atempo=0.5000");
+    }
+
+    #[test]
+    fn results_drop_tar_from_archive_names() {
+        assert_eq!(stem_of(Path::new("/tmp/photos.tar.gz")), "photos");
+        assert_eq!(stem_of(Path::new("/tmp/photos.TAR.bz2")), "photos");
+        assert_eq!(stem_of(Path::new("/tmp/report.pdf")), "report");
+        assert_eq!(stem_of(Path::new("/tmp/.tar.gz")), ".tar");
     }
 
     #[test]
@@ -2125,6 +2658,125 @@ mod tests {
             json!({"position": "top-left"}),
             "mp4",
         );
+        // Green screen: a red square on a green field, with the green replaced or made see-through.
+        let green = dir.join("green.mp4");
+        let green_png = dir.join("green.png");
+        for (target, extra) in [
+            (&green, vec!["-pix_fmt", "yuv420p"]),
+            (&green_png, vec!["-frames:v", "1"]),
+        ] {
+            assert!(Command::new(&ffmpeg)
+                .args([
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-f",
+                    "lavfi",
+                    "-i",
+                    "color=c=0x00b140:s=160x120:r=10:d=1",
+                    "-vf",
+                    "drawbox=x=60:y=40:w=40:h=40:color=red:t=fill"
+                ])
+                .args(extra)
+                .arg("-y")
+                .arg(target)
+                .status()
+                .unwrap()
+                .success());
+        }
+        // One frame of a result as RGBA bytes, to look at single pixels.
+        let pixel = |path: &Path, x: usize, y: usize| -> [u8; 4] {
+            let out = Command::new(&ffmpeg)
+                .args(["-v", "error", "-i"])
+                .arg(path)
+                .args(["-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgba", "-"])
+                .output()
+                .expect("ffmpeg");
+            let at = (y * 160 + x) * 4;
+            out.stdout[at..at + 4].try_into().expect("pixel")
+        };
+        let keyed = json!({"key": "#00b140", "similarity": 0.2, "blend": 0.05, "spill": 0.5, "background": "colour", "colour": "#0000ff"});
+        let blue = check(
+            "video-greenscreen",
+            vec![green.clone()],
+            keyed.clone(),
+            "mp4",
+        );
+        let (field, square) = (pixel(&blue, 10, 10), pixel(&blue, 80, 60));
+        assert!(
+            field[2] > 200 && field[1] < 60 && field[0] < 60,
+            "the green field became {field:?}"
+        );
+        assert!(
+            square[0] > 180 && square[2] < 80,
+            "the red square became {square:?}"
+        );
+        assert!((length(&blue) - 1.0).abs() < 0.2, "{}", length(&blue));
+        // A picture behind, scaled to cover; the subject at half size moves off-centre with it.
+        let behind = check(
+            "video-greenscreen",
+            vec![green.clone(), logo.clone()],
+            json!({"key": "#00b140", "similarity": 0.2, "background": "image", "fit": "cover", "scale": 0.5, "x": 0.25, "to": "webm"}),
+            "webm",
+        );
+        let (corner, moved) = (pixel(&behind, 10, 10), pixel(&behind, 120, 60));
+        assert!(
+            corner[0] > 180 && corner[1] < 80,
+            "the logo behind is {corner:?}"
+        );
+        assert!(moved[0] > 180, "the square at half size is {moved:?}");
+        check(
+            "video-greenscreen",
+            vec![green.clone(), video.clone()],
+            json!({"key": "#00b140", "background": "video", "audio": "background"}),
+            "mp4",
+        );
+        check(
+            "video-greenscreen",
+            vec![green.clone()],
+            json!({"key": "#00b140", "to": "webm-alpha"}),
+            "webm",
+        );
+        check(
+            "video-greenscreen",
+            vec![green.clone()],
+            json!({"key": "#00b140", "to": "mov-alpha"}),
+            "mov",
+        );
+        // A still keeps its transparency as PNG.
+        let cut = check(
+            "video-greenscreen",
+            vec![green_png.clone()],
+            json!({"key": "#00b140", "similarity": 0.2, "still": true}),
+            "png",
+        );
+        assert_eq!(pixel(&cut, 10, 10)[3], 0, "the field is not see-through");
+        assert_eq!(pixel(&cut, 80, 60)[3], 255, "the square is not solid");
+        check(
+            "video-greenscreen",
+            vec![green_png.clone(), logo.clone()],
+            json!({"key": "#00b140", "still": true, "background": "image", "to": "jpg"}),
+            "jpg",
+        );
+        assert!(plan(
+            "video-greenscreen",
+            std::slice::from_ref(&green),
+            &json!({"to": "mp4"})
+        )
+        .is_err());
+        assert!(plan(
+            "video-greenscreen",
+            std::slice::from_ref(&green),
+            &json!({"key": "green; rm", "background": "colour"})
+        )
+        .is_err());
+        assert!(plan(
+            "video-greenscreen",
+            std::slice::from_ref(&green),
+            &json!({"background": "image"})
+        )
+        .is_err());
+
         let srt = dir.join("subs.srt");
         std::fs::write(&srt, "1\n00:00:00,000 --> 00:00:01,500\nHello\n").unwrap();
         check(
@@ -2194,7 +2846,53 @@ mod tests {
                 String::from_utf8_lossy(&info.stdout).contains("not encrypted"),
                 "pdf-unlock: still encrypted"
             );
-            check("pdf-optimise", vec![pdf], json!({"linearize": true}), "pdf");
+            check(
+                "pdf-optimise",
+                vec![pdf.clone()],
+                json!({"linearize": true}),
+                "pdf",
+            );
+            check("pdf-repair", vec![pdf.clone()], json!({}), "pdf");
+            if find_program("ghostscript").is_some() {
+                check("pdf-grayscale", vec![pdf.clone()], json!({}), "pdf");
+                check("pdf-remove-images", vec![pdf.clone()], json!({}), "pdf");
+            }
+            // A PDF opened in Writer, to edit as a Word document.
+            check("document", vec![pdf], json!({"to": "docx"}), "docx");
+        }
+        if find_program("ghostscript").is_some() {
+            let eps = dir.join("box.eps");
+            std::fs::write(
+                &eps,
+                "%!PS-Adobe-3.0 EPSF-3.0\n%%BoundingBox: 0 0 100 50\nnewpath 10 10 moveto 90 10 lineto 90 40 lineto closepath fill\nshowpage\n",
+            )
+            .unwrap();
+            check("postscript", vec![eps.clone()], json!({"to": "pdf"}), "pdf");
+            check(
+                "postscript",
+                vec![eps],
+                json!({"to": "png", "dpi": 72}),
+                "png",
+            );
+        }
+        if find_program("bsdtar").is_some() {
+            let tar_path = dir.join("files.tar");
+            {
+                let mut builder = tar::Builder::new(std::fs::File::create(&tar_path).unwrap());
+                let data = b"hello";
+                let mut header = tar::Header::new_gnu();
+                header.set_size(data.len() as u64);
+                header.set_mode(0o644);
+                header.set_cksum();
+                builder
+                    .append_data(&mut header, "hello.txt", &data[..])
+                    .unwrap();
+                builder.finish().unwrap();
+            }
+            let zipped = check("archive", vec![tar_path], json!({"to": "zip"}), "zip");
+            let mut archive = zip::ZipArchive::new(std::fs::File::open(zipped).unwrap()).unwrap();
+            assert_eq!(archive.len(), 1);
+            assert_eq!(archive.by_index(0).unwrap().name(), "hello.txt");
         }
         let _ = std::fs::remove_dir_all(&dir);
     }
