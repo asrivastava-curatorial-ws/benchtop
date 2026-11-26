@@ -13960,6 +13960,9 @@ button.nt-file-card:hover {
 .indic-problem {
   margin: 0;
   font-size: 13px;
+  /* The cause, then what to try, on its own line. */
+  white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 /* ------------------------------------------------------- Slide Deck -- */
@@ -26067,8 +26070,8 @@ rect.rd-selection,
 
 /* -------------------------------------------------------- text translator -- */
 
+/* A column whose panes take the spare height; the bars and notes keep their own. */
 .tr {
-  display: grid;
   gap: 12px;
 }
 
@@ -26089,6 +26092,7 @@ rect.rd-selection,
 }
 
 .tr-panes {
+  flex: 1 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
@@ -26137,4 +26141,94 @@ rect.rd-selection,
 
 .tr-context .input {
   width: 100%;
+}
+
+/* Typing in a script and converting between scripts. */
+.tr-modes {
+  display: flex;
+}
+
+.tr-check {
+  align-self: center;
+}
+
+.tr-note {
+  margin: 0;
+}
+
+.tr-script {
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.tr-detected {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tr-spellings {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.tr-spelling-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.tr-spelling-word {
+  min-width: 8ch;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.tr-keyboard {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.tr-key-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+
+.tr-key {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.tr-key:hover {
+  border-color: var(--accent);
+}
+
+.tr-key:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.tr-key-wide {
+  min-width: 240px;
+  font-size: 13px;
 }

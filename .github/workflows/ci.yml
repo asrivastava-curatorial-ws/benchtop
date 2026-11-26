@@ -17,9 +17,9 @@ jobs:
     name: Web app (lint, types, unit, build, end-to-end)
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
@@ -33,10 +33,11 @@ jobs:
       # Google Chrome is preinstalled on GitHub's Ubuntu runners.
       - run: pnpm test:e2e
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: playwright-report
           path: playwright-report/
+          if-no-files-found: ignore
           retention-days: 7
 
   rust:
@@ -47,24 +48,29 @@ jobs:
         os: [ubuntu-24.04, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Linux packages
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned, so a new Rust release cannot fail Clippy without a change here; raise it together
+      # with fixing whatever lints the newer Clippy adds (and match it locally).
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.97.0
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
       # tauri::generate_context! embeds the web build, so it must exist before compiling.
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+      # Compiler and Clippy messages become annotations on the run, so a failure names its file and line.
+      - run: echo "::add-matcher::.github/matchers/rust.json"
       - name: Format
         working-directory: src-tauri
         run: cargo fmt --check
@@ -80,14 +86,16 @@ jobs:
     needs: [web, rust]
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev webkit2gtk-driver xvfb
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.0
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm

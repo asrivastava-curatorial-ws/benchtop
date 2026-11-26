@@ -33,17 +33,17 @@ folder, readable by your account only, and never exported.
 
 ```js
 export const source = {
-  id: 'my-library',            // 2–41 lower-case letters, digits or dashes; names its keys and settings
+  id: 'my-library', // 2–41 lower-case letters, digits or dashes; names its keys and settings
   name: 'My library',
   about: 'What it has, in a sentence.',
   homepage: 'https://example.org',
   terms: 'https://example.org/terms',
-  types: ['image'],            // image, video, video3d, audio, text, model, texture, icon, font
+  types: ['image'], // image, video, video3d, audio, text, model, texture, icon, font
   hosts: ['api.example.org'],
-  settings: { api: 'https://api.example.org/v1' },   // editable on the Sources tab
+  settings: { api: 'https://api.example.org/v1' }, // editable on the Sources tab
   keys: [{ id: 'key', label: 'API key', optional: false, help: 'Where to get it.' }],
   signup: 'https://example.org/developers',
-  stock: false,                // true for stock-photo licences (asked only when stock libraries are on)
+  stock: false, // true for stock-photo licences (asked only when stock libraries are on)
 };
 
 export async function search(q, ctx) {
@@ -51,19 +51,29 @@ export async function search(q, ctx) {
   const r = await ctx.get(`${ctx.setting('api')}/search`, { query: { q: q.text, page: q.page }, headers: { Authorization: ctx.key('key') }, cache: 600 });
   return {
     items: r.results.map((x) => ({
-      id: x.id,                 // required
+      id: x.id, // required
       title: x.title,
       type: 'image',
-      creator: x.author, creatorUrl: x.author_url, page: x.url,
-      thumb: x.thumbnail, preview: x.large,
-      description: x.text, date: x.date, deathYear: x.author_died,
-      licence: x.licence_name,  // text, a Creative Commons code, or…
-      licenceUrl: x.licence_url, licenceNote: x.credit,
-      width: x.w, height: x.h, duration: x.seconds, size: x.bytes,
-      tags: x.tags, provider: x.collection,
-      stereo: undefined,        // 'sbs', 'tb', 'anaglyph', '3d', '360' or '180' (otherwise guessed from the title)
-      files: undefined,         // the files, when the search already has them
-      extra: { download: x.download },   // anything files() needs later
+      creator: x.author,
+      creatorUrl: x.author_url,
+      page: x.url,
+      thumb: x.thumbnail,
+      preview: x.large,
+      description: x.text,
+      date: x.date,
+      deathYear: x.author_died,
+      licence: x.licence_name, // text, a Creative Commons code, or…
+      licenceUrl: x.licence_url,
+      licenceNote: x.credit,
+      width: x.w,
+      height: x.h,
+      duration: x.seconds,
+      size: x.bytes,
+      tags: x.tags,
+      provider: x.collection,
+      stereo: undefined, // 'sbs', 'tb', 'anaglyph', '3d', '360' or '180' (otherwise guessed from the title)
+      files: undefined, // the files, when the search already has them
+      extra: { download: x.download }, // anything files() needs later
     })),
     total: r.count,
     more: !!r.next,
@@ -87,16 +97,16 @@ export async function prepare(item, file, ctx) {
 
 ## `ctx`
 
-| Call | Does |
-| --- | --- |
-| `ctx.get(url, { query, headers, cache, as })` | GET; `query` values may be arrays; `cache` keeps the answer for that many seconds; `as`: `'json'` (default), `'text'` or `'raw'` (`{ status, headers, text }`). Throws on 400 and above. |
-| `ctx.post(url, { form, json, body, headers })` | POST a form, JSON or a string. |
-| `ctx.request(url, options)` | Any method; resolves `{ status, headers, text }` without throwing. |
-| `ctx.key(name)`, `ctx.setting(name)` | A key from the Sources tab; a setting (yours or the connector's own). |
-| `ctx.text(html, max)`, `ctx.clip(s, n)` | HTML to plain text; shorten with an ellipsis. |
-| `ctx.https(url)`, `ctx.year(s)` | `http:` and `//` links to `https:`; the first year in a string. |
-| `ctx.mapLimit(items, n, fn)` | Run `fn` over items, `n` at a time; a failure leaves `undefined` and a log line. |
-| `ctx.log(...)` | A line in the Sources tab's request log. |
+| Call                                           | Does                                                                                                                                                                                     |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ctx.get(url, { query, headers, cache, as })`  | GET; `query` values may be arrays; `cache` keeps the answer for that many seconds; `as`: `'json'` (default), `'text'` or `'raw'` (`{ status, headers, text }`). Throws on 400 and above. |
+| `ctx.post(url, { form, json, body, headers })` | POST a form, JSON or a string.                                                                                                                                                           |
+| `ctx.request(url, options)`                    | Any method; resolves `{ status, headers, text }` without throwing.                                                                                                                       |
+| `ctx.key(name)`, `ctx.setting(name)`           | A key from the Sources tab; a setting (yours or the connector's own).                                                                                                                    |
+| `ctx.text(html, max)`, `ctx.clip(s, n)`        | HTML to plain text; shorten with an ellipsis.                                                                                                                                            |
+| `ctx.https(url)`, `ctx.year(s)`                | `http:` and `//` links to `https:`; the first year in a string.                                                                                                                          |
+| `ctx.mapLimit(items, n, fn)`                   | Run `fn` over items, `n` at a time; a failure leaves `undefined` and a log line.                                                                                                         |
+| `ctx.log(...)`                                 | A line in the Sources tab's request log.                                                                                                                                                 |
 
 Licences are read from what the library writes: Creative Commons links, codes
 (`by-nc-sa`) and names (`CC BY-SA 4.0`, `Attribution-NonCommercial`), CC0 and

@@ -1,10 +1,12 @@
 //! IndicTrans2 on this computer, set up with one click for the Video Dubbing tool.
 //!
-//! Setup downloads uv (pinned by SHA-256, see `catalog::uv_item`), which fetches a
-//! private Python and installs PyTorch, Transformers and the text-processing packages
-//! into `<app data>/indictrans2`; then the two IndicTrans2 models come from Hugging
-//! Face into the same folder.  Nothing is installed system-wide, and removing the
-//! folder removes everything.
+//! Setup downloads uv (pinned by SHA-256, see `catalog::uv_item`), which makes a private
+//! environment from this computer's Python 3.10–3.12 (or fetches a private 3.12 when there
+//! is none) and installs PyTorch, Transformers and the text-processing packages into
+//! `<app data>/indictrans2`; then the models come from Hugging Face into the same folder.
+//! Nothing is installed system-wide, and removing the folder removes everything.  Both uv
+//! and the downloads in Python trust the system's certificates, as Benchtop's own
+//! downloads do, so networks that inspect secure connections work too.
 //!
 //! Serving runs the bundled server script there, on 127.0.0.1, with Hugging Face
 //! switched to offline mode.  The server stops when Benchtop does: it watches its
@@ -22,6 +24,10 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 pub const SERVER_SCRIPT: &str = include_str!("../../scripts/indictrans2-server.py");
+/// The Pythons the environment can be made from: this computer's own when it has one of
+/// these, so nothing is downloaded for it; otherwise uv fetches a private `PYTHON_VERSION`.
+/// (3.13 is left out: sentencepiece 0.2.0 has no ready-made package for it.)
+pub const PYTHON_REQUEST: &str = ">=3.10,<3.13";
 pub const PYTHON_VERSION: &str = "3.12";
 /// Bumped when the packages change, so an older setup is offered an update.
 pub const SETUP_VERSION: u32 = 1;
@@ -31,6 +37,8 @@ const LIBRARIES: &[&str] = &[
     "sentencepiece==0.2.0",
     "sacremoses==0.1.1",
     "indic-nlp-library-itt==0.1.1",
+    // Lets Python's downloads (Hugging Face) trust the system's certificates.
+    "truststore==0.10.5",
 ];
 pub const DIRECTIONS: &[&str] = &["en-indic", "indic-en"];
 /// Models for many languages the server also runs (any Hugging Face translation
@@ -400,24 +408,143 @@ impl Runner<'_> {
             None => -1,
         };
         if code != 0 && !(partial && code == 3) {
-            let detail = tail
-                .iter()
-                .rev()
-                .find(|line| line.to_lowercase().contains("error"))
-                .or_else(|| tail.back())
-                .cloned()
-                .unwrap_or_default();
-            return Err(format!(
-                "{step} stopped with code {code}{}",
-                if detail.is_empty() {
-                    String::new()
-                } else {
-                    format!(": {detail}")
-                }
-            ));
+            return Err(failure_message(step, code, &tail));
         }
         Ok(code)
     }
+}
+
+/// What a step is called in messages.
+fn step_name(step: &str) -> &str {
+    match step {
+        "python" => "Setting up Python",
+        "torch" => "Installing PyTorch",
+        "libraries" => "Installing the libraries",
+        "models" => "Downloading the models",
+        "finish" => "Tidying up",
+        other => other,
+    }
+}
+
+/// What went wrong, from a program's last lines: uv's "error:" line with every "Caused by:"
+/// under it (the last one usually names the real reason), or else the last line that
+/// mentions an error (a Python traceback ends with one), or else the last line.
+fn failure_detail(tail: &VecDeque<String>) -> String {
+    let lines: Vec<&str> = tail.iter().map(|line| line.trim()).collect();
+    let detail = match lines
+        .iter()
+        .rposition(|line| line.to_ascii_lowercase().starts_with("error:"))
+    {
+        Some(start) => {
+            let mut parts: Vec<String> = vec![shorten_links(lines[start][6..].trim())];
+            for cause in lines[start + 1..]
+                .iter()
+                .filter_map(|line| line.strip_prefix("Caused by:"))
+            {
+                let cause = shorten_links(cause.trim());
+                if !cause.is_empty() && !parts.contains(&cause) {
+                    parts.push(cause);
+                }
+            }
+            parts.retain(|part| !part.is_empty());
+            parts.join(": ")
+        }
+        None => lines
+            .iter()
+            .rev()
+            .find(|line| line.to_ascii_lowercase().contains("error"))
+            .or_else(|| lines.last())
+            .map(|line| shorten_links(line))
+            .unwrap_or_default(),
+    };
+    match detail.char_indices().nth(700) {
+        Some((cut, _)) => format!("{}…", &detail[..cut]),
+        None => detail,
+    }
+}
+
+/// Long web addresses shortened to their site (the setup log keeps them whole).
+fn shorten_links(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("https://").or_else(|| rest.find("http://")) {
+        out.push_str(&rest[..at]);
+        let link = &rest[at..];
+        let end = link
+            .find(|c: char| c.is_whitespace() || matches!(c, ')' | '(' | '"' | '\'' | ','))
+            .unwrap_or(link.len());
+        let (address, after) = link.split_at(end);
+        let scheme = if address.starts_with("https://") {
+            8
+        } else {
+            7
+        };
+        match address[scheme..].find('/') {
+            Some(slash) if address.len() > 60 => {
+                out.push_str(&address[..scheme + slash]);
+                out.push_str("/…");
+            }
+            _ => out.push_str(address),
+        }
+        rest = after;
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Advice for the usual reasons a download fails, judged from the error's words.
+fn network_hint(detail: &str) -> Option<&'static str> {
+    let d = detail.to_ascii_lowercase();
+    let any = |words: &[&str]| words.iter().any(|w| d.contains(w));
+    if any(&[
+        "certificate",
+        "unknownissuer",
+        "self signed",
+        "self-signed",
+        "invalid peer",
+    ]) {
+        Some("The network answered with a certificate this computer does not trust, which happens where a firewall inspects secure connections. Ask the network administrator to install their certificate on this computer (on Ubuntu: copy it to /usr/local/share/ca-certificates and run sudo update-ca-certificates), then try again.")
+    } else if any(&[
+        "dns error",
+        "failed to lookup",
+        "name or service not known",
+        "temporary failure in name resolution",
+        "nodename nor servname",
+        "no such host",
+    ]) {
+        Some("This computer could not look up the download's address. Check the internet connection (or the VPN), then try again.")
+    } else if any(&[
+        "error sending request",
+        "timed out",
+        "connection refused",
+        "connection reset",
+        "connect error",
+        "tunnel",
+        "proxy",
+        "unreachable",
+        "failed to download",
+        "max retries exceeded",
+        "connectionerror",
+    ]) {
+        Some("The download could not get through. If this network needs a proxy, start Benchtop with HTTPS_PROXY set (for example HTTPS_PROXY=http://proxy.example:3128); a firewall may also be blocking github.com, pypi.org, download.pytorch.org or huggingface.co.")
+    } else {
+        None
+    }
+}
+
+/// "<step> stopped (code n): <what went wrong>", and on a new line what to try for network trouble.
+fn failure_message(step: &str, code: i32, tail: &VecDeque<String>) -> String {
+    let detail = failure_detail(tail);
+    let mut message = format!("{} stopped with code {code}", step_name(step));
+    if !detail.is_empty() {
+        message.push_str(": ");
+        message.push_str(&detail);
+    }
+    if let Some(hint) = network_hint(&detail) {
+        message.push('\n');
+        message.push_str(hint);
+    }
+    message
 }
 
 /// Stops a program and, on Unix, everything in its process group.
@@ -439,7 +566,15 @@ fn uv(paths: &Paths, uv_path: &Path) -> Command {
     let mut cmd = command(uv_path);
     cmd.env("UV_CACHE_DIR", paths.cache())
         .env("UV_PYTHON_INSTALL_DIR", paths.pythons())
-        .env("UV_PYTHON_PREFERENCE", "only-managed")
+        // This computer's Python when it has a suitable one; a private copy only otherwise.
+        .env("UV_PYTHON_PREFERENCE", "system")
+        // The system's certificates rather than uv's own list, so a network that inspects
+        // secure connections (with its certificate installed here) works for uv too.
+        .env("UV_NATIVE_TLS", "1")
+        // Patience with slow or unreliable networks: a minute and a half of silence per
+        // read, and a few more tries.
+        .env("UV_HTTP_TIMEOUT", "90")
+        .env("UV_HTTP_RETRIES", "5")
         .env("UV_NO_CONFIG", "1")
         .env("UV_NO_PROGRESS", "1")
         .env_remove("VIRTUAL_ENV")
@@ -448,12 +583,28 @@ fn uv(paths: &Paths, uv_path: &Path) -> Command {
     cmd
 }
 
+/// The Python version an environment was made from, as its pyvenv.cfg records it.
+fn venv_version(venv: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(venv.join("pyvenv.cfg")).ok()?;
+    text.lines().find_map(|line| {
+        let (key, value) = line.split_once('=')?;
+        matches!(key.trim(), "version_info" | "version")
+            .then(|| value.trim().to_string())
+            .filter(|v| !v.is_empty() && v.chars().all(|c| c.is_ascii_digit() || c == '.'))
+    })
+}
+
 /// The Python of the private environment, set up to keep its files in Benchtop's folder.
 fn python(paths: &Paths) -> Command {
     let mut cmd = command(&paths.python());
     cmd.env("HF_HOME", paths.hf())
         .env("HF_HUB_DISABLE_TELEMETRY", "1")
         .env("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+        .env("HF_HUB_DOWNLOAD_TIMEOUT", "60")
+        .env("HF_HUB_ETAG_TIMEOUT", "30")
+        // Plain HTTPS through Python (which trusts the system's certificates) rather than the
+        // separate Xet downloader, which keeps its own list.
+        .env("HF_HUB_DISABLE_XET", "1")
         .env("PYTHONUNBUFFERED", "1")
         .env("PYTHONUTF8", "1")
         .env_remove("PYTHONHOME")
@@ -495,13 +646,18 @@ pub fn run_setup(
     let unknown = AtomicU64::new(0);
 
     if !options.models_only {
-        runner.step("python", &format!("Getting Python {PYTHON_VERSION}"));
+        runner.step(
+            "python",
+            &format!(
+                "Setting up Python (this computer's 3.10–3.12, or a private {PYTHON_VERSION})"
+            ),
+        );
         // A half-made environment from an earlier attempt is started again.
         let _ = std::fs::remove_dir_all(paths.venv());
         let mut cmd = uv(paths, uv_path);
         cmd.arg("venv")
             .arg("--python")
-            .arg(PYTHON_VERSION)
+            .arg(PYTHON_REQUEST)
             .arg(paths.venv());
         runner.run(
             "python",
@@ -627,7 +783,7 @@ pub fn run_setup(
         },
         None => Installed {
             version: SETUP_VERSION,
-            python: PYTHON_VERSION.into(),
+            python: venv_version(&paths.venv()).unwrap_or_else(|| PYTHON_VERSION.into()),
             torch: torch.trim_start_matches("torch==").into(),
             gpu,
             models: ok,
@@ -1057,6 +1213,69 @@ mod tests {
         }
     }
 
+    #[test]
+    fn a_failure_shows_the_whole_cause_and_what_to_try() {
+        let tail = |lines: &[&str]| lines.iter().map(|l| l.to_string()).collect::<VecDeque<_>>();
+        let uv = tail(&[
+            "Using CPython 3.12.12",
+            "error: Failed to install cpython-3.12.12-linux-x86_64-gnu",
+            "  Caused by: Failed to download https://github.com/astral-sh/python-build-standalone/releases/download/20251014/cpython-3.12.12%2B20251014-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz",
+            "  Caused by: Request failed after 5 retries",
+            "  Caused by: error sending request for url (https://github.com/astral-sh/python-build-standalone/releases/download/20251014/cpython-3.12.12%2B20251014-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz)",
+            "  Caused by: client error (Connect)",
+            "  Caused by: invalid peer certificate: UnknownIssuer",
+        ]);
+        let message = failure_message("python", 2, &uv);
+        let (first, hint) = message.split_once('\n').expect("a hint on its own line");
+        assert_eq!(
+            first,
+            "Setting up Python stopped with code 2: Failed to install cpython-3.12.12-linux-x86_64-gnu: Failed to download https://github.com/…: Request failed after 5 retries: error sending request for url (https://github.com/…): client error (Connect): invalid peer certificate: UnknownIssuer"
+        );
+        assert!(hint.contains("update-ca-certificates"), "{hint}");
+
+        let refused = failure_message(
+            "torch",
+            2,
+            &tail(&[
+                "error: Request failed",
+                "  Caused by: tcp connect error: Connection refused (os error 111)",
+            ]),
+        );
+        assert!(refused.contains("HTTPS_PROXY"), "{refused}");
+        let lookup = failure_message(
+            "torch",
+            2,
+            &tail(&[
+                "error: Request failed",
+                "  Caused by: dns error: failed to lookup address information",
+            ]),
+        );
+        assert!(lookup.contains("look up"), "{lookup}");
+
+        // A Python traceback: its last line, and no network advice when it is not about the network.
+        let python = failure_message(
+            "models",
+            1,
+            &tail(&[
+                "Traceback (most recent call last):",
+                "  File \"server.py\", line 9",
+                "ValueError: bad model",
+            ]),
+        );
+        assert_eq!(
+            python,
+            "Downloading the models stopped with code 1: ValueError: bad model"
+        );
+        assert_eq!(
+            failure_message("finish", 4, &VecDeque::new()),
+            "Tidying up stopped with code 4"
+        );
+        assert_eq!(
+            shorten_links("see http://a.example/x"),
+            "see http://a.example/x"
+        );
+    }
+
     /// The whole setup with stand-ins for uv and Python that only record what they were asked.
     #[cfg(unix)]
     #[test]
@@ -1075,7 +1294,7 @@ mod tests {
         std::fs::write(
             &uv,
             format!(
-                "#!/bin/sh\necho \"uv $* | cache=$UV_CACHE_DIR | pythons=$UV_PYTHON_INSTALL_DIR | pref=$UV_PYTHON_PREFERENCE\" >> '{calls}'\nif [ \"$1\" = venv ]; then\n  mkdir -p \"$4/bin\"\n  cat > \"$4/bin/python\" <<'EOF'\n{fake_python}EOF\n  chmod +x \"$4/bin/python\"\nfi\necho 'Resolved 3 packages'\nexit 0\n",
+                "#!/bin/sh\necho \"uv $* | cache=$UV_CACHE_DIR | pythons=$UV_PYTHON_INSTALL_DIR | pref=$UV_PYTHON_PREFERENCE | tls=$UV_NATIVE_TLS\" >> '{calls}'\nif [ \"$1\" = venv ]; then\n  mkdir -p \"$4/bin\"\n  printf 'home = /usr/bin\\nversion_info = 3.11.9\\n' > \"$4/pyvenv.cfg\"\n  cat > \"$4/bin/python\" <<'EOF'\n{fake_python}EOF\n  chmod +x \"$4/bin/python\"\nfi\necho 'Resolved 3 packages'\nexit 0\n",
                 calls = calls.display()
             ),
         )
@@ -1103,6 +1322,10 @@ mod tests {
         .expect("setup");
 
         assert_eq!(installed.models, vec!["en-indic".to_string()]);
+        assert_eq!(
+            installed.python, "3.11.9",
+            "the Python actually used is recorded"
+        );
         assert_eq!(read_installed(&paths), Some(installed));
         assert_eq!(
             std::fs::read_to_string(paths.script()).unwrap(),
@@ -1110,14 +1333,14 @@ mod tests {
         );
         let log = std::fs::read_to_string(&calls).unwrap();
         let root = paths.root.display().to_string();
-        assert!(log.contains(&format!("uv venv --python 3.12 {root}/venv | cache={root}/cache | pythons={root}/python | pref=only-managed")), "{log}");
+        assert!(log.contains(&format!("uv venv --python >=3.10,<3.13 {root}/venv | cache={root}/cache | pythons={root}/python | pref=system | tls=1")), "{log}");
         if cfg!(target_os = "linux") {
             assert!(
                 log.contains("--index-url https://download.pytorch.org/whl/cpu torch==2.6.0"),
                 "{log}"
             );
         }
-        assert!(log.contains("transformers==4.51.3 sentencepiece==0.2.0 sacremoses==0.1.1 indic-nlp-library-itt==0.1.1"), "{log}");
+        assert!(log.contains("transformers==4.51.3 sentencepiece==0.2.0 sacremoses==0.1.1 indic-nlp-library-itt==0.1.1 truststore==0.10.5"), "{log}");
         assert!(
             log.contains("server.py --download en-indic,indic-en"),
             "{log}"
@@ -1198,7 +1421,7 @@ mod tests {
         )
         .unwrap_err();
         assert!(
-            error.contains("code 2") && error.contains("No interpreter found"),
+            error.starts_with("Setting up Python stopped with code 2: No interpreter found"),
             "{error}"
         );
         assert_eq!(read_installed(&paths), None);

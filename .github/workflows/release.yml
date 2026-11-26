@@ -28,14 +28,14 @@ jobs:
             args: --target universal-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Linux packages
         if: runner.os == 'Linux'
         run: >-
           sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
           ninja-build python3-venv libglib2.0-dev libgcrypt20-dev libfdt-dev libslirp-dev
       # The ESP32 emulator for the Circuit Simulator (a separate GPL program; see esp32-helper/README.md).
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         if: runner.os == 'Linux'
         with:
           path: /home/runner/qemu-work
@@ -55,8 +55,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: pnpm

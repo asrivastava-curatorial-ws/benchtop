@@ -340,7 +340,7 @@ Benchtop has 432 tools. All of them work without a network connection except the
 | Text Recognition (OCR) | Read English and Hindi text from pictures and scanned PDFs, and make scans searchable. Works offline, also in a browser. | SnapOtter OCR, Optical Character Recognition |
 | Transcription and Subtitles | Turn speech in English, Hindi and 97 other languages into text, SRT or WebVTT subtitles with Whisper, on this computer; can translate into English. | SnapOtter Transcription |
 | Text to Speech | Read text aloud with Piper voices in English, Hindi, Malayalam and Nepali, on this computer, and save it as WAV. | Piper, online text-to-speech sites |
-| Text Translator | Translate typed text, OCR results, documents and subtitles offline with models on this computer, set up in a click: IndicTrans2 for English and India’s 22 scheduled languages; M2M-100, NLLB-200 or MADLAD-400 for Arabic, Chinese, Japanese, Russian and hundreds more; or any Hugging Face translation model you add. A local chat model such as Ollama works too. Lists, headings and line breaks stay in place, and subtitles keep their times. | Google Translate, Bhashini, DeepL |
+| Text Translator | Translate typed text, OCR results, documents and subtitles offline with models on this computer, set up in a click: IndicTrans2 for English and India’s 22 scheduled languages; M2M-100, NLLB-200 or MADLAD-400 for Arabic, Chinese, Japanese, Russian and hundreds more; or any Hugging Face translation model you add. A local chat model such as Ollama works too. Lists, headings and line breaks stay in place, and subtitles keep their times. It also types Roman letters into the scripts of 35 languages, with on-screen keyboards for 40, and converts any Indian script into another or into IAST, ISO 15919 or ITRANS. | Google Translate, Bhashini, DeepL, Google Input Tools, Aksharamukha |
 | Video Dubbing | Turn a video into another language: transcribe its speech, translate the lines with IndicTrans2 (set up on this computer in one click), another local AI server or by hand, voice them with Piper at the right times, and save subtitles, the voice-over or the video with its new soundtrack. | Media Localiser, online video translators |
 | AI Models | Download, import or remove the AI engine and models the AI tools use, and see their licences and sizes. |  |
 
@@ -608,7 +608,7 @@ Benchtop has 432 tools. All of them work without a network connection except the
 
 ## Coverage of the original web tools
 
-735 web tools map onto Benchtop tools:
+737 web tools map onto Benchtop tools:
 
 | Web tool | Benchtop tool |
 | --- | --- |
@@ -628,6 +628,7 @@ Benchtop has 432 tools. All of them work without a network connection except the
 | AES encryption and decryption | AES Encryption |
 | After Effects (simple motion) | Animation Studio (Theatre.js) |
 | AhaSlides | Live Quiz |
+| Aksharamukha | Text Translator |
 | Analog Devices Filter Wizard | Filter Designer |
 | Android Asset Studio launcher icons | App Icon Maker |
 | Android Asset Studio nine-patch generator | Nine-patch Maker |
@@ -854,6 +855,7 @@ Benchtop has 432 tools. All of them work without a network connection except the
 | glogg / klogg | Log Viewer |
 | Google Fonts downloads | Asset Finder |
 | Google HAR Analyzer | HAR Viewer |
+| Google Input Tools | Text Translator |
 | Google Keep | Notes |
 | Google Slides (simple decks) | Slide Deck (reveal.js) |
 | Google Translate | Text Translator |

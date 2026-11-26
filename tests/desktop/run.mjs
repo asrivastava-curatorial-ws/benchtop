@@ -1247,7 +1247,7 @@ try {
     }
   });
 
-  await check('Text Translator talks to a translation server on this computer and keeps subtitle times', async () => {
+  await check('Text Translator talks to a translation server on this computer, keeps subtitle times and types in Kannada', async () => {
     const { createServer } = await import('node:http');
     const server = createServer((req, res) => {
       let body = '';
@@ -1264,6 +1264,9 @@ try {
     await new Promise((done) => server.listen(0, '127.0.0.1', done));
     try {
       await open('translator');
+      // The translator remembers its last mode; this check starts in Translate.
+      await driver.executeScript("document.querySelector('[data-testid=tr-mode-translate]')?.click()");
+      await driver.wait(async () => driver.executeScript("return !!document.querySelector('[data-testid=tr-server]')"), 10_000, 'no translation settings');
       const set = (selector, value) =>
         driver.executeScript(
           "const box = document.querySelector(arguments[0]); box.value = arguments[1]; box.dispatchEvent(new Event('input', { bubbles: true })); box.dispatchEvent(new Event('change', { bubbles: true }));",
@@ -1278,6 +1281,13 @@ try {
       const output = () => driver.executeScript("return document.querySelector('[data-testid=tr-output]')?.value ?? ''");
       await driver.wait(async () => (await output()).includes('jpn_Jpan: Welcome to the museum.'), 20_000, 'no translation came back');
       if (!(await output()).includes('00:00:01,000 --> 00:00:02,500')) throw new Error(`the times were lost: ${await output()}`);
+      // Typing in a script works offline in the desktop app too.
+      await driver.executeScript("document.querySelector('[data-testid=tr-mode-type]').click()");
+      await driver.wait(async () => driver.executeScript("return !!document.querySelector('[data-testid=tr-type-input]')"), 10_000, 'no typing pane');
+      await set('[data-testid=tr-type-language]', 'kn');
+      await set('[data-testid=tr-type-input]', 'namaskaara');
+      const typed = () => driver.executeScript("return document.querySelector('[data-testid=tr-type-output]')?.value ?? ''");
+      await driver.wait(async () => (await typed()) === 'ನಮಸ್ಕಾರ', 10_000, 'the Kannada did not appear');
     } finally {
       server.close();
     }

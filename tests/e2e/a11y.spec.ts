@@ -287,6 +287,35 @@ for (const theme of ['light', 'dark'] as const) {
 }
 
 for (const theme of ['light', 'dark'] as const) {
+  test(`${theme}: Text Translator has no serious accessibility problems while typing in a script and converting one`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme });
+    await page.goto('/#/tool/translator');
+    const scan = async (where: string) => {
+      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+      const found = results.violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        .map(
+          (v) =>
+            `${where}: ${v.id}: ${v.nodes
+              .slice(0, 4)
+              .map((n) => `${n.target.join(' ')} (${n.failureSummary?.split('\n').slice(1, 2).join(' ')})`)
+              .join('; ')}`,
+        );
+      expect(found, found.join('\n')).toEqual([]);
+    };
+    await page.getByTestId('tr-mode-type').click();
+    await page.getByTestId('tr-type-language').selectOption('ar');
+    await page.getByTestId('tr-type-input').fill('mar7aba, madrasa 12');
+    await page.getByTestId('tr-type-keyboard').click();
+    await expect(page.getByTestId('tr-spellings')).toBeVisible();
+    await expect(page.getByTestId('tr-keyboard')).toBeVisible();
+    await scan('typing');
+    await page.getByTestId('tr-mode-convert').click();
+    await page.getByTestId('tr-convert-input').fill('नमस्ते भारत');
+    await expect(page.getByTestId('tr-convert-output')).not.toHaveValue('');
+    await scan('converting');
+  });
+
   test(`${theme}: Asset Finder has no serious accessibility problems with results, an asset's details, downloads and the connector editor`, async ({ page }) => {
     const answer = JSON.parse(readFileSync(new URL('../fixtures/assets/openverse_images.json', import.meta.url), 'utf8'));
     await page.addInitScript((openverse) => {

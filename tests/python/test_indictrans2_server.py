@@ -133,6 +133,23 @@ class RequestTest(unittest.TestCase):
             server.main(["--download", "fr-de"])
 
 
+class CertificatesTest(unittest.TestCase):
+    def tearDown(self):
+        sys.modules.pop("truststore", None)
+
+    def test_downloads_use_the_system_certificates_when_truststore_is_there(self):
+        calls = []
+        fake = types.ModuleType("truststore")
+        fake.inject_into_ssl = lambda: calls.append("injected")
+        sys.modules["truststore"] = fake
+        self.assertTrue(server.trust_system_certificates())
+        self.assertEqual(calls, ["injected"])
+
+    def test_an_older_setup_without_truststore_still_downloads(self):
+        sys.modules["truststore"] = None  # makes the import fail
+        self.assertFalse(server.trust_system_certificates())
+
+
 class OtherModelsTest(unittest.TestCase):
     """The many-language models: names, kinds and how each is asked for a language."""
 

@@ -27,7 +27,7 @@ import { attempt, notify } from '../../ui/toast';
 
 const STEPS: readonly [string, string][] = [
   ['uv', 'Get the installer (uv)'],
-  ['python', 'Get Python'],
+  ['python', 'Set up Python'],
   ['torch', 'Install PyTorch'],
   ['libraries', 'Install Transformers and the text tools'],
   ['models', 'Download the IndicTrans2 models'],
@@ -249,8 +249,8 @@ export function IndicPanel({
         <>
           <p class="control-help">
             {catalogue
-              ? 'One click downloads a private copy of Python and PyTorch into Benchtop’s own folder (nothing is installed system-wide) and the model you choose; afterwards translation works offline. More models can be added later.'
-              : 'One click sets up AI4Bharat’s IndicTrans2, the best translator for India’s 22 scheduled languages. Benchtop downloads a private copy of Python, PyTorch and the two models (about 2.5 GB, into its own folder, nothing installed system-wide) and afterwards translates offline.'}
+              ? 'One click installs PyTorch into Benchtop’s own folder, using this computer’s Python 3.10–3.12 (or a private copy when it has none), and downloads the model you choose. Nothing is installed system-wide; afterwards translation works offline. More models can be added later.'
+              : 'One click sets up AI4Bharat’s IndicTrans2, the best translator for India’s 22 scheduled languages. Benchtop installs PyTorch and the two models (about 2.5 GB) into its own folder, using this computer’s Python 3.10–3.12 or a private copy, with nothing installed system-wide, and afterwards translates offline.'}
           </p>
           {catalogue && (
             <label class="control">

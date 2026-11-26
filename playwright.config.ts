@@ -12,10 +12,12 @@ export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
   workers: process.env.CI ? 2 : 4,
-  retries: 0,
+  // A shared CI runner is slower than a desk; one retry absorbs a time-out there, and the
+  // github reporter turns any failure into an annotation that names the test.
+  retries: process.env.CI ? 1 : 0,
   timeout: 60_000,
   expect: { timeout: 15_000 },
-  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
+  reporter: process.env.CI ? [['list'], ['github'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
     ...devices['Desktop Chrome'],

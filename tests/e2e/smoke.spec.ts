@@ -3564,6 +3564,14 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
     await page.getByTestId('tr-input').fill('ನಮಸ್ಕಾರ, ವಸ್ತುಸಂಗ್ರಹಾಲಯಕ್ಕೆ ಸ್ವಾಗತ.');
     await expect(page.getByTestId('tr-from').locator('option').first()).toHaveText('Detect (Kannada)');
     await expect(page.getByTestId('tr-translate')).toBeDisabled();
+    // Typing in a script needs no server, so it works in a browser too.
+    await page.getByTestId('tr-mode-type').click();
+    await expect(page.getByTestId('tr-gate')).toHaveCount(0);
+    await page.getByTestId('tr-type-input').fill('namaste, meraa naam abhiShT hai | 2026');
+    await expect(page.getByTestId('tr-type-output')).toHaveValue('नमस्ते, मेरा नाम अभिष्ट है । 2026');
+    await page.getByTestId('tr-type-digits').check();
+    await expect(page.getByTestId('tr-type-output')).toHaveValue('नमस्ते, मेरा नाम अभिष्ट है । २०२६');
+    await expect(page.getByTestId('tool')).toHaveAttribute('data-state', 'done');
   },
   'asset-finder': async (page) => {
     // In a browser the libraries cannot be searched: the page says why, without touching the network.
@@ -4011,6 +4019,64 @@ test('Text Translator keeps the layout and subtitle times, through a stand-in tr
   await expect(page.getByTestId('tr-output')).toHaveValue(/00:00:01,000 --> 00:00:02,000\n\[kan_Knda\] Hello/);
   const saved = await download(page, () => page.getByTestId('tr-save').click());
   expect(saved.toString('utf8')).toContain('[kan_Knda] Hello');
+  expect(problems).toEqual([]);
+});
+
+test('Text Translator types in other scripts, offers other spellings and converts between scripts', async ({ page }) => {
+  const problems = watch(page);
+  await openTool(page, 'translator');
+  await page.getByTestId('tr-mode-type').click();
+
+  // Arabic: short vowels are not written, and the other spellings are a click away.
+  await page.getByTestId('tr-type-language').selectOption('ar');
+  await expect(page.getByTestId('tr-type-note')).toContainText('Arabizi');
+  await page.getByTestId('tr-type-input').fill('mar7aba, madrasa');
+  await expect(page.getByTestId('tr-type-output')).toHaveValue('مرحبا، مدرسا');
+  await expect(page.getByTestId('tr-type-output')).toHaveAttribute('dir', 'rtl');
+  await page.getByTestId('tr-spellings').getByRole('button', { name: 'مدرسة' }).click();
+  await expect(page.getByTestId('tr-type-output')).toHaveValue('مرحبا، مدرسة');
+  await expect(page.getByTestId('tr-spellings').getByRole('button', { name: 'مدرسة' })).toHaveAttribute('aria-pressed', 'true');
+
+  // Korean and Vietnamese have their own rules; {braces} keep a word as typed.
+  await page.getByTestId('tr-type-language').selectOption('ko');
+  await page.getByTestId('tr-type-input').fill('annyeonghaseyo, {Benchtop}');
+  await expect(page.getByTestId('tr-type-output')).toHaveValue('안녕하세요, Benchtop');
+  await page.getByTestId('tr-type-language').selectOption('vi');
+  await page.getByTestId('tr-type-example').click();
+  await expect(page.getByTestId('tr-type-output')).toHaveValue('xin chào, tiếng Việt');
+
+  // The on-screen keyboard types into the Roman box at the caret.
+  await page.getByTestId('tr-type-language').selectOption('hi');
+  await page.getByTestId('tr-type-input').fill('namaste ');
+  await page.getByTestId('tr-type-keyboard').click();
+  await expect(page.getByTestId('tr-keyboard')).toBeVisible();
+  await page.getByTestId('tr-keyboard').getByRole('button', { name: 'भ', exact: true }).click();
+  await page.getByTestId('tr-keyboard').getByRole('button', { name: 'ा', exact: true }).click();
+  await page.getByTestId('tr-type-input').press('End');
+  await page.getByTestId('tr-type-input').pressSequentially('rat');
+  await expect(page.getByTestId('tr-type-output')).toHaveValue('नमस्ते भारत');
+
+  // What was typed can be translated…
+  await page.getByTestId('tr-type-translate').click();
+  await expect(page.getByTestId('tr-mode-translate')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('tr-input')).toHaveValue('नमस्ते भारत');
+  await expect(page.getByTestId('tr-from')).toHaveValue('hi');
+
+  // …or written in another script, or in Roman letters.
+  await page.getByTestId('tr-mode-convert').click();
+  await page.getByTestId('tr-convert-input').fill('नमस्ते भारत');
+  await expect(page.getByTestId('tr-convert-detected')).toContainText('Devanagari');
+  await page.getByTestId('tr-convert-to').selectOption('Kannada');
+  await expect(page.getByTestId('tr-convert-output')).toHaveValue('ನಮಸ್ತೇ ಭಾರತ');
+  await page.getByTestId('tr-convert-swap').click();
+  await expect(page.getByTestId('tr-convert-input')).toHaveValue('ನಮಸ್ತೇ ಭಾರತ');
+  await expect(page.getByTestId('tr-convert-output')).toHaveValue('नमस्ते भारत');
+  await page.getByTestId('tr-convert-to').selectOption('iast');
+  await expect(page.getByTestId('tr-convert-output')).toHaveValue('namaste bhārata');
+  await page.getByTestId('tr-convert-to').selectOption('casual');
+  await expect(page.getByTestId('tr-convert-output')).toHaveValue('namaste bharat');
+  const saved = await download(page, () => page.getByTestId('tr-convert-save').click());
+  expect(saved.toString('utf8')).toBe('namaste bharat');
   expect(problems).toEqual([]);
 });
 

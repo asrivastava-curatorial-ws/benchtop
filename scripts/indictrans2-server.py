@@ -456,8 +456,21 @@ def installed_models():
     return names
 
 
+def trust_system_certificates():
+    """Downloads trust the system's certificates, as Benchtop's own downloads do, so a network
+    that inspects secure connections (with its certificate installed on this computer) works."""
+    try:
+        import truststore
+
+        truststore.inject_into_ssl()
+        return True
+    except Exception:  # an older setup without truststore, or a system it cannot read
+        return False
+
+
 def download(directions):
     """Fetches the models (weights once, not in two formats).  Exit code 3: a model needs a token."""
+    trust_system_certificates()
     from huggingface_hub import HfApi, snapshot_download
 
     api = HfApi()
