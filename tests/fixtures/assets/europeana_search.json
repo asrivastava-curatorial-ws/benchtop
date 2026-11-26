@@ -1,0 +1,34 @@
+{
+  "apikey": "api2demo",
+  "success": true,
+  "itemsCount": 2,
+  "totalResults": 1520,
+  "items": [
+    {
+      "id": "/90402/SK_A_2344",
+      "type": "IMAGE",
+      "title": ["The Milkmaid"],
+      "dcCreator": ["Johannes Vermeer"],
+      "dcDescription": ["A maidservant pours milk"],
+      "edmPreview": ["https://api.europeana.eu/thumbnail/v2/url.json?uri=https%3A%2F%2Flh3.googleusercontent.com%2Fxyz&type=IMAGE"],
+      "edmIsShownBy": ["https://lh3.googleusercontent.com/xyz"],
+      "edmIsShownAt": ["http://www.rijksmuseum.nl/collectie/SK-A-2344"],
+      "rights": ["http://creativecommons.org/publicdomain/mark/1.0/"],
+      "dataProvider": ["Rijksmuseum"],
+      "provider": ["Rijksmuseum"],
+      "guid": "https://www.europeana.eu/item/90402/SK_A_2344?utm_source=api&utm_medium=api&utm_campaign=api2demo",
+      "year": ["1660"]
+    },
+    {
+      "id": "/2051942/data_euscreenXL_EUS_1",
+      "type": "VIDEO",
+      "title": ["Moon landing broadcast"],
+      "edmPreview": ["https://api.europeana.eu/thumbnail/v2/url.json?uri=x&type=VIDEO"],
+      "edmIsShownBy": ["https://example.org/video.mp4"],
+      "rights": ["http://creativecommons.org/licenses/by-sa/4.0/"],
+      "dataProvider": ["Some archive"],
+      "guid": "https://www.europeana.eu/item/2051942/data_euscreenXL_EUS_1?utm_source=api",
+      "year": ["1969"]
+    }
+  ]
+}

@@ -58,7 +58,8 @@ const WEB: IndicStatus = {
 export const indicStatus = (): Promise<IndicStatus> => (isDesktop ? invoke<IndicStatus>('indic_status') : Promise.resolve(WEB));
 export const indicSize = (): Promise<number> => (isDesktop ? invoke<number>('indic_size') : Promise.resolve(0));
 /** Sets everything up, or with `modelsOnly` fetches the models again (after adding a token). */
-export const setUpIndic = (options: { token?: string; gpu: boolean; modelsOnly?: boolean }): Promise<void> => invoke('indic_setup', { options });
+/** Sets up Python, PyTorch and models (IndicTrans2's when `models` is empty), or with `modelsOnly` fetches more models into an existing setup. */
+export const setUpIndic = (options: { token?: string; gpu: boolean; modelsOnly?: boolean; models?: string[] }): Promise<void> => invoke('indic_setup', { options });
 export const cancelIndicSetup = (): Promise<void> => invoke('indic_cancel');
 export const startIndic = (): Promise<void> => invoke('indic_start');
 export const stopIndic = (): Promise<void> => invoke('indic_stop');

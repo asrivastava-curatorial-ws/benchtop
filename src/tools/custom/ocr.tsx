@@ -1,7 +1,7 @@
 /** Reads text from pictures and scanned PDFs with Tesseract (English and Hindi), offline, and can make a searchable PDF. */
 
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { useIncomingFiles } from '../../app/handoff';
+import { sendToTool, useIncomingFiles } from '../../app/handoff';
 import { formatBytes } from '../../lib/bytes';
 import { errorMessage } from '../../lib/errors';
 import { type OcrLanguage, ocrWorker, onOcrProgress } from '../../lib/ocr-engine';
@@ -257,6 +257,16 @@ function Ocr({ toolId }: { toolId: string }) {
                 }
               >
                 Save text
+              </button>
+              <button
+                type="button"
+                class="button button-small"
+                disabled={!text}
+                title="Open the text in the Text Translator"
+                onClick={() => sendToTool('translator', { files: [new File([text], replaceExtension(sources[0]?.name ?? 'ocr', 'txt'), { type: 'text/plain' })] })}
+                data-testid="ocr-translate"
+              >
+                Translate
               </button>
               <button
                 type="button"

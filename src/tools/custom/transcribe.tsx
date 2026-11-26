@@ -302,6 +302,16 @@ function Transcribe({ toolId }: { toolId: string }) {
                 >
                   Save
                 </button>
+                <button
+                  type="button"
+                  class="button button-small"
+                  disabled={!output}
+                  title="Open the transcript in the Text Translator (subtitles keep their times)"
+                  onClick={() => sendToTool('translator', { files: [new File([output], `${name.replace(/\.[^.]+$/, '') || 'transcript'}.${settings.format}`, { type: 'text/plain' })] })}
+                  data-testid="transcript-translate"
+                >
+                  Translate
+                </button>
                 {isVideo && result && (
                   <button type="button" class="button button-small" onClick={burnIn} data-testid="burn-subtitles" title="Open the video toolkit with this video and these subtitles">
                     Burn into the video

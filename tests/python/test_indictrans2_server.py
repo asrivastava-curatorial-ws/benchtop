@@ -133,6 +133,96 @@ class RequestTest(unittest.TestCase):
             server.main(["--download", "fr-de"])
 
 
+class OtherModelsTest(unittest.TestCase):
+    """The many-language models: names, kinds and how each is asked for a language."""
+
+    def test_model_names_are_checked(self):
+        self.assertEqual(server.repo_for("m2m100-418m"), "facebook/m2m100_418M")
+        self.assertEqual(server.repo_for("hf:Helsinki-NLP/opus-mt-en-ar"), "Helsinki-NLP/opus-mt-en-ar")
+        for bad in ("fr-de", "hf:../etc", "hf:a/b/c", "hf:/x", "hf:-a/b", "hf:a/.."):
+            with self.assertRaises(ValueError, msg=bad):
+                server.repo_for(bad)
+        self.assertTrue(server.other_model("nllb-200-600m"))
+        self.assertTrue(server.other_model("hf:facebook/mbart-large-50-many-to-many-mmt"))
+        self.assertFalse(server.other_model("indictrans2"))
+        self.assertFalse(server.other_model("gemma3:12b"))
+
+    def test_bad_model_names_are_refused_before_downloading(self):
+        for bad in ("hf:../x", "hf:a/b/c"):
+            with self.assertRaises(SystemExit):
+                server.main(["--download", bad])
+
+    def test_the_kind_of_model_decides_how_to_ask_it(self):
+        kind = lambda t: types.SimpleNamespace(model_type=t)  # noqa: E731
+        self.assertEqual(server.family_of("Helsinki-NLP/opus-mt-en-ar", kind("marian")), "marian")
+        self.assertEqual(server.family_of("facebook/nllb-200-distilled-600M", kind("m2m_100")), "nllb")
+        self.assertEqual(server.family_of("facebook/m2m100_418M", kind("m2m_100")), "m2m")
+        self.assertEqual(server.family_of("google/madlad400-3b-mt", kind("t5")), "madlad")
+        self.assertEqual(server.family_of("facebook/mbart-large-50-many-to-many-mmt", kind("mbart")), "mbart")
+        with self.assertRaises(ValueError):
+            server.family_of("someone/llama", kind("llama"))
+
+    def run_family(self, family, lines, src, tgt, codes=()):
+        class Batch(dict):
+            def to(self, device):
+                return self
+
+        class Tokenizer:
+            unk_token_id = 0
+            src_lang = None
+            supported_language_codes = list(codes)
+            known = {"arb_Arab": 7, "hin_Deva": 8, "eng_Latn": 9, "ar_AR": 10, "en_XX": 11}
+
+            def __call__(self, batch, **kwargs):
+                return Batch(text=list(batch))
+
+            def convert_tokens_to_ids(self, token):
+                return self.known.get(token, 0)
+
+            def get_lang_id(self, code):
+                if code not in ("en", "ar", "ja"):
+                    raise KeyError(code)
+                return f"id-{code}"
+
+            def batch_decode(self, tokens, skip_special_tokens=True):
+                return tokens
+
+        class Model:
+            def generate(self, text, num_beams, max_length, **options):
+                return [f"{options.get('forced_bos_token_id', '-')}|{line}" for line in text]
+
+        fake_torch = types.ModuleType("torch")
+        fake_torch.inference_mode = lambda: __import__("contextlib").nullcontext()
+        saved = sys.modules.get("torch")
+        sys.modules["torch"] = fake_torch
+        server.loaded["hf:test/model"] = (family, Tokenizer(), Model(), "cpu", "test/model")
+        try:
+            return server.translate_other("hf:test/model", lines, src, tgt)
+        finally:
+            del server.loaded["hf:test/model"]
+            if saved is None:
+                del sys.modules["torch"]
+            else:
+                sys.modules["torch"] = saved
+
+    def test_each_kind_is_told_the_languages_its_own_way(self):
+        self.assertEqual(self.run_family("nllb", ["Hello"], "eng_Latn", "arb_Arab"), ["7|Hello"])
+        self.assertEqual(self.run_family("m2m", ["Hello"], "eng_Latn", "jpn_Jpan"), ["id-ja|Hello"])
+        self.assertEqual(self.run_family("mbart", ["Hello"], "eng_Latn", "arb_Arab"), ["10|Hello"])
+        self.assertEqual(self.run_family("madlad", ["Hello"], "eng_Latn", "rus_Cyrl"), ["-|<2ru> Hello"])
+        self.assertEqual(self.run_family("marian", ["Hello"], "eng_Latn", "arb_Arab"), ["-|Hello"])
+        self.assertEqual(self.run_family("marian", ["Hello"], "eng_Latn", "arb_Arab", codes=[">>arb<<", ">>fra<<"]), ["-|>>arb<< Hello"])
+        self.assertEqual(self.run_family("nllb", ["Same"], "eng_Latn", "eng_Latn"), ["Same"])
+
+    def test_a_language_the_model_does_not_know_is_reported(self):
+        with self.assertRaises(ValueError):
+            self.run_family("nllb", ["Hello"], "eng_Latn", "xyz_Latn")
+        with self.assertRaises(ValueError):
+            self.run_family("m2m", ["Hello"], "eng_Latn", "tel_Telu")
+        with self.assertRaises(ValueError):
+            self.run_family("marian", ["Hello"], "eng_Latn", "hin_Deva", codes=[">>fra<<"])
+
+
 class HttpTest(unittest.TestCase):
     def test_chat_endpoint_answers_in_the_openai_shape(self):
         original = server.translate
@@ -148,6 +238,18 @@ class HttpTest(unittest.TestCase):
             self.assertEqual(json.loads(reply["choices"][0]["message"]["content"]), ["hin_Deva:HI THERE"])
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=10) as response:
                 self.assertEqual(json.loads(response.read())["status"], "ok")
+            # A many-language model is chosen by the request's model.
+            other = server.translate_other
+            server.translate_other = lambda key, lines, src, tgt: [f"{key}>{tgt}:{line}" for line in lines]
+            try:
+                body = json.dumps({"model": "m2m100-418m", "benchtop": {"lines": ["hi"], "from": "eng_Latn", "to": "jpn_Jpan"}}).encode()
+                request = urllib.request.Request(f"http://127.0.0.1:{port}/v1/chat/completions", data=body, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(request, timeout=10) as response:
+                    reply = json.loads(response.read())
+                self.assertEqual(json.loads(reply["choices"][0]["message"]["content"]), ["m2m100-418m>jpn_Jpan:hi"])
+                self.assertEqual(reply["model"], "m2m100-418m")
+            finally:
+                server.translate_other = other
         finally:
             httpd.shutdown()
             httpd.server_close()

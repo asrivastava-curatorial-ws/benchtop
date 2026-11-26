@@ -33,6 +33,48 @@ const LIBRARIES: &[&str] = &[
     "indic-nlp-library-itt==0.1.1",
 ];
 pub const DIRECTIONS: &[&str] = &["en-indic", "indic-en"];
+/// Models for many languages the server also runs (any Hugging Face translation
+/// model can be asked for as "hf:owner/name" too).
+pub const OTHER_MODELS: &[&str] = &["m2m100-418m", "nllb-200-600m", "madlad400-3b"];
+
+/// A Hugging Face repository name: "owner/name", letters, digits, "-", "_" and ".".
+fn repo_ok(repo: &str) -> bool {
+    let part = |p: &str| {
+        !p.is_empty()
+            && p.len() <= 96
+            && !p.starts_with(['.', '-', '_'])
+            && !p.contains("..")
+            && p.chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
+    };
+    let mut parts = repo.split('/');
+    matches!((parts.next(), parts.next(), parts.next()), (Some(owner), Some(name), None) if part(owner) && part(name))
+}
+
+/// The models a setup fetches: the ones asked for, checked, or IndicTrans2's two directions.
+pub fn model_keys(asked: &[String]) -> Result<Vec<String>, String> {
+    if asked.is_empty() {
+        return Ok(DIRECTIONS.iter().map(|d| d.to_string()).collect());
+    }
+    if asked.len() > 8 {
+        return Err("Ask for at most eight models at a time.".into());
+    }
+    let mut keys: Vec<String> = Vec::new();
+    for key in asked.iter().map(|k| k.trim()) {
+        let known = DIRECTIONS.contains(&key)
+            || OTHER_MODELS.contains(&key)
+            || key.strip_prefix("hf:").is_some_and(repo_ok);
+        if !known {
+            return Err(format!(
+                "“{key}” is not a model Benchtop knows. Write a Hugging Face model as hf:owner/name."
+            ));
+        }
+        if !keys.iter().any(|k| k == key) {
+            keys.push(key.to_string());
+        }
+    }
+    Ok(keys)
+}
 
 /// Where everything lives.
 #[derive(Clone, Debug)]
@@ -164,6 +206,9 @@ pub struct SetupOptions {
     /// Only fetch the models again (for example after adding a token), keeping the packages.
     #[serde(default)]
     pub models_only: bool,
+    /// The models to fetch (see model_keys); IndicTrans2's when empty.
+    #[serde(default)]
+    pub models: Vec<String>,
 }
 
 /// A command that does not open a console window on Windows.
@@ -439,6 +484,7 @@ pub fn run_setup(
     if options.models_only && previous.is_none() {
         return Err("Set up IndicTrans2 first.".into());
     }
+    let keys = model_keys(&options.models)?;
     let gpu = if options.models_only {
         previous.as_ref().is_some_and(|p| p.gpu)
     } else {
@@ -505,14 +551,19 @@ pub fn run_setup(
     std::fs::write(paths.script(), SERVER_SCRIPT)
         .map_err(|error| format!("Cannot write the server script: {error}"))?;
 
+    let indic_only = keys.iter().all(|k| DIRECTIONS.contains(&k.as_str()));
     runner.step(
         "models",
-        "Downloading the IndicTrans2 models (about 1 GB each)",
+        if indic_only {
+            "Downloading the IndicTrans2 models (about 1 GB each)"
+        } else {
+            "Downloading the translation models"
+        },
     );
     let mut cmd = python(paths);
     cmd.arg(paths.script())
         .arg("--download")
-        .arg(DIRECTIONS.join(","));
+        .arg(keys.join(","));
     if let Some(token) = options
         .token
         .as_deref()
@@ -750,11 +801,23 @@ pub fn indic_setup(
             Ok(installed) => SetupEvent::new(
                 "done",
                 None,
-                Some(if installed.models.len() == DIRECTIONS.len() {
-                    "IndicTrans2 is ready.".into()
-                } else {
-                    "IndicTrans2 is ready for English to Indian languages. Translating from Indian languages needs a Hugging Face token (see below).".into()
-                }),
+                Some(
+                    if !options.models.is_empty()
+                        && options
+                            .models
+                            .iter()
+                            .all(|m| !DIRECTIONS.contains(&m.as_str()))
+                    {
+                        "The translation model is ready.".into()
+                    } else if DIRECTIONS
+                        .iter()
+                        .all(|d| installed.models.iter().any(|m| m == d))
+                    {
+                        "IndicTrans2 is ready.".into()
+                    } else {
+                        "IndicTrans2 is ready for English to Indian languages. Translating from Indian languages needs a Hugging Face token (see below).".into()
+                    },
+                ),
             ),
             Err(error) if error == "cancelled" => SetupEvent::new(
                 "cancelled",
@@ -931,6 +994,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn models_are_checked_before_anything_is_fetched() {
+        assert_eq!(model_keys(&[]).unwrap(), vec!["en-indic", "indic-en"]);
+        let asked =
+            |list: &[&str]| model_keys(&list.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+        assert_eq!(
+            asked(&[
+                "m2m100-418m",
+                "hf:Helsinki-NLP/opus-mt-en-ar",
+                "m2m100-418m"
+            ])
+            .unwrap(),
+            vec!["m2m100-418m", "hf:Helsinki-NLP/opus-mt-en-ar"]
+        );
+        for bad in [
+            "fr-de",
+            "hf:../etc",
+            "hf:a/b/c",
+            "hf:a",
+            "hf:-x/y",
+            "hf:a/..",
+            "hf:a b/c",
+            "--cpu",
+        ] {
+            assert!(asked(&[bad]).is_err(), "{bad}");
+        }
+        assert!(asked(&["m2m100-418m"; 9]).is_err());
+    }
+
+    #[test]
     fn the_bundled_script_is_the_one_in_scripts() {
         assert!(SERVER_SCRIPT.contains("@@listening"));
         assert!(SERVER_SCRIPT.contains("class PurePythonProcessor"));
@@ -1002,6 +1094,7 @@ mod tests {
                 token: Some(" hf_secret ".into()),
                 gpu: false,
                 models_only: false,
+                models: Vec::new(),
             },
             &cancel,
             &child,

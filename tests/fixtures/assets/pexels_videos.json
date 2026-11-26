@@ -1,0 +1,41 @@
+{
+  "page": 1,
+  "per_page": 1,
+  "total_results": 20475,
+  "videos": [
+    {
+      "id": 1448735,
+      "width": 4096,
+      "height": 2160,
+      "url": "https://www.pexels.com/video/aerial-view-of-a-city-1448735/",
+      "image": "https://images.pexels.com/videos/1448735/free-video-1448735.jpg",
+      "duration": 32,
+      "user": {
+        "id": 574687,
+        "name": "Ruvim Miksanskiy",
+        "url": "https://www.pexels.com/@digitech"
+      },
+      "video_files": [
+        {
+          "id": 58649,
+          "quality": "sd",
+          "file_type": "video/mp4",
+          "width": 640,
+          "height": 338,
+          "fps": 25,
+          "link": "https://player.vimeo.com/external/291648067.sd.mp4?s=x&profile_id=164"
+        },
+        {
+          "id": 58650,
+          "quality": "uhd",
+          "file_type": "video/mp4",
+          "width": 3840,
+          "height": 2026,
+          "fps": 25,
+          "link": "https://player.vimeo.com/external/291648067.hd.mp4?s=x&profile_id=172"
+        }
+      ]
+    }
+  ],
+  "next_page": "https://api.pexels.com/videos/search/?page=2"
+}

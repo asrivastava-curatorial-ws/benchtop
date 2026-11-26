@@ -1,0 +1,56 @@
+{
+  "result_count": 240,
+  "page_count": 12,
+  "page_size": 20,
+  "page": 1,
+  "results": [
+    {
+      "id": "4bc43a04-ef46-4544-a0c1-63c63f56e276",
+      "title": "Moon over the city",
+      "foreign_landing_url": "https://www.flickr.com/photos/joann/12345",
+      "url": "https://live.staticflickr.com/1/12345_b.jpg",
+      "creator": "jo ann",
+      "creator_url": "https://www.flickr.com/photos/joann",
+      "license": "by-sa",
+      "license_version": "2.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/2.0/",
+      "provider": "flickr",
+      "source": "flickr",
+      "category": "photograph",
+      "filesize": 234567,
+      "filetype": "jpg",
+      "tags": [
+        {
+          "name": "moon"
+        },
+        {
+          "name": "night"
+        }
+      ],
+      "attribution": "\"Moon over the city\" by jo ann is licensed under CC BY-SA 2.0.",
+      "mature": false,
+      "height": 768,
+      "width": 1024,
+      "thumbnail": "https://api.openverse.org/v1/images/4bc43a04-ef46-4544-a0c1-63c63f56e276/thumb/"
+    },
+    {
+      "id": "9e9b3a51-07e4-4bd1-8f43-2a9c1a3b5d11",
+      "title": "Lunar crater",
+      "foreign_landing_url": "https://commons.wikimedia.org/w/index.php?curid=1",
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Crater.jpg",
+      "creator": "NASA",
+      "creator_url": null,
+      "license": "cc0",
+      "license_version": "1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "provider": "wikimedia",
+      "source": "wikimedia",
+      "filesize": null,
+      "filetype": "jpg",
+      "tags": [],
+      "height": 2000,
+      "width": 3000,
+      "thumbnail": null
+    }
+  ]
+}

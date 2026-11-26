@@ -1,0 +1,34 @@
+{
+  "collection": {
+    "version": "1.0",
+    "items": [
+      {
+        "href": "http://images-assets.nasa.gov/video/GSFC_20171208_Archive_e002000/GSFC_20171208_Archive_e002000~orig.mp4"
+      },
+      {
+        "href": "http://images-assets.nasa.gov/video/GSFC_20171208_Archive_e002000/GSFC_20171208_Archive_e002000~large.mp4"
+      },
+      {
+        "href": "http://images-assets.nasa.gov/video/GSFC_20171208_Archive_e002000/GSFC_20171208_Archive_e002000~medium.mp4"
+      },
+      {
+        "href": "http://images-assets.nasa.gov/video/GSFC_20171208_Archive_e002000/GSFC_20171208_Archive_e002000~small.mp4"
+      },
+      {
+        "href": "http://images-assets.nasa.gov/video/GSFC_20171208_Archive_e002000/GSFC_20171208_Archive_e002000~mobile.mp4"
+      },
+      {
+        "href": "http://images-assets.nasa.gov/video/GSFC_20171208_Archive_e002000/GSFC_20171208_Archive_e002000~preview_thumb_00001.png"
+      },
+      {
+        "href": "http://images-assets.nasa.gov/video/GSFC_20171208_Archive_e002000/GSFC_20171208_Archive_e002000~thumb.jpg"
+      },
+      {
+        "href": "http://images-assets.nasa.gov/video/GSFC_20171208_Archive_e002000/GSFC_20171208_Archive_e002000.srt"
+      },
+      {
+        "href": "http://images-assets.nasa.gov/video/GSFC_20171208_Archive_e002000/metadata.json"
+      }
+    ]
+  }
+}

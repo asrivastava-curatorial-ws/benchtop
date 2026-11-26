@@ -1,0 +1,117 @@
+{
+  "batchcomplete": true,
+  "continue": {
+    "gsroffset": 3,
+    "continue": "gsroffset||"
+  },
+  "query": {
+    "pages": [
+      {
+        "pageid": 3,
+        "ns": 6,
+        "title": "File:Moon model.stl",
+        "index": 3,
+        "imageinfo": [
+          {
+            "size": 2000000,
+            "width": 0,
+            "height": 0,
+            "thumburl": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Moon_model.stl/400px-Moon_model.stl.png",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/1/12/Moon_model.stl",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Moon_model.stl",
+            "sha1": "1111",
+            "mime": "application/sla",
+            "mediatype": "3D",
+            "extmetadata": {
+              "LicenseShortName": {
+                "value": "CC0"
+              },
+              "LicenseUrl": {
+                "value": "http://creativecommons.org/publicdomain/zero/1.0/deed.en"
+              },
+              "Artist": {
+                "value": "NASA"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "pageid": 1,
+        "ns": 6,
+        "title": "File:FullMoon2010.jpg",
+        "index": 1,
+        "imageinfo": [
+          {
+            "size": 1234567,
+            "width": 3000,
+            "height": 2000,
+            "thumburl": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/FullMoon2010.jpg/400px-FullMoon2010.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/e/e1/FullMoon2010.jpg",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:FullMoon2010.jpg",
+            "sha1": "2222",
+            "mime": "image/jpeg",
+            "mediatype": "BITMAP",
+            "extmetadata": {
+              "LicenseShortName": {
+                "value": "CC BY-SA 4.0"
+              },
+              "LicenseUrl": {
+                "value": "https://creativecommons.org/licenses/by-sa/4.0"
+              },
+              "Artist": {
+                "value": "<a href=\"//commons.wikimedia.org/wiki/User:Gregory_H._Revera\" title=\"User:Gregory H. Revera\">Gregory H. Revera</a>"
+              },
+              "ImageDescription": {
+                "value": "Full moon as seen from Earth"
+              },
+              "DateTimeOriginal": {
+                "value": "2010-10-22"
+              },
+              "ObjectName": {
+                "value": "Full Moon 2010"
+              },
+              "Categories": {
+                "value": "Full_moon|Moon_in_2010"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "pageid": 2,
+        "ns": 6,
+        "title": "File:ISS 360 tour.webm",
+        "index": 2,
+        "imageinfo": [
+          {
+            "size": 50000000,
+            "width": 3840,
+            "height": 1920,
+            "duration": 120.5,
+            "thumburl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/ISS_360_tour.webm/400px--ISS_360_tour.webm.jpg",
+            "url": "https://upload.wikimedia.org/wikipedia/commons/3/34/ISS_360_tour.webm",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:ISS_360_tour.webm",
+            "sha1": "3333",
+            "mime": "video/webm",
+            "mediatype": "VIDEO",
+            "extmetadata": {
+              "LicenseShortName": {
+                "value": "Public domain"
+              },
+              "Artist": {
+                "value": "NASA"
+              },
+              "ObjectName": {
+                "value": "ISS 360 tour"
+              },
+              "Categories": {
+                "value": "360-degree_videos|International_Space_Station"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -161,3 +161,8 @@ declare module 'page-flip/dist/js/page-flip.module.js' {
     destroy(): void;
   }
 }
+
+declare module '*.js?raw' {
+  const source: string;
+  export default source;
+}

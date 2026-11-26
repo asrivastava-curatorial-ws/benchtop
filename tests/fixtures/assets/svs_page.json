@@ -1,0 +1,95 @@
+{
+  "id": 5101,
+  "url": "https://svs.gsfc.nasa.gov/5101/",
+  "page_type": "Visualization",
+  "title": "Moon Phase and Libration, 2023",
+  "description": "<p>The Moon's phase and libration in 2023.</p>",
+  "release_date": "2022-12-01T00:00:00-05:00",
+  "main_image": {
+    "id": 1,
+    "url": "https://svs.gsfc.nasa.gov/vis/a000000/a005100/a005101/moon.1000_print.jpg",
+    "filename": "moon.1000_print.jpg",
+    "media_type": "Image",
+    "alt_text": "",
+    "width": 1024,
+    "height": 576,
+    "pixels": 589824
+  },
+  "main_video": {
+    "id": 2,
+    "url": "https://svs.gsfc.nasa.gov/vis/a000000/a005100/a005101/moon_phase_2023_3840p30.mp4",
+    "filename": "moon_phase_2023_3840p30.mp4",
+    "media_type": "Movie",
+    "alt_text": "",
+    "width": 3840,
+    "height": 2160,
+    "pixels": 8294400,
+    "audio_track": null,
+    "captions": null
+  },
+  "media_groups": [
+    {
+      "id": 10,
+      "url": "",
+      "widget": "Video player",
+      "title": "",
+      "caption": "",
+      "description": "",
+      "items": [
+        {
+          "id": 11,
+          "item_type": "media",
+          "media": {
+            "id": 3,
+            "url": "https://svs.gsfc.nasa.gov/vis/a000000/a005100/a005101/moon_phase_2023_1080p30.mp4",
+            "filename": "moon_phase_2023_1080p30.mp4",
+            "media_type": "Movie",
+            "width": 1920,
+            "height": 1080,
+            "pixels": 2073600
+          }
+        },
+        {
+          "id": 12,
+          "item_type": "media",
+          "instance": {
+            "id": 4,
+            "url": "https://svs.gsfc.nasa.gov/vis/a000000/a005100/a005101/frames/3840x2160_16x9_30p/",
+            "filename": "frames",
+            "media_type": "Frames",
+            "width": 3840,
+            "height": 2160,
+            "pixels": 8294400
+          }
+        },
+        {
+          "id": 13,
+          "item_type": "media",
+          "media": {
+            "id": 5,
+            "url": "https://svs.gsfc.nasa.gov/vis/a000000/a005100/a005101/moon_phase_2023_dome_4096.mp4",
+            "filename": "moon_phase_2023_dome_4096.mp4",
+            "media_type": "Movie",
+            "width": 4096,
+            "height": 4096,
+            "pixels": 16777216
+          }
+        }
+      ],
+      "extra_data": {}
+    }
+  ],
+  "studio": "SVS",
+  "credits": [
+    {
+      "role": "Visualizer",
+      "people": [
+        {
+          "name": "Ernie Wright",
+          "employer": "USRA"
+        }
+      ]
+    }
+  ],
+  "keywords": ["Moon", "Phase"]
+}

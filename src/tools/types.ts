@@ -323,6 +323,7 @@ export type CategoryId =
   | 'text'
   | 'network'
   | 'online'
+  | 'assets'
   | 'devops'
   | 'css'
   | 'color'

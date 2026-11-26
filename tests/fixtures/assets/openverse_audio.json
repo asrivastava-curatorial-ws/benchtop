@@ -1,0 +1,33 @@
+{
+  "result_count": 1,
+  "page_count": 1,
+  "page_size": 20,
+  "page": 1,
+  "results": [
+    {
+      "id": "a1b2c3d4-0000-4000-8000-123456789abc",
+      "title": "Forest ambience",
+      "foreign_landing_url": "https://freesound.org/people/x/sounds/1/",
+      "url": "https://cdn.freesound.org/previews/1/1_1-hq.mp3",
+      "creator": "x",
+      "license": "cc0",
+      "license_version": "1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "provider": "freesound",
+      "source": "freesound",
+      "category": "sound_effect",
+      "filesize": 1000000,
+      "filetype": "mp3",
+      "tags": [
+        {
+          "name": "forest"
+        }
+      ],
+      "alt_files": null,
+      "duration": 270000,
+      "bit_rate": 128000,
+      "sample_rate": 44100,
+      "thumbnail": null
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "count": 1,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1661,
+      "title": "The Adventures of Sherlock Holmes",
+      "authors": [
+        {
+          "name": "Doyle, Arthur Conan",
+          "birth_year": 1859,
+          "death_year": 1930
+        }
+      ],
+      "summaries": ["A collection of twelve detective stories featuring Sherlock Holmes."],
+      "translators": [],
+      "subjects": ["Detective and mystery stories, English"],
+      "bookshelves": ["Detective Fiction"],
+      "languages": ["en"],
+      "copyright": false,
+      "media_type": "Text",
+      "formats": {
+        "text/html": "https://www.gutenberg.org/ebooks/1661.html.images",
+        "application/epub+zip": "https://www.gutenberg.org/ebooks/1661.epub3.images",
+        "application/x-mobipocket-ebook": "https://www.gutenberg.org/ebooks/1661.kf8.images",
+        "text/plain; charset=us-ascii": "https://www.gutenberg.org/ebooks/1661.txt.utf-8",
+        "application/rdf+xml": "https://www.gutenberg.org/ebooks/1661.rdf",
+        "image/jpeg": "https://www.gutenberg.org/cache/epub/1661/pg1661.cover.medium.jpg",
+        "application/octet-stream": "https://www.gutenberg.org/cache/epub/1661/pg1661-h.zip"
+      },
+      "download_count": 50000
+    }
+  ]
+}

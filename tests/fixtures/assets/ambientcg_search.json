@@ -1,0 +1,51 @@
+{
+  "searchQuery": {},
+  "numberOfResults": 1,
+  "foundAssets": [
+    {
+      "assetId": "PavingStones036",
+      "releaseDate": "2019-04-01 00:00:00",
+      "dataType": "Material",
+      "creationMethod": "PBRPhotogrammetry",
+      "displayName": "Paving Stones 036",
+      "displayCategory": "Paving Stones",
+      "dataTypeName": "Material",
+      "creationMethodName": "PBR Photogrammetry",
+      "shortLink": "https://ambientcg.com/a/PavingStones036",
+      "tags": ["paving", "stones"],
+      "previewImage": {
+        "64-PNG": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/64-PNG/PavingStones036.png",
+        "256-PNG": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/256-PNG/PavingStones036.png",
+        "1024-JPG-242424": "https://acg-media.struffelproductions.com/file/ambientCG-Web/media/thumbnail/1024-JPG-242424/PavingStones036.jpg"
+      },
+      "downloadFolders": {
+        "default": {
+          "title": "Default",
+          "downloadFiletypeCategories": {
+            "zip": {
+              "title": "zip",
+              "downloads": [
+                {
+                  "fullDownloadPath": "https://ambientcg.com/get?file=PavingStones036_2K-JPG.zip",
+                  "downloadLink": "https://ambientcg.com/get?file=PavingStones036_2K-JPG.zip",
+                  "fileName": "PavingStones036_2K-JPG.zip",
+                  "size": 20000000,
+                  "filetype": "zip",
+                  "attribute": "2K-JPG"
+                },
+                {
+                  "fullDownloadPath": "https://ambientcg.com/get?file=PavingStones036_1K-JPG.zip",
+                  "downloadLink": "https://ambientcg.com/get?file=PavingStones036_1K-JPG.zip",
+                  "fileName": "PavingStones036_1K-JPG.zip",
+                  "size": 5000000,
+                  "filetype": "zip",
+                  "attribute": "1K-JPG"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

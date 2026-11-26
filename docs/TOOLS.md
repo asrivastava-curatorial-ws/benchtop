@@ -2,7 +2,7 @@
 
 <!-- Generated from src/tools/registry.ts by tests/unit/docs.test.ts. Do not edit by hand. -->
 
-Benchtop has 429 tools. All of them work without a network connection except the 11 in Online checks and Web Page to PDF, which contact only the hosts you enter, when you ask, and only in the desktop app; PDF Toolbox’s timestamp likewise sends a fingerprint of the PDF (never the file) to the timestamp server you choose. Video Dubbing translates through the AI server address you give it, usually one on this computer. The AI tools download their models and voices once, when you first choose one (or import them from a folder), and then work offline too.
+Benchtop has 432 tools. All of them work without a network connection except the 11 in Online checks, Asset Finder and Web Page to PDF, which contact only the hosts you enter or the libraries you search, when you ask, and only in the desktop app; PDF Toolbox’s timestamp likewise sends a fingerprint of the PDF (never the file) to the timestamp server you choose. Video Dubbing and Text Translator translate through the translation server address you give them, usually one on this computer. The AI tools download their models and voices once, when you first choose one (or import them from a folder), and then work offline too.
 
 ## Format and minify
 
@@ -199,6 +199,13 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | HTTP Request | Send GET, POST, PUT or DELETE requests with headers and a body, and inspect the status, timing, headers and response. | Online REST client |
 | Website Copier | Copy a website into a folder to browse offline, like HTTrack: pages, pictures, styles and scripts, with links rewritten, within the limits you set. | HTTrack, wget --mirror, SiteSucker |
 
+## Open media libraries
+
+| Tool | What it does | Replaces |
+| --- | --- | --- |
+| Asset Finder | Search 34 open libraries at once (Wikimedia Commons, Openverse, Internet Archive, Europeana, the Met, Smithsonian, NASA, Freesound, Gutenberg, Sketchfab, Poly Haven, FreeCAD parts, Iconify, Fontsource and more) for pictures, films, stereo 3D and 360° video, sound, books, 3D models, CAD, textures, icons and fonts. Filter by licence, see what each allows for your use and in India, and download into a library with a credit line for every asset. Each library’s connector can be edited, tested or written anew in the app. | Open Asset Finder, Openverse, Unsplash and Pexels apps, Freesound, Sketchfab downloads, Poly Haven, Iconify, Google Fonts downloads |
+| Asset Credits | List everything Asset Finder saved, with each licence checked against how you will use it (free show, ticketed show, print, web) and the copyright term in India, and make credits for panels, film end credits and websites as text, Markdown, HTML or CSV. Offline. | Creative Commons attribution builders, Spreadsheets of picture credits |
+
 ## DevOps and config
 
 | Tool | What it does | Replaces |
@@ -333,6 +340,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | Text Recognition (OCR) | Read English and Hindi text from pictures and scanned PDFs, and make scans searchable. Works offline, also in a browser. | SnapOtter OCR, Optical Character Recognition |
 | Transcription and Subtitles | Turn speech in English, Hindi and 97 other languages into text, SRT or WebVTT subtitles with Whisper, on this computer; can translate into English. | SnapOtter Transcription |
 | Text to Speech | Read text aloud with Piper voices in English, Hindi, Malayalam and Nepali, on this computer, and save it as WAV. | Piper, online text-to-speech sites |
+| Text Translator | Translate typed text, OCR results, documents and subtitles offline with models on this computer, set up in a click: IndicTrans2 for English and India’s 22 scheduled languages; M2M-100, NLLB-200 or MADLAD-400 for Arabic, Chinese, Japanese, Russian and hundreds more; or any Hugging Face translation model you add. A local chat model such as Ollama works too. Lists, headings and line breaks stay in place, and subtitles keep their times. | Google Translate, Bhashini, DeepL |
 | Video Dubbing | Turn a video into another language: transcribe its speech, translate the lines with IndicTrans2 (set up on this computer in one click), another local AI server or by hand, voice them with Piper at the right times, and save subtitles, the voice-over or the video with its new soundtrack. | Media Localiser, online video translators |
 | AI Models | Download, import or remove the AI engine and models the AI tools use, and see their licences and sizes. |  |
 
@@ -600,7 +608,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 
 ## Coverage of the original web tools
 
-722 web tools map onto Benchtop tools:
+735 web tools map onto Benchtop tools:
 
 | Web tool | Benchtop tool |
 | --- | --- |
@@ -664,6 +672,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | Bcrypt | Password Hashing |
 | Benchmark builder | Benchmark Statistics |
 | BetterSerialPlotter | Serial Plotter |
+| Bhashini | Text Translator |
 | bigtext tools | Large Type |
 | BIMI checker | Email DNS Check |
 | Binary Calculator | Binary Calculator |
@@ -731,6 +740,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | CopyQ | Clipboard History |
 | CORS Policy Generator | Config File Generator |
 | Create Booklet | Booklet and Zine Imposer |
+| Creative Commons attribution builders | Asset Credits |
 | Credit card validator | Card Number Validator |
 | Cron Expression Generator | Cron Expression |
 | CSS Animation Kit | Animation |
@@ -763,6 +773,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | Days between dates | Date Calculator |
 | DB Browser for SQLite (browsing) | SQLite Browser |
 | dbdiagram.io (from SQL) | SQL to ER Diagram |
+| DeepL | Text Translator |
 | Derivative calculator | Calculus Solver |
 | Desmos (basic plotting) | Graphing Calculator |
 | Device information | Device Information |
@@ -828,6 +839,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | FontDrop | Font File Explorer |
 | FreeConvert (documents, e-mails, PostScript, XPS, HEIC, tracing, archives) | File Converter |
 | FreeFileSync (compare) | Folder Compare |
+| Freesound | Asset Finder |
 | gang-run and nesting calculators | Print Production Studio |
 | GeoGebra (geometry basics) | Geometry Lab |
 | GeoGebra graphing (basic) | Graphing Calculator |
@@ -840,9 +852,11 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | GitLab CI Pipeline Generator | Config File Generator |
 | Glassmorphism Generator | Glassmorphism |
 | glogg / klogg | Log Viewer |
+| Google Fonts downloads | Asset Finder |
 | Google HAR Analyzer | HAR Viewer |
 | Google Keep | Notes |
 | Google Slides (simple decks) | Slide Deck (reveal.js) |
+| Google Translate | Text Translator |
 | GPX viewers | Map Viewer (GeoJSON, KML, GPX) |
 | Gradient Generator | Gradient Generator |
 | Gradient Image | Gradient Generator |
@@ -876,6 +890,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | HTTrack | Website Copier |
 | IBAN validator and parser | IBAN Validator |
 | ICO Transparency Creator | Favicon and ICO |
+| Iconify | Asset Finder |
 | IconKitchen | App Icon Maker |
 | Image Base64 | Image to Base64 |
 | Image Color Picker/Palette | Image Colour Picker |
@@ -1062,9 +1077,11 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | online text-to-speech sites | Text to Speech |
 | online video translators | Video Dubbing |
 | online Web Serial terminals | Serial Monitor |
+| Open Asset Finder | Asset Finder |
 | Open graph meta generator | Meta Tag Generator |
 | Open port checker | Port Checker |
 | OpenSpeedTest | LAN Speed Test |
+| Openverse | Asset Finder |
 | Optical Character Recognition | Text Recognition (OCR) |
 | Optics bench simulators | Optics Bench |
 | Outlook Safelink decoder | Link Unwrapper |
@@ -1100,6 +1117,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | PNG Color Replacer | Colour Replacer |
 | PNG to ICO Converter | Favicon and ICO |
 | PNG to WebP Converter | Image Converter |
+| Poly Haven | Asset Finder |
 | PostCSS Config Generator | Config File Generator |
 | Postman gRPC | gRPC Client |
 | Postman WebSocket | WebSocket and SSE Client |
@@ -1169,6 +1187,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | SimulIDE | Circuit Simulator |
 | Sitemap XML Generator | Config File Generator |
 | SiteSucker | Website Copier |
+| Sketchfab downloads | Asset Finder |
 | Sky charts | Star Chart |
 | SkyCiv beam calculator | Beam Calculator |
 | Slides.com | Slide Deck (reveal.js) |
@@ -1213,6 +1232,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | SPF checker | Email DNS Check |
 | Spirax Sarco steam tables | Steam Tables |
 | Spotlight | Offline Search |
+| Spreadsheets of picture credits | Asset Credits |
 | SSL checker | SSL Certificate Checker |
 | SSL expiry checker | SSL Certificate Checker |
 | StackEdit | Markdown Editor |
@@ -1281,6 +1301,7 @@ Benchtop has 429 tools. All of them work without a network connection except the
 | Unit converter | Unit Converter |
 | Unix Timestamp Converter | Unix Timestamp |
 | unscreen-style background replacement for studio shots | Green Screen Editor |
+| Unsplash and Pexels apps | Asset Finder |
 | UPS Capacity Calculator | UPS Sizing and Runtime |
 | UPS Runtime Calculator | UPS Sizing and Runtime |
 | URL extractor | Extract from Text |

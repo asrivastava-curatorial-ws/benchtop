@@ -3,6 +3,7 @@
  * settings and every tool in the light theme, and a sample of screens in the
  * dark theme.  Serious and critical problems fail the test.
  */
+import { readFileSync } from 'node:fs';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { TOOLS } from '../../src/tools/registry';
@@ -40,6 +41,9 @@ const PAGES = [
   '/#/tool/slide-deck',
   '/#/tool/animation-studio',
   '/#/tool/resume-builder',
+  '/#/tool/asset-finder',
+  '/#/tool/asset-credits',
+  '/#/tool/translator',
 ];
 
 async function check(page: Page, theme: 'light' | 'dark', path: string) {
@@ -279,5 +283,77 @@ for (const theme of ['light', 'dark'] as const) {
     await page.locator('[data-fbk=panel-close]').click();
     await page.locator('[data-fbk=zoom]').click();
     await serious('flipbook zoom', '.fbk');
+  });
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`${theme}: Asset Finder has no serious accessibility problems with results, an asset's details, downloads and the connector editor`, async ({ page }) => {
+    const answer = JSON.parse(readFileSync(new URL('../fixtures/assets/openverse_images.json', import.meta.url), 'utf8'));
+    await page.addInitScript((openverse) => {
+      const encode = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+      const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+      const reply = (url: string, status: number, type: string, body: string) => ({
+        url,
+        status,
+        reason: '',
+        version: 'HTTP/1.1',
+        headers: [['content-type', type]],
+        body,
+        bodySize: 0,
+        truncated: false,
+        remoteAddr: null,
+        headersMs: 1,
+        elapsedMs: 1,
+        peerCertificate: null,
+      });
+      const no = async () => {
+        throw new Error('not in this test');
+      };
+      (globalThis as { __benchtopNetTransport?: unknown }).__benchtopNetTransport = {
+        http: async (request: { url: string }) => {
+          const url = new URL(request.url);
+          if (url.pathname.endsWith('/thumb/') || /\.(jpe?g|png)$/.test(url.pathname)) return reply(request.url, 200, 'image/png', png);
+          if (url.host === 'api.openverse.org') return reply(request.url, 200, 'application/json', encode(JSON.stringify(openverse)));
+          return reply(request.url, 404, 'text/plain', encode('not in this test'));
+        },
+        tls: no,
+        dns: no,
+        whois: no,
+        probe: no,
+      };
+    }, answer);
+    await page.emulateMedia({ colorScheme: theme });
+    await page.goto('/#/tool/asset-finder');
+    await page.getByTestId('af-query').fill('moon');
+    await page.getByTestId('af-licence').selectOption('by-sa');
+    await page.getByTestId('af-search').click();
+    await page
+      .getByTestId('af-results')
+      .getByRole('button', { name: /Moon over the city/ })
+      .click();
+    await expect(page.getByTestId('af-files')).toContainText('Original');
+    const scan = async (where: string) => {
+      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+      const found = results.violations
+        .filter((v) => v.impact === 'serious' || v.impact === 'critical')
+        .map(
+          (v) =>
+            `${where}: ${v.id}: ${v.nodes
+              .slice(0, 4)
+              .map((n) => `${n.target.join(' ')} (${n.failureSummary?.split('\n').slice(1, 2).join(' ')})`)
+              .join('; ')}`,
+        );
+      expect(found, found.join('\n')).toEqual([]);
+    };
+    await scan('results');
+    await page.getByTestId('af-files').getByRole('button', { name: 'Download' }).first().click();
+    await page.getByTestId('af-tab-downloads').click();
+    await expect(page.getByTestId('af-downloads')).toContainText('Saved');
+    await scan('downloads');
+    await page.getByTestId('af-tab-sources').click();
+    await expect(page.getByTestId('af-connector')).toContainText('Openverse');
+    await scan('sources');
+    await page.getByTestId('af-tab-library').click();
+    await scan('library');
   });
 }

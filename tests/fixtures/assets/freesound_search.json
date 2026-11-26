@@ -1,0 +1,47 @@
+{
+  "count": 1500,
+  "next": "https://freesound.org/apiv2/search/?page=2&query=rain",
+  "previous": null,
+  "results": [
+    {
+      "id": 123456,
+      "name": "Rain on roof.wav",
+      "username": "klankbeeld",
+      "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "previews": {
+        "preview-hq-mp3": "https://cdn.freesound.org/previews/123/123456_1-hq.mp3",
+        "preview-lq-mp3": "https://cdn.freesound.org/previews/123/123456_1-lq.mp3",
+        "preview-hq-ogg": "https://cdn.freesound.org/previews/123/123456_1-hq.ogg",
+        "preview-lq-ogg": "https://cdn.freesound.org/previews/123/123456_1-lq.ogg"
+      },
+      "duration": 60.5,
+      "filesize": 10000000,
+      "type": "wav",
+      "samplerate": 44100,
+      "channels": 2,
+      "images": {
+        "waveform_m": "https://cdn.freesound.org/displays/123/123456_1_wave_M.png"
+      },
+      "url": "https://freesound.org/people/klankbeeld/sounds/123456/",
+      "description": "Rain recorded under a tin roof.",
+      "tags": ["rain", "roof"],
+      "created": "2011-05-01T10:00:00"
+    },
+    {
+      "id": 222,
+      "name": "Thunder",
+      "username": "x",
+      "license": "Attribution NonCommercial",
+      "previews": {
+        "preview-hq-mp3": "https://cdn.freesound.org/previews/0/222_1-hq.mp3"
+      },
+      "duration": 12.0,
+      "filesize": 2000000,
+      "type": "flac",
+      "images": {},
+      "url": "https://freesound.org/people/x/sounds/222/",
+      "tags": ["thunder"],
+      "created": "2014-01-01T10:00:00"
+    }
+  ]
+}

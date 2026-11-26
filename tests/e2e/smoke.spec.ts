@@ -817,6 +817,10 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
     await chooseFiles(page, page.getByRole('button', { name: 'Add pictures or PDFs' }), [{ name: 'hindi.png', mimeType: 'image/png', buffer: OCR_HINDI_PNG }]);
     await page.getByTestId('ocr-run').click();
     await expect.poll(() => editorText(page.getByTestId('ocr-output')), { timeout: 90_000 }).toContain('नमस्ते');
+    // "Translate" hands the text to the Text Translator, which recognises the script.
+    await page.getByTestId('ocr-translate').click();
+    await expect(page.getByTestId('tr-input')).toHaveValue(/नमस्ते/);
+    await expect(page.getByTestId('tr-from').locator('option').first()).toHaveText('Detect (Hindi)');
   },
   recipe: async (page) => {
     const search = page.getByTestId('recipe-search');
@@ -3554,6 +3558,52 @@ const CUSTOM_CHECKS: Record<string, (page: Page, tool: Locator) => Promise<void>
     expect(svgText).toContain('<svg');
     await expect(tool).toHaveAttribute('data-state', 'done');
   },
+  translator: async (page) => {
+    // In a browser there is no translation server to talk to: the page says why, and editing still works.
+    await expect(page.getByTestId('tr-gate')).toContainText('desktop app');
+    await page.getByTestId('tr-input').fill('ನಮಸ್ಕಾರ, ವಸ್ತುಸಂಗ್ರಹಾಲಯಕ್ಕೆ ಸ್ವಾಗತ.');
+    await expect(page.getByTestId('tr-from').locator('option').first()).toHaveText('Detect (Kannada)');
+    await expect(page.getByTestId('tr-translate')).toBeDisabled();
+  },
+  'asset-finder': async (page) => {
+    // In a browser the libraries cannot be searched: the page says why, without touching the network.
+    await expect(page.getByTestId('af-gate')).toContainText('desktop app');
+    await expect(page.getByTestId('af-search')).toBeDisabled();
+    // The connectors can still be read, changed and written anew.
+    await page.getByTestId('af-tab-sources').click();
+    const pane = page.getByTestId('af-sources-pane');
+    await expect(pane).toContainText('Wikimedia Commons');
+    await expect(pane).toContainText('FreeCAD parts library');
+    await pane.getByRole('button', { name: 'Wikipedia', exact: true }).click();
+    await expect(page.getByTestId('af-connector')).toContainText('may ask: *.wikipedia.org');
+    expect(await editorText(page.getByTestId('af-code'))).toContain("id: 'wikipedia'");
+    await page.getByTestId('af-new-connector').click();
+    await expect(page.getByTestId('af-connector')).toContainText('My library');
+    await expect(page.getByTestId('af-test-connector')).toBeDisabled();
+  },
+  'asset-credits': async (page) => {
+    const record = {
+      benchtopAsset: 1,
+      source: { id: 'wellcome', name: 'Wellcome Collection' },
+      id: 'abc',
+      type: 'image',
+      title: 'A pig’s heart',
+      creator: 'Royal Veterinary College',
+      page: 'https://wellcomecollection.org/works/abc',
+      licence: { code: 'by-nc', name: 'CC BY-NC 4.0', url: 'https://creativecommons.org/licenses/by-nc/4.0/', version: '4.0', note: '' },
+      files: [{ name: 'a.jpg' }],
+    };
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByTestId('ac-add').click();
+    await (await chooser).setFiles({ name: 'asset.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(record)) });
+    await expect(page.getByTestId('ac-table')).toContainText('A pig’s heart');
+    await page.getByTestId('ac-use').selectOption('ticketed');
+    await expect(page.getByTestId('ac-table')).toContainText('NonCommercial: not for a ticketed show');
+    await page.getByTestId('ac-format').selectOption('md');
+    await expect(page.getByTestId('ac-output')).toHaveValue(/\[A pig’s heart\]\(https:\/\/wellcomecollection\.org\/works\/abc\)/);
+    await page.getByTestId('ac-probe').fill('https://creativecommons.org/licenses/by-nd/4.0/');
+    await expect(page.getByTestId('ac-probe-result')).toContainText('CC BY-ND 4.0');
+  },
   'website-copier': async (page) => {
     await page.getByTestId('wc-url').fill('https://example.org/');
     await expect(page.getByTestId('wc-start')).toBeDisabled();
@@ -3914,6 +3964,122 @@ for (const entry of TOOLS) {
     expect(problems).toEqual([]);
   });
 }
+
+test('Text Translator keeps the layout and subtitle times, through a stand-in translation server', async ({ page }) => {
+  const problems = watch(page);
+  await page.addInitScript(() => {
+    const encode = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+    const no = async () => {
+      throw new Error('not in this test');
+    };
+    (globalThis as { __benchtopNetTransport?: unknown }).__benchtopNetTransport = {
+      http: async (request: { url: string; body?: string }) => {
+        const asked = JSON.parse(request.body ?? '{}') as { benchtop?: { lines: string[]; to: string } };
+        const content = JSON.stringify((asked.benchtop?.lines ?? []).map((line) => `[${asked.benchtop?.to}] ${line}`));
+        const body = encode(JSON.stringify({ choices: [{ message: { content } }] }));
+        return {
+          url: request.url,
+          status: 200,
+          reason: 'OK',
+          version: 'HTTP/1.1',
+          headers: [['content-type', 'application/json']],
+          body,
+          bodySize: 0,
+          truncated: false,
+          remoteAddr: null,
+          headersMs: 1,
+          elapsedMs: 1,
+          peerCertificate: null,
+        };
+      },
+      tls: no,
+      dns: no,
+      whois: no,
+      probe: no,
+    };
+  });
+  await openTool(page, 'translator');
+  await expect(page.getByTestId('tr-gate')).toHaveCount(0);
+  await page.getByTestId('tr-to').selectOption('kn');
+  await page.getByTestId('tr-input').fill('# Steam\n\n- It burns coal.\n- It turns a wheel.');
+  await page.getByTestId('tr-translate').click();
+  await expect(page.getByTestId('tr-output')).toHaveValue('# [kan_Knda] Steam\n\n- [kan_Knda] It burns coal.\n- [kan_Knda] It turns a wheel.');
+  await expect(page.getByTestId('tr-status')).toContainText('English → Kannada: 3 pieces');
+  // Subtitles keep their times.
+  await page.getByTestId('tr-input').fill('1\n00:00:01,000 --> 00:00:02,000\nHello\n');
+  await page.getByTestId('tr-translate').click();
+  await expect(page.getByTestId('tr-output')).toHaveValue(/00:00:01,000 --> 00:00:02,000\n\[kan_Knda\] Hello/);
+  const saved = await download(page, () => page.getByTestId('tr-save').click());
+  expect(saved.toString('utf8')).toContain('[kan_Knda] Hello');
+  expect(problems).toEqual([]);
+});
+
+test('Asset Finder asks the libraries through its connectors, filters by licence and downloads', async ({ page }) => {
+  const problems = watch(page);
+  const openverse = JSON.parse(readFileSync(new URL('../fixtures/assets/openverse_images.json', import.meta.url), 'utf8'));
+  await page.addInitScript((answer) => {
+    const encode = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    const reply = (url: string, status: number, type: string, body: string) => ({
+      url,
+      status,
+      reason: '',
+      version: 'HTTP/1.1',
+      headers: [['content-type', type]],
+      body,
+      bodySize: 0,
+      truncated: false,
+      remoteAddr: null,
+      headersMs: 1,
+      elapsedMs: 1,
+      peerCertificate: null,
+    });
+    const no = async () => {
+      throw new Error('not in this test');
+    };
+    (globalThis as { __benchtopNetTransport?: unknown }).__benchtopNetTransport = {
+      http: async (request: { url: string }) => {
+        const url = new URL(request.url);
+        if (url.pathname.endsWith('/thumb/') || /\.(jpe?g|png)$/.test(url.pathname)) return reply(request.url, 200, 'image/png', png);
+        if (url.host === 'api.openverse.org' && url.pathname.startsWith('/v1/images/')) return reply(request.url, 200, 'application/json', encode(JSON.stringify(answer)));
+        return reply(request.url, 404, 'text/plain', encode('not in this test'));
+      },
+      tls: no,
+      dns: no,
+      whois: no,
+      probe: no,
+    };
+  }, openverse);
+  await openTool(page, 'asset-finder');
+  await expect(page.getByTestId('af-gate')).toHaveCount(0);
+  await page.getByTestId('af-query').fill('moon');
+  // CC BY only: the share-alike picture is left out; with share-alike it comes in.
+  await page.getByTestId('af-licence').selectOption('by');
+  await page.getByTestId('af-search').click();
+  const sources = page.getByTestId('af-sources');
+  await expect(sources).toContainText('Openverse');
+  await expect(sources).toContainText('left out by the filters');
+  await expect(page.getByTestId('af-results')).toContainText('Lunar crater');
+  await expect(page.getByTestId('af-results')).not.toContainText('Moon over the city');
+  await page.getByTestId('af-licence').selectOption('by-sa');
+  await page.getByTestId('af-search').click();
+  await expect(page.getByTestId('af-results')).toContainText('Moon over the city');
+  await page
+    .getByTestId('af-results')
+    .getByRole('button', { name: /Moon over the city/ })
+    .click();
+  const details = page.getByTestId('af-details');
+  await expect(details).toContainText('CC BY-SA 2.0');
+  await expect(details).toContainText('ShareAlike');
+  await expect(details).toContainText('“Moon over the city” by jo ann');
+  const files = page.getByTestId('af-files');
+  await expect(files).toContainText('Original (JPG)');
+  const bytes = await download(page, () => files.getByRole('button', { name: 'Download' }).first().click());
+  expect([...bytes.subarray(0, 4)]).toEqual(PNG);
+  await page.getByTestId('af-tab-downloads').click();
+  await expect(page.getByTestId('af-downloads')).toContainText('Saved');
+  expect(problems).toEqual([]);
+});
 
 test('notes hold sketches: mind maps from the keyboard, shapes, arrows that stick, the pen and pictures', async ({ page }) => {
   const problems = watch(page);

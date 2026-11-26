@@ -1,0 +1,62 @@
+{
+  "info": {
+    "total": 2,
+    "parameters": {}
+  },
+  "data": [
+    {
+      "id": 135382,
+      "accession_number": "1960.81",
+      "share_license_status": "CC0",
+      "title": "Water Lilies (Agapanthus)",
+      "creation_date": "1915–26",
+      "creation_date_earliest": 1915,
+      "creation_date_latest": 1926,
+      "creators": [
+        {
+          "id": 1,
+          "description": "Claude Monet (French, 1840–1926)",
+          "role": "artist",
+          "birth_year": "1840",
+          "death_year": "1926"
+        }
+      ],
+      "type": "Painting",
+      "department": "Modern European Painting and Sculpture",
+      "technique": "oil on canvas",
+      "description": "<p>Monet's garden at Giverny</p>",
+      "tombstone": "Water Lilies",
+      "url": "https://clevelandart.org/art/1960.81",
+      "images": {
+        "web": {
+          "url": "https://openaccess-cdn.clevelandart.org/1960.81/1960.81_web.jpg",
+          "width": "893",
+          "height": "400",
+          "filesize": "100000"
+        },
+        "print": {
+          "url": "https://openaccess-cdn.clevelandart.org/1960.81/1960.81_print.jpg",
+          "width": "3400",
+          "height": "1523",
+          "filesize": "2000000"
+        },
+        "full": {
+          "url": "https://openaccess-cdn.clevelandart.org/1960.81/1960.81_full.tif",
+          "width": "6000",
+          "height": "2688",
+          "filesize": "48000000"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "share_license_status": "Copyrighted",
+      "title": "Modern work",
+      "images": {
+        "web": {
+          "url": "https://openaccess-cdn.clevelandart.org/x/x_web.jpg"
+        }
+      }
+    }
+  ]
+}

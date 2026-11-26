@@ -1,0 +1,20 @@
+{
+  "total": 4692,
+  "totalHits": 500,
+  "hits": [
+    {
+      "id": 1234567,
+      "pageURL": "https://pixabay.com/photos/galaxy-stars-space-1234567/",
+      "type": "photo",
+      "tags": "galaxy, stars, space",
+      "previewURL": "https://cdn.pixabay.com/photo/x_150.jpg",
+      "webformatURL": "https://pixabay.com/get/x_640.jpg",
+      "largeImageURL": "https://pixabay.com/get/x_1280.jpg",
+      "imageWidth": 6000,
+      "imageHeight": 4000,
+      "imageSize": 5000000,
+      "user_id": 123,
+      "user": "Someone"
+    }
+  ]
+}

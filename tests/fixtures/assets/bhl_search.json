@@ -1,0 +1,22 @@
+{
+  "Status": "ok",
+  "ErrorMessage": "",
+  "Result": [
+    {
+      "BHLType": "Item",
+      "FoundIn": "Metadata",
+      "ItemID": "26093",
+      "TitleID": "2734",
+      "Title": "On the origin of species by means of natural selection",
+      "Authors": [
+        {
+          "Name": "Darwin, Charles, 1809-1882",
+          "Dates": "1809-1882"
+        }
+      ],
+      "PublicationDate": "1859",
+      "Genre": "Book",
+      "Volume": ""
+    }
+  ]
+}

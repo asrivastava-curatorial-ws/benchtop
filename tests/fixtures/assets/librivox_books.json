@@ -1,0 +1,48 @@
+{
+  "books": [
+    {
+      "id": "1234",
+      "title": "Twenty Thousand Leagues under the Sea",
+      "description": "<p>Captain Nemo and the Nautilus.</p>",
+      "language": "English",
+      "copyright_year": "1870",
+      "num_sections": "2",
+      "url_zip_file": "http://www.archive.org/download/20000leagues_librivox/20000leagues_librivox_64kb_mp3.zip",
+      "url_librivox": "https://librivox.org/twenty-thousand-leagues-under-the-sea-by-jules-verne/",
+      "totaltime": "11:00:17",
+      "totaltimesecs": 39617,
+      "authors": [
+        {
+          "id": "1",
+          "first_name": "Jules",
+          "last_name": "Verne",
+          "dob": "1828",
+          "dod": "1905"
+        }
+      ],
+      "url_iarchive": "http://archive.org/details/20000leagues_librivox",
+      "sections": [
+        {
+          "id": "1",
+          "section_number": "1",
+          "title": "Chapter 1",
+          "listen_url": "http://www.archive.org/download/20000leagues_librivox/20000leagues_01_verne_64kb.mp3",
+          "playtime": "1234"
+        },
+        {
+          "id": "2",
+          "section_number": "2",
+          "title": "Chapter 2",
+          "listen_url": "http://www.archive.org/download/20000leagues_librivox/20000leagues_02_verne_64kb.mp3",
+          "playtime": "1300"
+        }
+      ],
+      "genres": [
+        {
+          "id": "1",
+          "name": "Action & Adventure Fiction"
+        }
+      ]
+    }
+  ]
+}

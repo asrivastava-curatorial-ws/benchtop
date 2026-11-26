@@ -1,0 +1,36 @@
+{
+  "item": {
+    "title": "Moon over river",
+    "rights_advisory": ["Public domain"],
+    "rights_information": "No known restrictions."
+  },
+  "resources": [
+    {
+      "files": [
+        [
+          {
+            "mimetype": "image/jpeg",
+            "url": "https://tile.loc.gov/v.jpg",
+            "width": 150,
+            "height": 100,
+            "size": 5000
+          },
+          {
+            "mimetype": "image/jpeg",
+            "url": "https://tile.loc.gov/large.jpg",
+            "width": 3000,
+            "height": 2000,
+            "size": 2000000
+          },
+          {
+            "mimetype": "image/tiff",
+            "url": "https://tile.loc.gov/master.tif",
+            "width": 6000,
+            "height": 4000,
+            "size": 72000000
+          }
+        ]
+      ]
+    }
+  ]
+}

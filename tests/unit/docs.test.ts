@@ -17,7 +17,7 @@ function render(): string {
     '',
     '<!-- Generated from src/tools/registry.ts by tests/unit/docs.test.ts. Do not edit by hand. -->',
     '',
-    `Benchtop has ${TOOLS.length} tools. All of them work without a network connection except the ${TOOLS.filter((tool) => tool.category === 'online').length} in Online checks and Web Page to PDF, which contact only the hosts you enter, when you ask, and only in the desktop app; PDF Toolbox’s timestamp likewise sends a fingerprint of the PDF (never the file) to the timestamp server you choose. Video Dubbing translates through the AI server address you give it, usually one on this computer. The AI tools download their models and voices once, when you first choose one (or import them from a folder), and then work offline too.`,
+    `Benchtop has ${TOOLS.length} tools. All of them work without a network connection except the ${TOOLS.filter((tool) => tool.category === 'online').length} in Online checks, Asset Finder and Web Page to PDF, which contact only the hosts you enter or the libraries you search, when you ask, and only in the desktop app; PDF Toolbox’s timestamp likewise sends a fingerprint of the PDF (never the file) to the timestamp server you choose. Video Dubbing and Text Translator translate through the translation server address you give them, usually one on this computer. The AI tools download their models and voices once, when you first choose one (or import them from a folder), and then work offline too.`,
     '',
   ];
   for (const category of CATEGORIES) {

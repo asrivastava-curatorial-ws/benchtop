@@ -1,6 +1,6 @@
 [package]
 name = "benchtop"
-version = "5.1.1"
+version = "5.2.0"
 description = "Benchtop: an open-source desktop toolbox of developer and engineering utilities"
 license = "MIT"
 edition = "2021"
@@ -56,6 +56,9 @@ symphonia = { version = "0.5", default-features = false, features = ["mp3", "aac
 rubato = "0.16"
 rustfft = "6"
 sha2 = "0.10"
+# Checksums libraries give for their files (Asset Finder downloads).
+sha1 = "0.10"
+md-5 = "0.10"
 flate2 = "1"
 tar = "0.4"
 zip = { version = "2", default-features = false, features = ["deflate"] }

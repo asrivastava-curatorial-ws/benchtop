@@ -1,0 +1,63 @@
+[
+  {
+    "uuid": "abc",
+    "name": "Open Science",
+    "handle": "20.500.12657/25287",
+    "type": "item",
+    "metadata": [
+      {
+        "key": "dc.title",
+        "value": "Open Science",
+        "language": null
+      },
+      {
+        "key": "dc.contributor.author",
+        "value": "Smith, Jane"
+      },
+      {
+        "key": "dc.date.issued",
+        "value": "2019"
+      },
+      {
+        "key": "dc.description.abstract",
+        "value": "<p>About open science.</p>"
+      },
+      {
+        "key": "dc.rights.uri",
+        "value": "http://creativecommons.org/licenses/by/4.0/"
+      },
+      {
+        "key": "dc.subject.other",
+        "value": "science"
+      }
+    ],
+    "bitstreams": [
+      {
+        "uuid": "pdf-uuid",
+        "name": "9781234567890.pdf",
+        "bundleName": "ORIGINAL",
+        "mimeType": "application/pdf",
+        "sizeBytes": 5000000,
+        "retrieveLink": "/bitstreams/pdf-uuid/retrieve",
+        "checkSum": {
+          "value": "0cc175b9c0f1b6a831c399e269772661",
+          "checkSumAlgorithm": "MD5"
+        }
+      },
+      {
+        "uuid": "thumb-uuid",
+        "name": "9781234567890.pdf.jpg",
+        "bundleName": "THUMBNAIL",
+        "mimeType": "image/jpeg",
+        "sizeBytes": 10000,
+        "retrieveLink": "/bitstreams/thumb-uuid/retrieve"
+      },
+      {
+        "uuid": "lic",
+        "name": "license.txt",
+        "bundleName": "LICENSE",
+        "retrieveLink": "/bitstreams/lic/retrieve"
+      }
+    ]
+  }
+]

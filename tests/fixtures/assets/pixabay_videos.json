@@ -1,0 +1,31 @@
+{
+  "total": 100,
+  "totalHits": 100,
+  "hits": [
+    {
+      "id": 125,
+      "pageURL": "https://pixabay.com/videos/id-125/",
+      "type": "film",
+      "tags": "flowers, yellow, blossom",
+      "duration": 12,
+      "videos": {
+        "large": {
+          "url": "https://cdn.pixabay.com/video/2015/08/08/125-135736646_large.mp4",
+          "width": 3840,
+          "height": 2160,
+          "size": 6615235,
+          "thumbnail": "https://cdn.pixabay.com/video/2015/08/08/125-135736646_large.jpg"
+        },
+        "tiny": {
+          "url": "https://cdn.pixabay.com/video/2015/08/08/125-135736646_tiny.mp4",
+          "width": 960,
+          "height": 540,
+          "size": 900000,
+          "thumbnail": "https://cdn.pixabay.com/video/2015/08/08/125-135736646_tiny.jpg"
+        }
+      },
+      "user_id": 1,
+      "user": "Coverr-Free-Footage"
+    }
+  ]
+}

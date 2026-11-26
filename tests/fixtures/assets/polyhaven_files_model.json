@@ -1,0 +1,62 @@
+{
+  "blend": {
+    "1k": {
+      "blend": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/blend/1k/wooden_chair/wooden_chair_1k.blend",
+        "md5": "a",
+        "size": 1000,
+        "include": {
+          "textures/wooden_chair_diff_1k.jpg": {
+            "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_chair/wooden_chair_diff_1k.jpg",
+            "md5": "b",
+            "size": 200
+          }
+        }
+      }
+    }
+  },
+  "gltf": {
+    "2k": {
+      "gltf": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/wooden_chair/wooden_chair_2k.gltf",
+        "md5": "f",
+        "size": 600,
+        "include": {
+          "wooden_chair.bin": {
+            "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/wooden_chair/wooden_chair.bin",
+            "md5": "g",
+            "size": 3000
+          }
+        }
+      }
+    },
+    "1k": {
+      "gltf": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/wooden_chair/wooden_chair_1k.gltf",
+        "md5": "c",
+        "size": 500,
+        "include": {
+          "wooden_chair.bin": {
+            "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/wooden_chair/wooden_chair.bin",
+            "md5": "d",
+            "size": 3000
+          },
+          "textures/wooden_chair_diff_1k.jpg": {
+            "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/1k/wooden_chair/wooden_chair_diff_1k.jpg",
+            "md5": "e",
+            "size": 200
+          }
+        }
+      }
+    }
+  },
+  "fbx": {
+    "1k": {
+      "fbx": {
+        "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/1k/wooden_chair/wooden_chair_1k.fbx",
+        "md5": "h",
+        "size": 900
+      }
+    }
+  }
+}

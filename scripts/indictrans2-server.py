@@ -19,9 +19,17 @@ downloaded from Hugging Face the first time (about 1 GB per direction; run with
 Indian-to-English model asks you to accept its terms on its Hugging Face page
 first; then run `huggingface-cli login` once, or set HF_TOKEN while downloading.
 
+Other languages: the same server also runs translation models for many
+languages, chosen by the request's "model": m2m100-418m (M2M-100, 100
+languages, MIT), nllb-200-600m (NLLB-200, 200 languages, CC BY-NC 4.0),
+madlad400-3b (MADLAD-400, over 400 languages, Apache 2.0), or any Hugging Face
+Marian (Opus-MT), M2M-100, NLLB, mBART-50 or MADLAD model as "hf:owner/name".
+Fetch them with --download m2m100-418m,hf:Helsinki-NLP/opus-mt-en-ar.  Code
+that comes with a model is never run: only kinds Transformers knows are loaded.
+
 Options: --port N (0 picks a free port), --host ADDRESS, --beams N (default 4),
 --cpu, --preload (load the downloaded models before answering), --download
-[en-indic,indic-en] (fetch the models and exit), --exit-with-stdin (stop when
+[en-indic,indic-en,...] (fetch the models and exit), --exit-with-stdin (stop when
 the program that started this one closes its end of standard input).
 
 Lines starting with "@@" on standard error are for Benchtop: @@total BYTES,
@@ -46,6 +54,54 @@ from queue import Queue
 MODELS = {
     "en-indic": "ai4bharat/indictrans2-en-indic-dist-200M",
     "indic-en": "ai4bharat/indictrans2-indic-en-dist-200M",
+}
+
+# Models for many languages, fetched by these names; any other Hugging Face model
+# is asked for as "hf:owner/name".
+EXTRA = {
+    "m2m100-418m": "facebook/m2m100_418M",
+    "nllb-200-600m": "facebook/nllb-200-distilled-600M",
+    "madlad400-3b": "google/madlad400-3b-mt",
+}
+REPO_RE = std_re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,95}/[A-Za-z0-9][A-Za-z0-9_.-]{0,95}")
+
+
+def repo_for(key):
+    """The Hugging Face repository for a model name Benchtop uses."""
+    if key in MODELS:
+        return MODELS[key]
+    if key in EXTRA:
+        return EXTRA[key]
+    if key.startswith("hf:") and REPO_RE.fullmatch(key[3:]) and ".." not in key:
+        return key[3:]
+    raise ValueError(f"unknown model {key}; use en-indic, indic-en, {', '.join(EXTRA)} or hf:owner/name")
+
+
+def other_model(key):
+    """Whether a request's model is one of the many-language models (rather than IndicTrans2)."""
+    return key in EXTRA or (key.startswith("hf:") and REPO_RE.fullmatch(key[3:]) is not None)
+
+
+# FLORES-200 codes -> the two-letter codes M2M-100, mBART-50 and MADLAD use.
+ISO_639_1 = {
+    "eng_Latn": "en", "hin_Deva": "hi", "kan_Knda": "kn", "tam_Taml": "ta", "tel_Telu": "te",
+    "mal_Mlym": "ml", "ben_Beng": "bn", "mar_Deva": "mr", "guj_Gujr": "gu", "pan_Guru": "pa",
+    "ory_Orya": "or", "asm_Beng": "as", "urd_Arab": "ur", "npi_Deva": "ne", "san_Deva": "sa",
+    "snd_Arab": "sd", "fra_Latn": "fr", "deu_Latn": "de", "spa_Latn": "es", "jpn_Jpan": "ja",
+    "zho_Hans": "zh", "zho_Hant": "zh", "arb_Arab": "ar", "rus_Cyrl": "ru", "kor_Hang": "ko",
+    "por_Latn": "pt", "ita_Latn": "it", "tur_Latn": "tr", "pes_Arab": "fa", "tha_Thai": "th",
+    "vie_Latn": "vi", "ind_Latn": "id", "zsm_Latn": "ms", "heb_Hebr": "he", "swh_Latn": "sw",
+    "ukr_Cyrl": "uk", "pol_Latn": "pl", "nld_Latn": "nl", "ell_Grek": "el", "sin_Sinh": "si",
+    "mya_Mymr": "my", "khm_Khmr": "km", "bod_Tibt": "bo",
+}
+# Two-letter codes -> mBART-50's language codes.
+MBART = {
+    "en": "en_XX", "ar": "ar_AR", "zh": "zh_CN", "ja": "ja_XX", "ru": "ru_RU", "fr": "fr_XX",
+    "de": "de_DE", "es": "es_XX", "hi": "hi_IN", "bn": "bn_IN", "gu": "gu_IN", "ml": "ml_IN",
+    "mr": "mr_IN", "ta": "ta_IN", "te": "te_IN", "ur": "ur_PK", "ne": "ne_NP", "si": "si_LK",
+    "my": "my_MM", "km": "km_KH", "ko": "ko_KR", "pt": "pt_XX", "it": "it_IT", "tr": "tr_TR",
+    "fa": "fa_IR", "th": "th_TH", "vi": "vi_VN", "id": "id_ID", "he": "he_IL", "sw": "sw_KE",
+    "uk": "uk_UA", "pl": "pl_PL", "nl": "nl_XX",
 }
 
 # Language names Benchtop uses -> FLORES-200 codes.
@@ -241,7 +297,7 @@ def available(direction):
     try:
         from huggingface_hub import snapshot_download
 
-        snapshot_download(MODELS[direction], local_files_only=True)
+        snapshot_download(repo_for(direction), local_files_only=True)
         return True
     except Exception:
         return False
@@ -291,6 +347,115 @@ def translate(lines, src, tgt):
     return out
 
 
+def family_of(name, config):
+    """How to ask a model for a language, from the kind of model it is."""
+    kind = getattr(config, "model_type", "") or ""
+    if kind == "marian":
+        return "marian"
+    if kind in ("t5", "mt5"):
+        return "madlad"
+    if kind == "mbart":
+        return "mbart"
+    if kind == "m2m_100":
+        return "nllb" if "nllb" in name.lower() else "m2m"
+    raise ValueError(f"{name} is a {kind or 'model of an unknown kind'}: Benchtop translates with Marian (Opus-MT), M2M-100, NLLB, mBART-50 and MADLAD models.")
+
+
+def load_other(key):
+    with load_lock:
+        if key not in loaded:
+            import torch
+            from transformers import AutoConfig, AutoModelForSeq2SeqLM, AutoTokenizer
+
+            name = repo_for(key)
+            device = "cuda" if torch.cuda.is_available() and not settings.cpu else "cpu"
+            # One many-language model in memory at a time (they are large); IndicTrans2 stays.
+            for other in [k for k in loaded if other_model(k)]:
+                say(f"Unloading {repo_for(other)}")
+                del loaded[other]
+            say(f"Loading {name} on {device}...")
+            # Code that comes with a model is never run: only kinds Transformers knows.
+            config = AutoConfig.from_pretrained(name, trust_remote_code=False)
+            family = family_of(name, config)
+            tokenizer = AutoTokenizer.from_pretrained(name, trust_remote_code=False)
+            model = AutoModelForSeq2SeqLM.from_pretrained(name, trust_remote_code=False).to(device).eval()
+            loaded[key] = (family, tokenizer, model, device, name)
+        return loaded[key]
+
+
+def two_letter(code, name):
+    found = ISO_639_1.get(code)
+    if not found:
+        raise ValueError(f"{name} has no code for the language {code}")
+    return found
+
+
+def language_token(tokenizer, code, name):
+    token = tokenizer.convert_tokens_to_ids(code)
+    if token is None or token == tokenizer.unk_token_id:
+        raise ValueError(f"{name} does not know the language {code}")
+    return token
+
+
+def translate_other(key, lines, src, tgt):
+    """Translates with one of the many-language models (or a Marian pair model)."""
+    if not lines or src == tgt:
+        return list(lines)
+    import torch
+
+    family, tokenizer, model, device, name = load_other(key)
+    out = []
+    with translate_lock:
+        for start in range(0, len(lines), 8):
+            batch = list(lines[start:start + 8])
+            options = {}
+            if family == "nllb":
+                language_token(tokenizer, src, name)
+                tokenizer.src_lang = src
+                options["forced_bos_token_id"] = language_token(tokenizer, tgt, name)
+            elif family == "mbart":
+                pair = MBART.get(two_letter(src, name)), MBART.get(two_letter(tgt, name))
+                if None in pair:
+                    raise ValueError(f"mBART-50 does not know {src if pair[0] is None else tgt}")
+                tokenizer.src_lang = pair[0]
+                options["forced_bos_token_id"] = language_token(tokenizer, pair[1], name)
+            elif family == "m2m":
+                try:
+                    tokenizer.src_lang = two_letter(src, name)
+                    options["forced_bos_token_id"] = tokenizer.get_lang_id(two_letter(tgt, name))
+                except KeyError:
+                    raise ValueError(f"M2M-100 does not know {src} or {tgt}") from None
+            elif family == "madlad":
+                batch = [f"<2{two_letter(tgt, name)}> {line}" for line in batch]
+            elif family == "marian":
+                codes = list(getattr(tokenizer, "supported_language_codes", None) or [])
+                if codes:
+                    wanted = [f">>{tgt.split('_')[0]}<<", f">>{ISO_639_1.get(tgt, '')}<<", f">>{tgt}<<"]
+                    tag = next((c for c in wanted if c in codes), None)
+                    if not tag:
+                        raise ValueError(f"{name} cannot write {tgt}")
+                    batch = [f"{tag} {line}" for line in batch]
+            inputs = tokenizer(batch, return_tensors="pt", padding=True, truncation=True, max_length=512).to(device)
+            with torch.inference_mode():
+                tokens = model.generate(**inputs, num_beams=settings.beams, max_length=512, **options)
+            out.extend(tokenizer.batch_decode(tokens, skip_special_tokens=True))
+    return out
+
+
+def installed_models():
+    """Every model on this computer, by the name a request uses."""
+    names = ["indictrans2"] if any(available(d) for d in MODELS) else []
+    names += [key for key in EXTRA if available(key)]
+    try:
+        from huggingface_hub import scan_cache_dir
+
+        known = set(MODELS.values()) | set(EXTRA.values())
+        names += sorted(f"hf:{repo.repo_id}" for repo in scan_cache_dir().repos if repo.repo_type == "model" and repo.repo_id not in known)
+    except Exception:
+        pass
+    return names
+
+
 def download(directions):
     """Fetches the models (weights once, not in two formats).  Exit code 3: a model needs a token."""
     from huggingface_hub import HfApi, snapshot_download
@@ -298,10 +463,11 @@ def download(directions):
     api = HfApi()
     plans = []
     for direction in directions:
-        name = MODELS[direction]
+        name = repo_for(direction)
         files = [(s.rfilename, s.size or 0) for s in api.model_info(name, files_metadata=True).siblings]
         safetensors = any(f.endswith(".safetensors") for f, _ in files)
-        ignore = ["*.md", "*.png", "*.jpg", ".gitattributes"] + (["*.bin"] if safetensors else [])
+        # Only the PyTorch weights, once: not the TensorFlow, Flax, Rust, ONNX or GGUF copies.
+        ignore = ["*.md", "*.png", "*.jpg", ".gitattributes", "*.h5", "*.msgpack", "*.ot", "*.gguf", "*.onnx", "onnx/*", "*.tflite"] + (["*.bin"] if safetensors else [])
         wanted = [(f, size) for f, size in files if not any(std_re.fullmatch(p.replace(".", r"\.").replace("*", ".*"), f) for p in ignore)]
         plans.append((direction, name, ignore, sum(size for _, size in wanted)))
     say(f"@@total {sum(size for *_, size in plans)}")
@@ -312,7 +478,10 @@ def download(directions):
             snapshot_download(name, ignore_patterns=ignore)
             say(f"@@ok {direction}")
         except Exception as error:
-            if type(error).__name__ in ("GatedRepoError", "RepositoryNotFoundError") or "401" in str(error) or "403" in str(error):
+            if type(error).__name__ == "RepositoryNotFoundError" and direction.startswith("hf:"):
+                gated = True
+                say(f"@@gated {direction} {name} is not on Hugging Face (check the name), or it is private and needs a token.")
+            elif type(error).__name__ in ("GatedRepoError", "RepositoryNotFoundError") or "401" in str(error) or "403" in str(error):
                 gated = True
                 say(f"@@gated {direction} {name} needs a Hugging Face token from an account that accepted its terms.")
             else:
@@ -361,7 +530,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         path = self.path.rstrip("/")
         if path in ("/v1/models", "/api/tags"):
-            self.reply(200, {"object": "list", "data": [{"id": "indictrans2", "object": "model"}]})
+            self.reply(200, {"object": "list", "data": [{"id": name, "object": "model"} for name in installed_models()]})
         elif path == "/health":
             self.reply(200, {"status": "ok", "loaded": sorted(loaded)})
         else:
@@ -375,11 +544,13 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             body = json.loads(self.rfile.read(length) or b"{}")
             lines, src, tgt = request_lines(body)
-            result = translate([str(line) for line in lines], src, tgt)
+            asked = str(body.get("model") or "")
+            texts = [str(line) for line in lines]
+            result = translate_other(asked, texts, src, tgt) if other_model(asked) else translate(texts, src, tgt)
             content = json.dumps(result, ensure_ascii=False)
             self.reply(200, {
                 "object": "chat.completion",
-                "model": "indictrans2",
+                "model": asked if other_model(asked) else "indictrans2",
                 "choices": [{"index": 0, "message": {"role": "assistant", "content": content}, "finish_reason": "stop"}],
                 "message": {"role": "assistant", "content": content},
             })
@@ -417,9 +588,11 @@ def main(argv=None):
     settings.cpu = args.cpu
     if args.download:
         directions = [d.strip() for d in args.download.split(",") if d.strip()]
-        unknown = [d for d in directions if d not in MODELS]
-        if unknown:
-            parser.error(f"unknown direction {', '.join(unknown)}; use en-indic and/or indic-en")
+        for direction in directions:
+            try:
+                repo_for(direction)
+            except ValueError as error:
+                parser.error(str(error))
         return download(directions)
     if args.exit_with_stdin:
         exit_with_stdin()

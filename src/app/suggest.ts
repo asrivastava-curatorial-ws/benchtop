@@ -142,7 +142,10 @@ const RULES: Record<Kind, readonly (readonly [string, string])[]> = {
     ['html-formatter', 'Format it'],
     ['html-to-markdown', 'Turn it into Markdown'],
   ],
-  markdown: [['markdown-to-html', 'Preview it and turn it into HTML']],
+  markdown: [
+    ['markdown-to-html', 'Preview it and turn it into HTML'],
+    ['translator', 'Translate it into another language'],
+  ],
   sql: [
     ['sql-formatter', 'Format it'],
     ['sql-er-diagram', 'Draw its tables as a diagram'],
@@ -181,6 +184,7 @@ const RULES: Record<Kind, readonly (readonly [string, string])[]> = {
     ['word-counter', 'Count words and characters'],
     ['diff', 'Compare it with another text'],
     ['text-cleaner', 'Clean it up'],
+    ['translator', 'Translate it into another language'],
   ],
   binary: [],
 };

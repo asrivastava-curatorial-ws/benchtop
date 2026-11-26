@@ -1,0 +1,35 @@
+{
+  "responseHeader": {
+    "status": 0
+  },
+  "response": {
+    "numFound": 57,
+    "start": 0,
+    "docs": [
+      {
+        "identifier": "Prelinger_Film_1951",
+        "title": "Sample Film",
+        "creator": ["Jam Handy Organization"],
+        "mediatype": "movies",
+        "licenseurl": "http://creativecommons.org/publicdomain/mark/1.0/",
+        "date": "1951-01-01T00:00:00Z",
+        "year": 1951,
+        "description": "A <b>sponsored</b> film.",
+        "item_size": 123456789,
+        "collection": ["prelinger", "movies"],
+        "subject": ["Industry", "Cars"],
+        "downloads": 1000
+      },
+      {
+        "identifier": "moon_audio",
+        "title": "Moon talk",
+        "creator": "Someone",
+        "mediatype": "audio",
+        "licenseurl": "https://creativecommons.org/licenses/by/3.0/",
+        "year": "2009",
+        "description": "",
+        "item_size": 1000
+      }
+    ]
+  }
+}

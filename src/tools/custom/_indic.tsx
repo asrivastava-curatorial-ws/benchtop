@@ -1,7 +1,10 @@
 /**
- * "IndicTrans2 on this computer" for the Video Dubbing tool: one click sets up a
- * private Python with PyTorch and the IndicTrans2 models in Benchtop's folder
- * (indic.rs), and the translation server then runs in the background, offline.
+ * "IndicTrans2 on this computer" for Video Dubbing and the Text Translator: one
+ * click sets up a private Python with PyTorch and the IndicTrans2 models in
+ * Benchtop's folder (indic.rs), and the translation server then runs in the
+ * background, offline.  Given a catalogue, it also downloads models for other
+ * languages (M2M-100, NLLB-200, MADLAD-400 or any Hugging Face model) that the
+ * same server runs.
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { formatBytes } from '../../lib/bytes';
@@ -43,7 +46,33 @@ interface Progress {
   readonly log: readonly string[];
 }
 
-export function IndicPanel({ script, onReady }: { script: string; onReady: (address: string) => void }) {
+/** A translation model the panel offers to download (the server knows these names). */
+export interface ExtraModel {
+  readonly key: string;
+  readonly name: string;
+  readonly languages: string;
+  readonly size: string;
+  readonly licence: string;
+  readonly note?: string;
+}
+
+const HF_REPO = /^[A-Za-z0-9][\w.-]{0,95}\/[A-Za-z0-9][\w.-]{0,95}$/;
+const isIndic = (key: string) => key === 'en-indic' || key === 'indic-en';
+
+export function IndicPanel({
+  script,
+  onReady,
+  useLabel = 'Use it for this video',
+  catalogue,
+  onModel,
+}: {
+  script: string;
+  onReady: (address: string) => void;
+  useLabel?: string;
+  /** Models for other languages to offer (the Text Translator). */
+  catalogue?: readonly ExtraModel[];
+  onModel?: (address: string, model: string) => void;
+}) {
   const [status, setStatus] = useState<IndicStatus | null>(null);
   const [progress, setProgress] = useState<Progress | null>(null);
   const [token, setToken] = useState('');
@@ -54,6 +83,12 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
   // Set when the user starts the server (or a setup finishes): once it is ready, the dubbing
   // tool switches to it.  A server that was already running leaves the tool's choice alone.
   const switchWhenReady = useRef(false);
+  // A model for other languages to switch to once the server is ready.
+  const useWhenReady = useRef<string | null>(null);
+  // The models the setup under way is fetching.
+  const pending = useRef<readonly string[]>([]);
+  const [first, setFirst] = useState('indictrans2');
+  const [custom, setCustom] = useState('');
 
   const refresh = () =>
     void indicStatus().then((s) => {
@@ -61,6 +96,11 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
       if (s.ready && s.port && switchWhenReady.current) {
         switchWhenReady.current = false;
         onReady(indicAddress(s.port));
+      }
+      if (s.ready && s.port && useWhenReady.current) {
+        const model = useWhenReady.current;
+        useWhenReady.current = null;
+        onModel?.(indicAddress(s.port), model);
       }
     });
 
@@ -87,8 +127,13 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
         else if (event.message) notify(event.message, 'info');
         refresh();
         if (event.kind === 'done') {
-          switchWhenReady.current = true;
+          const asked = pending.current;
+          pending.current = [];
+          if (asked.length && !asked.some(isIndic)) useWhenReady.current = asked[0] ?? null;
+          else switchWhenReady.current = true;
           void startIndic().then(refresh, (error) => setProblem(String(error)));
+        } else {
+          pending.current = [];
         }
       }
     });
@@ -125,12 +170,25 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
   }
   if (!status) return <div class="indic-panel" data-testid="indic-panel" />;
 
-  const begin = (modelsOnly: boolean) =>
+  const begin = (modelsOnly: boolean, models: readonly string[] = []) =>
     void attempt(async () => {
       setProblem(null);
+      pending.current = models;
       setProgress({ step: modelsOnly ? 'models' : 'uv', label: modelsOnly ? 'Downloading the models' : 'Starting', done: 0, total: 0, finished: [], log: [] });
-      await setUpIndic({ token: token.trim() || undefined, gpu, ...(modelsOnly ? { modelsOnly: true } : {}) });
+      await setUpIndic({ token: token.trim() || undefined, gpu, ...(modelsOnly ? { modelsOnly: true } : {}), ...(models.length ? { models: [...models] } : {}) });
       setToken('');
+      refresh();
+    });
+
+  const use = (model: string) =>
+    void attempt(async () => {
+      if (status.ready && status.port) {
+        onModel?.(indicAddress(status.port), model);
+        return;
+      }
+      setProblem(null);
+      useWhenReady.current = model;
+      if (!status.running) await startIndic();
       refresh();
     });
 
@@ -158,7 +216,7 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
 
   return (
     <div class="indic-panel" data-testid="indic-panel">
-      <h4 class="indic-title">IndicTrans2 on this computer</h4>
+      <h4 class="indic-title">{catalogue ? 'Translation models on this computer' : 'IndicTrans2 on this computer'}</h4>
       {busy ? (
         <>
           <ol class="indic-steps">
@@ -190,10 +248,24 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
       ) : !installed ? (
         <>
           <p class="control-help">
-            One click sets up AI4Bharat's IndicTrans2, the best translator for India's 22 scheduled languages. Benchtop downloads a private copy of Python, PyTorch and the two models (about 2.5 GB,
-            into its own folder, nothing installed system-wide) and afterwards translates offline.
+            {catalogue
+              ? 'One click downloads a private copy of Python and PyTorch into Benchtop’s own folder (nothing is installed system-wide) and the model you choose; afterwards translation works offline. More models can be added later.'
+              : 'One click sets up AI4Bharat’s IndicTrans2, the best translator for India’s 22 scheduled languages. Benchtop downloads a private copy of Python, PyTorch and the two models (about 2.5 GB, into its own folder, nothing installed system-wide) and afterwards translates offline.'}
           </p>
-          {tokenField}
+          {catalogue && (
+            <label class="control">
+              <span class="control-label">Start with</span>
+              <select class="select" value={first} onChange={(e) => setFirst(e.currentTarget.value)} data-testid="indic-first">
+                <option value="indictrans2">IndicTrans2: English and India’s 22 scheduled languages (about 2 GB)</option>
+                {catalogue.map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {m.name}: {m.languages} ({m.size}, {m.licence})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {(!catalogue || first === 'indictrans2') && tokenField}
           {status.gpuChoice && (
             <label class="toggle" for="indic-gpu">
               <input id="indic-gpu" type="checkbox" role="switch" aria-checked={gpu} checked={gpu} onChange={(e) => setGpu(e.currentTarget.checked)} />
@@ -202,8 +274,8 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
             </label>
           )}
           <div class="button-row">
-            <button type="button" class="button button-primary button-small" onClick={() => begin(false)} data-testid="indic-setup">
-              Set up IndicTrans2
+            <button type="button" class="button button-primary button-small" onClick={() => begin(false, catalogue && first !== 'indictrans2' ? [first] : [])} data-testid="indic-setup">
+              {catalogue ? 'Set up translation on this computer' : 'Set up IndicTrans2'}
             </button>
             <span class="control-help">Or {saveScript} to run it yourself.</span>
           </div>
@@ -216,7 +288,7 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
               : status.running
                 ? 'Starting: loading the models, which can take a minute…'
                 : 'Set up. Start it to translate; it stops when Benchtop closes.'}{' '}
-            English → Indian languages{installed.models.includes('en-indic') ? ' ✓' : ': not downloaded'}; Indian languages → English{reverse ? ' ✓' : ': needs a token'}.
+            IndicTrans2: English → Indian languages{installed.models.includes('en-indic') ? ' ✓' : ': not downloaded'}; Indian languages → English{reverse ? ' ✓' : ': needs a token'}.
           </p>
           {status.outdated && <p class="control-help">This setup is from an older Benchtop. Set it up again to update it.</p>}
           <div class="button-row">
@@ -251,9 +323,14 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
                 Start
               </button>
             )}
-            {status.ready && status.port && (
-              <button type="button" class="button button-small button-quiet" onClick={() => onReady(indicAddress(status.port as number))}>
-                Use it for this video
+            {status.ready && status.port && installed.models.some(isIndic) && (
+              <button type="button" class="button button-small button-quiet" onClick={() => onReady(indicAddress(status.port as number))} data-testid="indic-use">
+                {useLabel}
+              </button>
+            )}
+            {!installed.models.includes('en-indic') && (
+              <button type="button" class="button button-small" onClick={() => begin(true, ['en-indic'])} data-testid="indic-en-indic">
+                Download IndicTrans2 (English → Indian languages, about 1 GB)
               </button>
             )}
             {status.outdated && (
@@ -266,9 +343,54 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
             <details class="indic-more">
               <summary>Add Indian → English translation</summary>
               {tokenField}
-              <button type="button" class="button button-small" disabled={!token.trim()} onClick={() => begin(true)} data-testid="indic-models">
+              <button type="button" class="button button-small" disabled={!token.trim()} onClick={() => begin(true, ['indic-en'])} data-testid="indic-models">
                 Download the model
               </button>
+            </details>
+          )}
+          {catalogue && (
+            <details class="indic-more" open data-testid="indic-catalogue">
+              <summary>Models for other languages</summary>
+              <ul class="indic-models">
+                {[
+                  ...catalogue,
+                  ...installed.models
+                    .filter((m) => m.startsWith('hf:'))
+                    .map((key) => ({ key, name: key.slice(3), languages: 'added by you', size: 'downloaded', licence: 'see its Hugging Face page' })),
+                ].map((m) => {
+                  const have = installed.models.includes(m.key);
+                  return (
+                    <li key={m.key} class="indic-model">
+                      <span>
+                        <strong>{m.name}</strong>: {m.languages}. {m.size}; licence {m.licence}.{'note' in m && m.note ? <span class="control-help"> {m.note}</span> : null}
+                      </span>
+                      {have ? (
+                        <button type="button" class="button button-small" onClick={() => use(m.key)} data-testid={`indic-use-${m.key}`}>
+                          Use
+                        </button>
+                      ) : (
+                        <button type="button" class="button button-small" onClick={() => begin(true, [m.key])} data-testid={`indic-get-${m.key}`}>
+                          Download
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+              <div class="indic-add">
+                {reverse && tokenField}
+                <label class="control">
+                  <span class="control-label">Add a translation model from Hugging Face (owner/name)</span>
+                  <input class="input mono" value={custom} placeholder="Helsinki-NLP/opus-mt-en-ar" spellcheck={false} onInput={(e) => setCustom(e.currentTarget.value)} data-testid="indic-custom" />
+                </label>
+                <button type="button" class="button button-small" disabled={!HF_REPO.test(custom.trim())} onClick={() => begin(true, [`hf:${custom.trim()}`])} data-testid="indic-custom-get">
+                  Download
+                </button>
+                <p class="control-help">
+                  Marian (Opus-MT: one language pair each, small and fast), M2M-100, NLLB, mBART-50 and MADLAD models work. Code that comes with a model is never run. A gated model needs the Hugging
+                  Face token above, and only for its download.
+                </p>
+              </div>
             </details>
           )}
           <div class="button-row">
@@ -296,7 +418,8 @@ export function IndicPanel({ script, onReady }: { script: string; onReady: (addr
               </>
             ) : (
               <button type="button" class="link-button" onClick={() => setConfirmRemove(true)} data-testid="indic-remove">
-                Remove IndicTrans2{size ? ` (${formatBytes(size)})` : ''}
+                {catalogue ? 'Remove the translation models' : 'Remove IndicTrans2'}
+                {size ? ` (${formatBytes(size)})` : ''}
               </button>
             )}
           </div>

@@ -173,6 +173,9 @@ const desktopTransport: NetTransport = {
 
 let override: NetTransport | null = null;
 
+/** A stand-in network the end-to-end tests may set in a browser (never consulted in the desktop app). */
+const testTransport = (): NetTransport | null => (isDesktop ? null : ((globalThis as { __benchtopNetTransport?: NetTransport }).__benchtopNetTransport ?? null));
+
 /** Replaces the transport (unit tests).  Pass `null` to restore the desktop one. */
 export function setNetTransport(transport: NetTransport | null): void {
   override = transport;
@@ -180,7 +183,7 @@ export function setNetTransport(transport: NetTransport | null): void {
 
 /** Whether the online checks can run here, and why not. */
 export function networkStatus(): { readonly ok: true } | { readonly ok: false; readonly reason: string } {
-  if (override !== null) return { ok: true };
+  if (override !== null || testTransport() !== null) return { ok: true };
   if (!isDesktop) return { ok: false, reason: 'Online checks need the Benchtop desktop app. In a browser every tool works offline and nothing here can contact other hosts.' };
   if (!getSettings().allowNetwork) return { ok: false, reason: 'Online checks are turned off. Turn on "Allow online checks" in Settings to use this tool.' };
   return { ok: true };
@@ -203,6 +206,8 @@ export function isLoopback(address: string): boolean {
  */
 export function netFor(address: string): NetTransport {
   if (override !== null) return override;
+  const stand = testTransport();
+  if (stand !== null) return stand;
   if (isLoopback(address)) {
     if (!isDesktop) throw new ToolError('Talking to a program on this computer needs the Benchtop desktop app.');
     return desktopTransport;
@@ -214,7 +219,7 @@ export function netFor(address: string): NetTransport {
 export function net(): NetTransport {
   const status = networkStatus();
   if (!status.ok) throw new ToolError(status.reason);
-  return override ?? desktopTransport;
+  return override ?? testTransport() ?? desktopTransport;
 }
 
 /** Runs `work` over `items` with at most `limit` running at once, keeping the input order. */

@@ -1186,6 +1186,103 @@ try {
     if (git('ls-files', '-u') !== '') throw new Error('git still lists the conflict');
   });
 
+  await check('Asset Finder searches with a connector of your own and saves the file with its record and licence note', async () => {
+    const { createServer } = await import('node:http');
+    const picture = readFileSync(resolve(ROOT, 'tests/e2e/fixtures/ocr.png'));
+    const asked = [];
+    const server = createServer((req, res) => {
+      const url = new URL(req.url, 'http://127.0.0.1');
+      asked.push(url.pathname);
+      if (url.pathname === '/search') {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ results: [{ id: 'p1', title: 'Steam hammer', creator: 'Test Museum', licence: 'CC BY 4.0', file: `http://127.0.0.1:${server.address().port}/steam.png` }] }));
+      } else if (url.pathname === '/steam.png') {
+        res.writeHead(200, { 'content-type': 'image/png', 'content-length': picture.length });
+        res.end(picture);
+      } else {
+        res.writeHead(404);
+        res.end();
+      }
+    });
+    await new Promise((done) => server.listen(0, '127.0.0.1', done));
+    try {
+      const code = [
+        `export const source = { id: 'local-test', name: 'Local test library', about: 'A library the desktop test serves on this computer.', homepage: 'https://example.org', types: ['image'], hosts: ['127.0.0.1'], settings: { api: 'http://127.0.0.1:${server.address().port}' } };`,
+        'export async function search(q, ctx) {',
+        "  const r = await ctx.get(ctx.setting('api') + '/search', { query: { q: q.text } });",
+        '  return { items: r.results.map((x) => ({ id: x.id, title: x.title, creator: x.creator, licence: x.licence, thumb: x.file, extra: { file: x.file } })), more: false };',
+        '}',
+        "export async function files(item) { return [{ label: 'Original', url: item.extra.file, name: 'steam.png', original: true }]; }",
+      ].join('\n');
+      const builtins = readdirSync(resolve(ROOT, 'src/lib/assets/connectors')).map((name) => name.replace(/\.js$/, ''));
+      // Only this library is asked, and online checks are allowed.
+      await driver.executeScript(
+        `localStorage.setItem('benchtop.assets.v1', JSON.stringify({ version: 1, connectors: [{ id: 'local-test', code: arguments[0], enabled: true, settings: {} }, ...arguments[1].map((id) => ({ id, code: null, enabled: false, settings: {} }))] }));
+         const settings = JSON.parse(localStorage.getItem('benchtop.settings.v1') || '{}');
+         settings.allowNetwork = true;
+         localStorage.setItem('benchtop.settings.v1', JSON.stringify(settings));`,
+        code,
+        builtins,
+      );
+      await driver.navigate().refresh();
+      await open('asset-finder');
+      const text = (selector) => driver.executeScript('return document.querySelector(arguments[0])?.textContent ?? ""', selector);
+      await driver.wait(async () => (await driver.executeScript("return document.querySelector('[data-testid=af-search]')?.disabled === false")) === true, 30_000, 'searching never became possible');
+      await driver.executeScript("const box = document.querySelector('[data-testid=af-query]'); box.value = 'steam'; box.dispatchEvent(new Event('input', { bubbles: true }));");
+      await driver.executeScript("document.querySelector('[data-testid=af-search]').click()");
+      await driver.wait(async () => (await text('[data-testid=af-results]')).includes('Steam hammer'), 20_000, `no result; sources: ${await text('[data-testid=af-sources]')}`);
+      await driver.executeScript("document.querySelector('[data-testid=af-results] button').click()");
+      await driver.wait(async () => (await text('[data-testid=af-files]')).includes('Original'), 20_000, 'the files were not listed');
+      await driver.executeScript("document.querySelector('[data-testid=af-files] button').click()");
+      const folder = resolve(FOLDER, 'Pictures', 'Local test library', 'Steam hammer [p1]');
+      await driver.wait(() => existsSync(resolve(folder, 'asset.json')) && existsSync(resolve(folder, 'LICENCE.txt')), 30_000, `nothing was saved in ${folder}`);
+      if (!readFileSync(resolve(folder, 'steam.png')).equals(picture)) throw new Error('the saved picture differs');
+      const record = JSON.parse(readFileSync(resolve(folder, 'asset.json'), 'utf8'));
+      if (record.licence?.code !== 'by' || !String(record.credit).includes('“Steam hammer” by Test Museum')) throw new Error(`record: ${JSON.stringify(record).slice(0, 300)}`);
+      if (!readFileSync(resolve(folder, 'LICENCE.txt'), 'utf8').includes('Licence: CC BY 4.0')) throw new Error('the licence note is wrong');
+      if (!asked.includes('/search') || !asked.includes('/steam.png')) throw new Error(`the server saw ${asked.join(', ')}`);
+    } finally {
+      server.close();
+      await driver.executeScript("localStorage.removeItem('benchtop.assets.v1')");
+    }
+  });
+
+  await check('Text Translator talks to a translation server on this computer and keeps subtitle times', async () => {
+    const { createServer } = await import('node:http');
+    const server = createServer((req, res) => {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk;
+      });
+      req.on('end', () => {
+        const asked = JSON.parse(body || '{}');
+        const lines = asked.benchtop?.lines ?? [];
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(lines.map((line) => `${asked.benchtop?.to}: ${line}`)) } }] }));
+      });
+    });
+    await new Promise((done) => server.listen(0, '127.0.0.1', done));
+    try {
+      await open('translator');
+      const set = (selector, value) =>
+        driver.executeScript(
+          "const box = document.querySelector(arguments[0]); box.value = arguments[1]; box.dispatchEvent(new Event('input', { bubbles: true })); box.dispatchEvent(new Event('change', { bubbles: true }));",
+          selector,
+          value,
+        );
+      await set('[data-testid=tr-server]', `http://127.0.0.1:${server.address().port}/v1/chat/completions`);
+      await set('[data-testid=tr-model]', 'test-model');
+      await set('[data-testid=tr-to]', 'ja');
+      await set('[data-testid=tr-input]', '1\n00:00:01,000 --> 00:00:02,500\nWelcome to the museum.\n');
+      await driver.executeScript("document.querySelector('[data-testid=tr-translate]').click()");
+      const output = () => driver.executeScript("return document.querySelector('[data-testid=tr-output]')?.value ?? ''");
+      await driver.wait(async () => (await output()).includes('jpn_Jpan: Welcome to the museum.'), 20_000, 'no translation came back');
+      if (!(await output()).includes('00:00:01,000 --> 00:00:02,500')) throw new Error(`the times were lost: ${await output()}`);
+    } finally {
+      server.close();
+    }
+  });
+
   await check('the window refuses to navigate away from the app', async () => {
     await driver.executeScript("location.href = 'https://example.org/'");
     await driver.sleep(1500);

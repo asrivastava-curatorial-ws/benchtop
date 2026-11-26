@@ -1,0 +1,33 @@
+{
+  "objectID": 436532,
+  "isHighlight": true,
+  "isPublicDomain": true,
+  "primaryImage": "https://images.metmuseum.org/CRDImages/ep/original/DT1502_cropped2.jpg",
+  "primaryImageSmall": "https://images.metmuseum.org/CRDImages/ep/web-large/DT1502_cropped2.jpg",
+  "additionalImages": ["https://images.metmuseum.org/CRDImages/ep/original/LC-DT1502-2.jpg"],
+  "department": "European Paintings",
+  "objectName": "Painting",
+  "title": "Self-Portrait with a Straw Hat (obverse: The Potato Peeler)",
+  "culture": "",
+  "artistDisplayName": "Vincent van Gogh",
+  "artistDisplayBio": "Dutch, Zundert 1853–1890 Auvers-sur-Oise",
+  "artistBeginDate": "1853",
+  "artistEndDate": "1890",
+  "artistWikidata_URL": "https://www.wikidata.org/wiki/Q5582",
+  "objectDate": "1887",
+  "objectBeginDate": 1887,
+  "objectEndDate": 1887,
+  "medium": "Oil on canvas",
+  "dimensions": "16 x 12 1/2 in. (40.6 x 31.8 cm)",
+  "creditLine": "Bequest of Miss Adelaide Milton de Groot (1876-1967), 1967",
+  "classification": "Paintings",
+  "objectURL": "https://www.metmuseum.org/art/collection/search/436532",
+  "tags": [
+    {
+      "term": "Men"
+    },
+    {
+      "term": "Self-portraits"
+    }
+  ]
+}

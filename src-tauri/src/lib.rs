@@ -10,6 +10,7 @@
 
 mod ai;
 mod arduino;
+mod assets;
 mod bulk;
 mod cli;
 mod coderun;
@@ -157,6 +158,16 @@ pub fn run_with(route: Option<String>) {
         )
         .invoke_handler(tauri::generate_handler![
             save_file,
+            assets::asset_library,
+            assets::asset_pick_library,
+            assets::asset_keys,
+            assets::asset_set_key,
+            assets::asset_download,
+            assets::asset_cancel,
+            assets::asset_write,
+            assets::asset_read,
+            assets::asset_reveal,
+            assets::asset_records,
             coderun::code_toolchains,
             coderun::code_version,
             coderun::code_run,
@@ -280,6 +291,7 @@ pub fn run_with(route: Option<String>) {
             quiz::quiz_stop
         ])
         .manage(files::PickedFiles::default())
+        .manage(assets::AssetState::default())
         .manage(convert::ConvertState::default())
         .manage(serial::SerialState::default())
         .manage(mirror::MirrorState::default())
